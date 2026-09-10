@@ -22,7 +22,8 @@ fun HomeScreen(
     viewModel: AppViewModel,
     onNavigateToAzkar: (String) -> Unit,
     onNavigateToStats: () -> Unit,
-    onNavigateToSettings: () -> Unit
+    onNavigateToSettings: () -> Unit,
+    onNavigateToAiServices: () -> Unit
 ) {
     val todayProgress by viewModel.todayProgress.collectAsState()
 
@@ -31,6 +32,9 @@ fun HomeScreen(
             TopAppBar(
                 title = { Text("حصنك في يومك", fontWeight = FontWeight.Bold) },
                 actions = {
+                    IconButton(onClick = onNavigateToAiServices, modifier = Modifier.testTag("ai_button")) {
+                        Text("✨")
+                    }
                     IconButton(onClick = onNavigateToStats, modifier = Modifier.testTag("stats_button")) {
                         Icon(Icons.Default.DateRange, contentDescription = "الإحصائيات")
                     }

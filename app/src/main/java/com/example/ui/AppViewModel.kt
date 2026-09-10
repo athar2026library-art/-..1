@@ -6,14 +6,22 @@ import androidx.lifecycle.viewModelScope
 import com.example.data.ProgressRepository
 import com.example.data.SettingsRepository
 import com.example.data.UserProgress
+import com.example.data.AiRepository
+import com.example.data.AuthRepository
+import com.example.data.FirestoreRepository
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class AppViewModel(
     private val progressRepository: ProgressRepository,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val aiRepository: AiRepository,
+    private val authRepository: AuthRepository,
+    private val firestoreRepository: FirestoreRepository
 ) : ViewModel() {
 
     val todayProgress: StateFlow<UserProgress?> = progressRepository.getTodayProgress()
@@ -30,6 +38,15 @@ class AppViewModel(
         
     val isVibrationEnabled: StateFlow<Boolean> = settingsRepository.vibrationFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    private val _aiResponse = MutableStateFlow<String>("")
+    val aiResponse: StateFlow<String> = _aiResponse.asStateFlow()
+    
+    private val _aiImageBase64 = MutableStateFlow<String?>(null)
+    val aiImageBase64: StateFlow<String?> = _aiImageBase64.asStateFlow()
+
+    private val _userSignedIn = MutableStateFlow(authRepository.getCurrentUser() != null)
+    val userSignedIn: StateFlow<Boolean> = _userSignedIn.asStateFlow()
 
     init {
         viewModelScope.launch {
@@ -72,16 +89,73 @@ class AppViewModel(
             settingsRepository.setVibration(enabled)
         }
     }
+    
+    fun askAi(question: String) {
+        viewModelScope.launch {
+            _aiResponse.value = "جاري البحث..."
+            _aiResponse.value = aiRepository.askScholar(question)
+        }
+    }
+    
+    fun generateAiImage(prompt: String) {
+        viewModelScope.launch {
+            _aiResponse.value = "جاري رسم الخلفية..."
+            val image = aiRepository.generateImage(prompt)
+            if (image != null) {
+                _aiImageBase64.value = image
+                _aiResponse.value = "تم بنجاح!"
+            } else {
+                _aiResponse.value = "فشل توليد الصورة."
+            }
+        }
+    }
+    
+    fun generateAiVideo(prompt: String) {
+        viewModelScope.launch {
+            _aiResponse.value = "جاري إنشاء الفيديو..."
+            val result = aiRepository.generateVideo(prompt)
+            _aiResponse.value = "نتيجة الفيديو: $result"
+        }
+    }
+    
+    fun signIn() {
+        viewModelScope.launch {
+            val success = authRepository.signInWithGoogle()
+            if (success) {
+                _userSignedIn.value = true
+                _aiResponse.value = "تم تسجيل الدخول بنجاح!"
+            } else {
+                _aiResponse.value = "فشل تسجيل الدخول. تأكد من إعدادات Firebase."
+            }
+        }
+    }
+    
+    fun signOut() {
+        authRepository.signOut()
+        _userSignedIn.value = false
+        _aiResponse.value = "تم تسجيل الخروج."
+    }
+    
+    fun backupData() {
+        viewModelScope.launch {
+            _aiResponse.value = "جاري المزامنة مع السحابة..."
+            firestoreRepository.backupProgress(recentProgress.value)
+            _aiResponse.value = "تمت مزامنة البستان بنجاح! 🌴"
+        }
+    }
 }
 
 class AppViewModelFactory(
     private val progressRepository: ProgressRepository,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val aiRepository: AiRepository,
+    private val authRepository: AuthRepository,
+    private val firestoreRepository: FirestoreRepository
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(AppViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return AppViewModel(progressRepository, settingsRepository) as T
+            return AppViewModel(progressRepository, settingsRepository, aiRepository, authRepository, firestoreRepository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

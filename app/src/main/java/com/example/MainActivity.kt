@@ -14,6 +14,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.data.ProgressRepository
 import com.example.data.SettingsRepository
 import com.example.data.dataStore
+import com.example.data.AiRepository
+import com.example.data.AuthRepository
+import com.example.data.FirestoreRepository
 import com.example.ui.AppNavGraph
 import com.example.ui.AppViewModel
 import com.example.ui.AppViewModelFactory
@@ -26,10 +29,19 @@ class MainActivity : ComponentActivity() {
         
         val progressRepository = ProgressRepository.getInstance(applicationContext)
         val settingsRepository = SettingsRepository(applicationContext.dataStore)
+        val aiRepository = AiRepository()
+        val authRepository = AuthRepository(applicationContext)
+        val firestoreRepository = FirestoreRepository()
         
         setContent {
             val viewModel: AppViewModel = viewModel(
-                factory = AppViewModelFactory(progressRepository, settingsRepository)
+                factory = AppViewModelFactory(
+                    progressRepository,
+                    settingsRepository,
+                    aiRepository,
+                    authRepository,
+                    firestoreRepository
+                )
             )
             
             val isDarkMode by viewModel.isDarkMode.collectAsState()

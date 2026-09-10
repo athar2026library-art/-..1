@@ -10,6 +10,7 @@ import com.example.ui.screens.HomeScreen
 import com.example.ui.screens.AzkarScreen
 import com.example.ui.screens.StatsScreen
 import com.example.ui.screens.SettingsScreen
+import com.example.ui.screens.AiServicesScreen
 
 @Composable
 fun AppNavGraph(
@@ -34,6 +35,9 @@ fun AppNavGraph(
                 },
                 onNavigateToSettings = {
                     navController.navigate("settings")
+                },
+                onNavigateToAiServices = {
+                    navController.navigate("ai_services")
                 }
             )
         }
@@ -53,6 +57,12 @@ fun AppNavGraph(
         }
         composable("settings") {
             SettingsScreen(
+                viewModel = viewModel,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        composable("ai_services") {
+            AiServicesScreen(
                 viewModel = viewModel,
                 onNavigateBack = { navController.popBackStack() }
             )
