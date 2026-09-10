@@ -1,0 +1,6 @@
+{
+  "name": "أذكار",
+  "description": "تطبيق أذكار الصباح والمساء، خفيف، بدون إنترنت، وبتصميم مريح للعين.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
