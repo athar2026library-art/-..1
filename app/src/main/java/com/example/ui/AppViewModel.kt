@@ -39,12 +39,27 @@ class AppViewModel(
     val isVibrationEnabled: StateFlow<Boolean> = settingsRepository.vibrationFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
+    val keepScreenOn: StateFlow<Boolean> = settingsRepository.keepScreenOnFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    val hideVirtues: StateFlow<Boolean> = settingsRepository.hideVirtuesFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    val hideSources: StateFlow<Boolean> = settingsRepository.hideSourcesFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    val lastReadCategory: StateFlow<String> = settingsRepository.lastReadCategoryFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
+    
+    val lastReadIndex: StateFlow<Int> = settingsRepository.lastReadIndexFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+        
+    val lastReadRemaining: StateFlow<Int> = settingsRepository.lastReadRemainingFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
     private val _aiResponse = MutableStateFlow<String>("")
     val aiResponse: StateFlow<String> = _aiResponse.asStateFlow()
     
-    private val _aiImageBase64 = MutableStateFlow<String?>(null)
-    val aiImageBase64: StateFlow<String?> = _aiImageBase64.asStateFlow()
-
     private val _userSignedIn = MutableStateFlow(authRepository.getCurrentUser() != null)
     val userSignedIn: StateFlow<Boolean> = _userSignedIn.asStateFlow()
 
@@ -72,6 +87,18 @@ class AppViewModel(
         }
     }
     
+    fun saveLastReadState(category: String, index: Int, remaining: Int) {
+        viewModelScope.launch {
+            settingsRepository.saveLastReadState(category, index, remaining)
+        }
+    }
+
+    fun clearLastReadState() {
+        viewModelScope.launch {
+            settingsRepository.clearLastReadState()
+        }
+    }
+    
     fun setFontSize(size: Float) {
         viewModelScope.launch {
             settingsRepository.setFontSize(size)
@@ -90,31 +117,32 @@ class AppViewModel(
         }
     }
     
+    fun setKeepScreenOn(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setKeepScreenOn(enabled)
+        }
+    }
+
+    fun setHideVirtues(hide: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setHideVirtues(hide)
+        }
+    }
+
+    fun setHideSources(hide: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setHideSources(hide)
+        }
+    }
+    
     fun askAi(question: String) {
         viewModelScope.launch {
             _aiResponse.value = "جاري البحث..."
-            _aiResponse.value = aiRepository.askScholar(question)
-        }
-    }
-    
-    fun generateAiImage(prompt: String) {
-        viewModelScope.launch {
-            _aiResponse.value = "جاري رسم الخلفية..."
-            val image = aiRepository.generateImage(prompt)
-            if (image != null) {
-                _aiImageBase64.value = image
-                _aiResponse.value = "تم بنجاح!"
-            } else {
-                _aiResponse.value = "فشل توليد الصورة."
+            try {
+                _aiResponse.value = aiRepository.askScholar(question)
+            } catch (e: Exception) {
+                _aiResponse.value = "تعذر الاتصال. يرجى التأكد من اتصالك بالإنترنت للميزات الذكية 🌐"
             }
-        }
-    }
-    
-    fun generateAiVideo(prompt: String) {
-        viewModelScope.launch {
-            _aiResponse.value = "جاري إنشاء الفيديو..."
-            val result = aiRepository.generateVideo(prompt)
-            _aiResponse.value = "نتيجة الفيديو: $result"
         }
     }
     
@@ -136,11 +164,20 @@ class AppViewModel(
         _aiResponse.value = "تم تسجيل الخروج."
     }
     
-    fun backupData() {
+    fun syncData() {
         viewModelScope.launch {
             _aiResponse.value = "جاري المزامنة مع السحابة..."
-            firestoreRepository.backupProgress(recentProgress.value)
-            _aiResponse.value = "تمت مزامنة البستان بنجاح! 🌴"
+            try {
+                // 1. Fetch remote progress
+                val remoteProgress = firestoreRepository.fetchProgress()
+                // 2. Merge remote with local
+                progressRepository.syncProgress(remoteProgress)
+                // 3. Push the (now merged) local progress back to remote
+                firestoreRepository.backupProgress(recentProgress.value)
+                _aiResponse.value = "تمت مزامنة البستان بنجاح! 🌴"
+            } catch (e: Exception) {
+                _aiResponse.value = "تعذرت المزامنة، تأكد من اتصالك بالإنترنت 🌐"
+            }
         }
     }
 }

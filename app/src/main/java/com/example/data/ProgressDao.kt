@@ -10,6 +10,9 @@ import kotlinx.coroutines.flow.Flow
 interface ProgressDao {
     @Query("SELECT * FROM user_progress WHERE date = :date")
     fun getProgressByDate(date: String): Flow<UserProgress?>
+    
+    @Query("SELECT * FROM user_progress WHERE date = :date")
+    suspend fun getProgressByDateSync(date: String): UserProgress?
 
     @Query("SELECT * FROM user_progress ORDER BY date DESC LIMIT 30")
     fun getRecentProgress(): Flow<List<UserProgress>>

@@ -39,27 +39,13 @@ data class Content(
 
 @JsonClass(generateAdapter = true)
 data class Part(
-    val text: String? = null,
-    val inlineData: InlineData? = null
-)
-
-@JsonClass(generateAdapter = true)
-data class InlineData(
-    val mimeType: String,
-    val data: String
+    val text: String? = null
 )
 
 @JsonClass(generateAdapter = true)
 data class GenerationConfig(
     val temperature: Float? = null,
-    val imageConfig: ImageConfig? = null,
     val responseModalities: List<String>? = null
-)
-
-@JsonClass(generateAdapter = true)
-data class ImageConfig(
-    val aspectRatio: String,
-    val imageSize: String
 )
 
 @JsonClass(generateAdapter = true)
@@ -72,19 +58,6 @@ data class Candidate(
     val content: Content? = null
 )
 
-@JsonClass(generateAdapter = true)
-data class GenerateVideosRequest(
-    val prompt: String,
-    val config: VeoConfig? = null
-)
-
-@JsonClass(generateAdapter = true)
-data class VeoConfig(
-    val numberOfVideos: Int,
-    val resolution: String,
-    val aspectRatio: String
-)
-
 interface GeminiApiService {
     @POST("v1beta/models/{model}:generateContent")
     suspend fun generateContent(
@@ -92,13 +65,6 @@ interface GeminiApiService {
         @Query("key") apiKey: String,
         @Body request: GenerateContentRequest
     ): GenerateContentResponse
-    
-    @POST("v1beta/models/{model}:generateVideos")
-    suspend fun generateVideos(
-        @Path("model") model: String,
-        @Query("key") apiKey: String,
-        @Body request: GenerateVideosRequest
-    ): Any
 }
 
 object RetrofitClient {
@@ -125,49 +91,17 @@ object RetrofitClient {
 }
 
 class AiRepository {
-    
     suspend fun askScholar(question: String): String = withContext(Dispatchers.IO) {
         val request = GenerateContentRequest(
             contents = listOf(Content(parts = listOf(Part(text = question)))),
-            systemInstruction = Content(parts = listOf(Part(text = "أنت مساعد إسلامي مفيد. أجب عن أسئلة المستخدم بدقة بناءً على البحث."))),
+            systemInstruction = Content(parts = listOf(Part(text = "أنت مساعد إسلامي مفيد. لا تصدر أحكاماً شرعية من عندك، بل ابحث واسترجع المحتوى الموثق واعرض المصدر. قدم إجابات موثقة لأدعية وأذكار."))),
             tools = listOf(Tool(googleSearch = GoogleSearchTool()))
         )
         try {
             val response = RetrofitClient.service.generateContent("gemini-3.5-flash", BuildConfig.GEMINI_API_KEY, request)
-            response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text ?: "عذراً، لم أتمكن من الإجابة."
+            response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text ?: "عذراً، لم أتمكن من العثور على إجابة."
         } catch (e: Exception) {
-            "حدث خطأ أثناء البحث: ${e.message}"
-        }
-    }
-    
-    suspend fun generateImage(prompt: String): String? = withContext(Dispatchers.IO) {
-        val request = GenerateContentRequest(
-            contents = listOf(Content(parts = listOf(Part(text = prompt)))),
-            generationConfig = GenerationConfig(
-                imageConfig = ImageConfig(aspectRatio = "1:1", imageSize = "1K"),
-                responseModalities = listOf("TEXT", "IMAGE")
-            )
-        )
-        try {
-            val response = RetrofitClient.service.generateContent("gemini-3.1-flash-image-preview", BuildConfig.GEMINI_API_KEY, request)
-            // The image is returned as base64 in inlineData
-            val part = response.candidates?.firstOrNull()?.content?.parts?.firstOrNull { it.inlineData != null }
-            part?.inlineData?.data
-        } catch (e: Exception) {
-            null
-        }
-    }
-    
-    suspend fun generateVideo(prompt: String): String? = withContext(Dispatchers.IO) {
-        val request = GenerateVideosRequest(
-            prompt = prompt,
-            config = VeoConfig(numberOfVideos = 1, resolution = "1080p", aspectRatio = "16:9")
-        )
-        try {
-            val response = RetrofitClient.service.generateVideos("veo-3.1-fast-generate-preview", BuildConfig.GEMINI_API_KEY, request)
-            response.toString()
-        } catch (e: Exception) {
-            "Error: ${e.message}"
+            "عذراً، لا يوجد اتصال بالإنترنت. يرجى تفعيل الشبكة للميزات الذكية 🌐"
         }
     }
 }

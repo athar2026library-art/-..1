@@ -1,19 +1,27 @@
 package com.example.ui.screens
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import android.view.WindowManager
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,6 +34,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.AzkarData
 import com.example.ui.AppViewModel
+import com.example.ui.AudioPlayer
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -36,11 +46,36 @@ fun AzkarScreen(
     onNavigateBack: () -> Unit
 ) {
     val azkarList = if (category == "sabah") AzkarData.morningAzkar else AzkarData.eveningAzkar
-    var currentIndex by remember { mutableIntStateOf(0) }
     
+    val initialLastReadIndex = remember { if (viewModel.lastReadCategory.value == category) viewModel.lastReadIndex.value else 0 }
+    val initialLastReadRemaining = remember { if (viewModel.lastReadCategory.value == category) viewModel.lastReadRemaining.value else -1 }
+    
+    var currentIndex by remember { mutableIntStateOf(initialLastReadIndex) }
+    
+    val context = LocalContext.current
+    val keepScreenOn by viewModel.keepScreenOn.collectAsState()
+    
+    // Audio Player
+    val audioPlayer = remember { AudioPlayer(context) }
+    var isAutoPlaying by remember { mutableStateOf(false) }
+    
+    DisposableEffect(keepScreenOn) {
+        val activity = context as? Activity
+        if (keepScreenOn) {
+            activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else {
+            activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+        onDispose {
+            activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            audioPlayer.shutdown()
+        }
+    }
+
     if (currentIndex >= azkarList.size) {
         // Completed
         LaunchedEffect(Unit) {
+            viewModel.clearLastReadState()
             if (category == "sabah") {
                 viewModel.completeSabah()
             } else {
@@ -61,13 +96,58 @@ fun AzkarScreen(
     }
 
     val currentZekr = azkarList[currentIndex]
-    var countRemaining by remember(currentIndex) { mutableIntStateOf(currentZekr.repeatCount) }
+    var countRemaining by remember(currentIndex) { 
+        mutableIntStateOf(
+            if (currentIndex == initialLastReadIndex && initialLastReadRemaining > 0) {
+                initialLastReadRemaining
+            } else {
+                currentZekr.repeatCount
+            }
+        )
+    }
+    
+    LaunchedEffect(currentIndex, countRemaining) {
+        if (currentIndex < azkarList.size) {
+            viewModel.saveLastReadState(category, currentIndex, countRemaining)
+        }
+    }
     
     val fontSize by viewModel.fontSize.collectAsState()
     val isVibrationEnabled by viewModel.isVibrationEnabled.collectAsState()
+    val hideVirtues by viewModel.hideVirtues.collectAsState()
+    val hideSources by viewModel.hideSources.collectAsState()
     
-    val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+    
+    // Auto-Play "Repeat with Me" Logic
+    LaunchedEffect(isAutoPlaying, currentIndex) {
+        if (isAutoPlaying && currentIndex < azkarList.size) {
+            while (countRemaining > 0 && isAutoPlaying) {
+                val start = System.currentTimeMillis()
+                val success = audioPlayer.playAndWait(azkarList[currentIndex].text)
+                
+                if (!success || !isAutoPlaying) {
+                    isAutoPlaying = false
+                    break
+                }
+                
+                val duration = System.currentTimeMillis() - start
+                
+                countRemaining--
+                viewModel.addTasbeeh(1)
+                if (isVibrationEnabled) vibrate(context)
+                
+                if (countRemaining > 0) {
+                    // Pause for user to repeat (give them 1 second more than it took to read)
+                    delay(duration + 1000)
+                } else {
+                    // Finished this Zekr, wait briefly and move to next
+                    delay(1500)
+                    currentIndex++
+                }
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -80,9 +160,10 @@ fun AzkarScreen(
                 },
                 actions = {
                     IconButton(onClick = {
+                        val shareText = "🌿\n${currentZekr.text}\n\n${currentZekr.repeatCount} مرات\n\n📖 ${currentZekr.source}\n\n- تمت القراءة عبر تطبيق أذكار 🌴"
                         val shareIntent = Intent(Intent.ACTION_SEND).apply {
                             type = "text/plain"
-                            putExtra(Intent.EXTRA_TEXT, "${currentZekr.text}\n\n${currentZekr.source}\n\n- تمت القراءة عبر تطبيق أذكار 🌴")
+                            putExtra(Intent.EXTRA_TEXT, shareText)
                         }
                         context.startActivity(Intent.createChooser(shareIntent, "مشاركة الذكر"))
                     }) {
@@ -99,7 +180,7 @@ fun AzkarScreen(
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Progress
+            // Progress Header
             LinearProgressIndicator(
                 progress = { currentIndex.toFloat() / azkarList.size },
                 modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
@@ -108,7 +189,7 @@ fun AzkarScreen(
             Text("${currentIndex + 1} / ${azkarList.size}", color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Text content
+            // Main Content Area
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -116,39 +197,120 @@ fun AzkarScreen(
                     .verticalScroll(rememberScrollState()),
                 contentAlignment = Alignment.Center
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = currentZekr.text,
-                        fontSize = fontSize.sp,
-                        lineHeight = (fontSize * 1.5).sp,
-                        textAlign = TextAlign.Center,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                    if (currentZekr.fadl.isNotEmpty()) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .padding(24.dp)
+                            .fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = currentZekr.text,
+                            fontSize = fontSize.sp,
+                            lineHeight = (fontSize * 1.5).sp,
+                            textAlign = TextAlign.Center,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        
                         Spacer(modifier = Modifier.height(24.dp))
+                        
                         Text(
-                            text = "الفضل: ${currentZekr.fadl}",
-                            color = MaterialTheme.colorScheme.primary,
-                            textAlign = TextAlign.Center,
-                            style = MaterialTheme.typography.bodyLarge
+                            text = "× ${currentZekr.repeatCount}",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
                         )
-                    }
-                    if (currentZekr.source.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = currentZekr.source,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center,
-                            style = MaterialTheme.typography.labelLarge
-                        )
+                        
+                        if ((currentZekr.fadl.isNotEmpty() && !hideVirtues) || (currentZekr.source.isNotEmpty() && !hideSources)) {
+                            Divider(modifier = Modifier.padding(vertical = 16.dp))
+                            
+                            var expanded by remember(currentIndex) { mutableStateOf(false) }
+                            val toggleText = if (currentZekr.fadl.isNotEmpty() && !hideVirtues) "🌿 فضله" else "📖 المصدر"
+                            
+                            Row(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable { expanded = !expanded }
+                                    .padding(8.dp),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(toggleText, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                                Icon(if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            }
+                            
+                            AnimatedVisibility(visible = expanded) {
+                                Column(
+                                    horizontalAlignment = Alignment.Start,
+                                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
+                                ) {
+                                    if (currentZekr.fadl.isNotEmpty() && !hideVirtues) {
+                                        Text(
+                                            text = "🌿 فضله",
+                                            color = MaterialTheme.colorScheme.primary,
+                                            fontWeight = FontWeight.Bold,
+                                            style = MaterialTheme.typography.titleMedium
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            text = currentZekr.fadl,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            textAlign = TextAlign.Start,
+                                            style = MaterialTheme.typography.bodyLarge
+                                        )
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                    }
+                                    if (currentZekr.source.isNotEmpty() && !hideSources) {
+                                        Text(
+                                            text = "📖 المصدر",
+                                            color = MaterialTheme.colorScheme.primary,
+                                            fontWeight = FontWeight.Bold,
+                                            style = MaterialTheme.typography.titleSmall
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            text = currentZekr.source,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                                            textAlign = TextAlign.Start,
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        
+                        Spacer(modifier = Modifier.height(24.dp))
+                        
+                        Button(
+                            onClick = { 
+                                if (isAutoPlaying) {
+                                    isAutoPlaying = false
+                                    audioPlayer.stop()
+                                } else {
+                                    isAutoPlaying = true
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isAutoPlaying) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                            )
+                        ) {
+                            Icon(if (isAutoPlaying) Icons.Default.Stop else Icons.Default.PlayArrow, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(if (isAutoPlaying) "إيقاف" else "🗣️ ردّد معي", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        }
                     }
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Counter Button
+            // Manual Counter Button
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
@@ -159,12 +321,13 @@ fun AzkarScreen(
                             countRemaining--
                             viewModel.addTasbeeh(1)
                             if (countRemaining == 0) {
+                                audioPlayer.stop()
+                                isAutoPlaying = false
                                 if (isVibrationEnabled) {
                                     vibrate(context)
                                 }
                                 coroutineScope.launch {
-                                    // slight delay before auto next
-                                    kotlinx.coroutines.delay(300)
+                                    delay(300)
                                     currentIndex++
                                 }
                             }
@@ -204,6 +367,7 @@ fun vibrate(context: Context) {
         @Suppress("DEPRECATION")
         context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
     }
+    
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         vibrator.vibrate(VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE))
     } else {

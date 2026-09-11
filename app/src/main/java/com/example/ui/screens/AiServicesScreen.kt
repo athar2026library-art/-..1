@@ -1,8 +1,5 @@
 package com.example.ui.screens
 
-import android.graphics.BitmapFactory
-import android.util.Base64
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -12,7 +9,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.unit.dp
 import com.example.ui.AppViewModel
 
@@ -23,7 +19,6 @@ fun AiServicesScreen(
     onNavigateBack: () -> Unit
 ) {
     val aiResponse by viewModel.aiResponse.collectAsState()
-    val aiImageBase64 by viewModel.aiImageBase64.collectAsState()
     val userSignedIn by viewModel.userSignedIn.collectAsState()
 
     var textInput by remember { mutableStateOf("") }
@@ -31,7 +26,7 @@ fun AiServicesScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("خدمات الذكاء الاصطناعي والمزامنة") },
+                title = { Text("المساعد الإسلامي والمزامنة") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -58,7 +53,7 @@ fun AiServicesScreen(
                         Text("تم تسجيل الدخول", color = MaterialTheme.colorScheme.primary)
                         Spacer(modifier = Modifier.height(8.dp))
                         Row {
-                            Button(onClick = { viewModel.backupData() }) {
+                            Button(onClick = { viewModel.syncData() }) {
                                 Text("مزامنة الإنجاز 🌴")
                             }
                             Spacer(modifier = Modifier.width(8.dp))
@@ -77,26 +72,19 @@ fun AiServicesScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             // --- Section 2: AI Inputs ---
+            Text("المساعد الإسلامي 🤖", style = MaterialTheme.typography.titleLarge)
+            Spacer(modifier = Modifier.height(8.dp))
             OutlinedTextField(
                 value = textInput,
                 onValueChange = { textInput = it },
-                label = { Text("اكتب سؤالك أو وصف الصورة/الفيديو...") },
+                label = { Text("اسأل عن أذكار، أدعية، أو فتاوى...") },
                 modifier = Modifier.fillMaxWidth()
             )
             
             Spacer(modifier = Modifier.height(8.dp))
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { viewModel.askAi(textInput) }, modifier = Modifier.weight(1f)) {
-                    Text("اسأل الذكاء (بحث)")
-                }
-                Button(onClick = { viewModel.generateAiImage(textInput) }, modifier = Modifier.weight(1f)) {
-                    Text("رسم خلفية (صورة)")
-                }
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            Button(onClick = { viewModel.generateAiVideo(textInput) }, modifier = Modifier.fillMaxWidth()) {
-                Text("توليد فيديو إسلامي (Veo)")
+            Button(onClick = { viewModel.askAi(textInput) }, modifier = Modifier.fillMaxWidth()) {
+                Text("بحث في المصادر الموثوقة")
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -105,29 +93,6 @@ fun AiServicesScreen(
             if (aiResponse.isNotEmpty()) {
                 Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
                     Text(text = aiResponse, modifier = Modifier.padding(16.dp))
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            aiImageBase64?.let { base64String ->
-                val bitmap = remember(base64String) {
-                    try {
-                        val decodedBytes = Base64.decode(base64String, Base64.DEFAULT)
-                        BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
-                    } catch (e: Exception) {
-                        null
-                    }
-                }
-                
-                if (bitmap != null) {
-                    Image(
-                        bitmap = bitmap.asImageBitmap(),
-                        contentDescription = "AI Generated Image",
-                        modifier = Modifier.fillMaxWidth().aspectRatio(1f)
-                    )
-                } else {
-                    Text("خطأ في عرض الصورة")
                 }
             }
         }

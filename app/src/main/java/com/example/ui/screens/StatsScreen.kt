@@ -7,7 +7,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -19,6 +18,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.AppViewModel
 import com.example.data.UserProgress
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,6 +50,10 @@ fun StatsScreen(
                 .padding(16.dp)
         ) {
             val streak = calculateStreak(recentProgress)
+            val thisMonthDays = calculateThisMonthDays(recentProgress)
+            val sabahPercent = calculateSabahPercent(recentProgress)
+            val masaaPercent = calculateMasaaPercent(recentProgress)
+
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
@@ -62,6 +69,25 @@ fun StatsScreen(
                         style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.primary
                     )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("هذا الشهر", style = MaterialTheme.typography.labelMedium)
+                            Text("$thisMonthDays/30", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                        }
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("الصباح", style = MaterialTheme.typography.labelMedium)
+                            Text("$sabahPercent%", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                        }
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("المساء", style = MaterialTheme.typography.labelMedium)
+                            Text("$masaaPercent%", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                        }
+                    }
                 }
             }
 
@@ -82,6 +108,16 @@ fun StatsScreen(
                     items(recentProgress.size) { index ->
                         val progress = recentProgress[index]
                         val hasCompleted = progress.completedSabah || progress.completedMasaa
+                        
+                        val emoji = when {
+                            !hasCompleted -> "🌱" // Did nothing
+                            streak >= 100 -> "🌳✨"
+                            streak >= 30 -> "🌳"
+                            streak >= 7 -> "🌴"
+                            streak >= 3 -> "🌿"
+                            else -> "🌱"
+                        }
+                        
                         Box(
                             modifier = Modifier
                                 .aspectRatio(1f)
@@ -92,7 +128,7 @@ fun StatsScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = if (hasCompleted) "🌴" else "🌱",
+                                text = if (hasCompleted) emoji else "🌱",
                                 fontSize = 32.sp
                             )
                         }
@@ -105,13 +141,55 @@ fun StatsScreen(
 
 fun calculateStreak(progress: List<UserProgress>): Int {
     if (progress.isEmpty()) return 0
+    val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+    val cal = Calendar.getInstance()
     var streak = 0
-    for (p in progress) {
-        if (p.completedSabah || p.completedMasaa) {
+    
+    // Sort descending by date just to be sure
+    val sorted = progress.sortedByDescending { it.date }
+    
+    // Check if the latest record is today or yesterday
+    val todayStr = sdf.format(cal.time)
+    cal.add(Calendar.DAY_OF_YEAR, -1)
+    val yesterdayStr = sdf.format(cal.time)
+    
+    val latest = sorted.first()
+    if (latest.date != todayStr && latest.date != yesterdayStr) {
+        return 0 // Streak broken if no activity today or yesterday
+    }
+    
+    var expectedDateStr = latest.date
+    val expectedCal = Calendar.getInstance()
+    expectedCal.time = sdf.parse(expectedDateStr) ?: Date()
+    
+    for (p in sorted) {
+        if (p.date == expectedDateStr && (p.completedSabah || p.completedMasaa)) {
             streak++
+            expectedCal.add(Calendar.DAY_OF_YEAR, -1)
+            expectedDateStr = sdf.format(expectedCal.time)
         } else {
-            break
+            break // Date gap or no completion
         }
     }
     return streak
+}
+
+fun calculateThisMonthDays(progress: List<UserProgress>): Int {
+    val sdf = SimpleDateFormat("yyyy-MM", Locale.US)
+    val currentMonth = sdf.format(Date())
+    return progress.count { 
+        it.date.startsWith(currentMonth) && (it.completedSabah || it.completedMasaa) 
+    }
+}
+
+fun calculateSabahPercent(progress: List<UserProgress>): Int {
+    if (progress.isEmpty()) return 0
+    val count = progress.count { it.completedSabah }
+    return (count * 100) / progress.size
+}
+
+fun calculateMasaaPercent(progress: List<UserProgress>): Int {
+    if (progress.isEmpty()) return 0
+    val count = progress.count { it.completedMasaa }
+    return (count * 100) / progress.size
 }

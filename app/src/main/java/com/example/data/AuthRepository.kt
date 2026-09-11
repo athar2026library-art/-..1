@@ -12,16 +12,21 @@ import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.tasks.await
 
 class AuthRepository(private val context: Context) {
-    private val auth = FirebaseAuth.getInstance()
+    private val auth by lazy {
+        try {
+            FirebaseAuth.getInstance()
+        } catch (e: Exception) {
+            null
+        }
+    }
     private val credentialManager = CredentialManager.create(context)
 
-    fun getCurrentUser() = auth.currentUser
+    fun getCurrentUser() = auth?.currentUser
 
     suspend fun signInWithGoogle(): Boolean {
+        if (auth == null) return false
         return try {
-            // NOTE: In a real app, replace with actual Web Client ID from Firebase Console.
-            // Using a dummy string will fail the actual runtime auth call, but fulfills the code structure.
-            val webClientId = "1234567890-abcdefg.apps.googleusercontent.com" 
+            val webClientId = context.getString(com.example.R.string.default_web_client_id)
             
             val googleIdOption = GetGoogleIdOption.Builder()
                 .setFilterByAuthorizedAccounts(false)
@@ -37,7 +42,7 @@ class AuthRepository(private val context: Context) {
 
             if (credential is GoogleIdTokenCredential) {
                 val firebaseCredential = GoogleAuthProvider.getCredential(credential.idToken, null)
-                auth.signInWithCredential(firebaseCredential).await()
+                auth?.signInWithCredential(firebaseCredential)?.await()
                 true
             } else {
                 false
@@ -49,6 +54,6 @@ class AuthRepository(private val context: Context) {
     }
     
     fun signOut() {
-        auth.signOut()
+        auth?.signOut()
     }
 }

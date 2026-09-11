@@ -8,14 +8,12 @@ import java.util.Date
 import java.util.Locale
 
 class ProgressRepository(private val progressDao: ProgressDao) {
-
     fun getTodayDateStr(): String {
         val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
         return sdf.format(Date())
     }
 
     fun getTodayProgress(): Flow<UserProgress?> = progressDao.getProgressByDate(getTodayDateStr())
-
     fun getRecentProgress(): Flow<List<UserProgress>> = progressDao.getRecentProgress()
 
     suspend fun initTodayProgress() {
@@ -33,6 +31,22 @@ class ProgressRepository(private val progressDao: ProgressDao) {
 
     suspend fun addTasbeeh(count: Int) {
         progressDao.addTasbeeh(getTodayDateStr(), count)
+    }
+
+    suspend fun syncProgress(remoteList: List<UserProgress>) {
+        for (remote in remoteList) {
+            val local = progressDao.getProgressByDateSync(remote.date)
+            if (local == null) {
+                progressDao.insertProgress(remote)
+            } else {
+                val merged = local.copy(
+                    completedSabah = local.completedSabah || remote.completedSabah,
+                    completedMasaa = local.completedMasaa || remote.completedMasaa,
+                    totalTasbeeh = maxOf(local.totalTasbeeh, remote.totalTasbeeh)
+                )
+                progressDao.insertProgress(merged)
+            }
+        }
     }
 
     companion object {

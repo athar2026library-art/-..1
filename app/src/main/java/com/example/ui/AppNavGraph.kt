@@ -41,6 +41,7 @@ fun AppNavGraph(
                 }
             )
         }
+        
         composable("azkar/{category}") { backStackEntry ->
             val category = backStackEntry.arguments?.getString("category") ?: "sabah"
             AzkarScreen(
@@ -49,18 +50,21 @@ fun AppNavGraph(
                 onNavigateBack = { navController.popBackStack() }
             )
         }
+
         composable("stats") {
             StatsScreen(
                 viewModel = viewModel,
                 onNavigateBack = { navController.popBackStack() }
             )
         }
+
         composable("settings") {
             SettingsScreen(
                 viewModel = viewModel,
                 onNavigateBack = { navController.popBackStack() }
             )
         }
+
         composable("ai_services") {
             AiServicesScreen(
                 viewModel = viewModel,

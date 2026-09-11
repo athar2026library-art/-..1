@@ -21,11 +21,33 @@ import com.example.ui.AppNavGraph
 import com.example.ui.AppViewModel
 import com.example.ui.AppViewModelFactory
 import com.example.ui.theme.MyApplicationTheme
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
+import com.example.ui.NotificationWorker
+import java.util.concurrent.TimeUnit
+import android.Manifest
+import android.os.Build
+import androidx.core.app.ActivityCompat
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
+            }
+        }
+        
+        val workRequest = PeriodicWorkRequestBuilder<NotificationWorker>(2, TimeUnit.HOURS).build()
+        WorkManager.getInstance(applicationContext).enqueueUniquePeriodicWork(
+            "AzkarNotifications",
+            androidx.work.ExistingPeriodicWorkPolicy.KEEP,
+            workRequest
+        )
         
         val progressRepository = ProgressRepository.getInstance(applicationContext)
         val settingsRepository = SettingsRepository(applicationContext.dataStore)
