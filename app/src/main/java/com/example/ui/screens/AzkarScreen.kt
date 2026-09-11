@@ -8,7 +8,8 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.view.WindowManager
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -26,6 +27,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -37,6 +39,10 @@ import com.example.ui.AppViewModel
 import com.example.ui.AudioPlayer
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+
+enum class RepeatState {
+    IDLE, READING, WAITING
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,6 +64,7 @@ fun AzkarScreen(
     // Audio Player
     val audioPlayer = remember { AudioPlayer(context) }
     var isAutoPlaying by remember { mutableStateOf(false) }
+    var repeatState by remember { mutableStateOf(RepeatState.IDLE) }
     
     DisposableEffect(keepScreenOn) {
         val activity = context as? Activity
@@ -123,11 +130,13 @@ fun AzkarScreen(
     LaunchedEffect(isAutoPlaying, currentIndex) {
         if (isAutoPlaying && currentIndex < azkarList.size) {
             while (countRemaining > 0 && isAutoPlaying) {
+                repeatState = RepeatState.READING
                 val start = System.currentTimeMillis()
                 val success = audioPlayer.playAndWait(azkarList[currentIndex].text)
                 
                 if (!success || !isAutoPlaying) {
                     isAutoPlaying = false
+                    repeatState = RepeatState.IDLE
                     break
                 }
                 
@@ -139,13 +148,18 @@ fun AzkarScreen(
                 
                 if (countRemaining > 0) {
                     // Pause for user to repeat (give them 1 second more than it took to read)
+                    repeatState = RepeatState.WAITING
                     delay(duration + 1000)
                 } else {
                     // Finished this Zekr, wait briefly and move to next
+                    repeatState = RepeatState.WAITING
                     delay(1500)
                     currentIndex++
+                    repeatState = RepeatState.IDLE
                 }
             }
+        } else {
+            repeatState = RepeatState.IDLE
         }
     }
 
@@ -286,10 +300,53 @@ fun AzkarScreen(
                         
                         Spacer(modifier = Modifier.height(24.dp))
                         
+                        AnimatedVisibility(visible = isAutoPlaying) {
+                            val isReading = repeatState == RepeatState.READING
+                            val stateColor = if (isReading) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary
+                            
+                            val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+                            val pulseAlpha by infiniteTransition.animateFloat(
+                                initialValue = 0.5f,
+                                targetValue = 1f,
+                                animationSpec = infiniteRepeatable(
+                                    animation = tween(800, easing = FastOutSlowInEasing),
+                                    repeatMode = RepeatMode.Reverse
+                                ),
+                                label = "pulseAlpha"
+                            )
+
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 16.dp)
+                                    .alpha(pulseAlpha),
+                                colors = CardDefaults.cardColors(containerColor = stateColor.copy(alpha = 0.15f)),
+                                border = androidx.compose.foundation.BorderStroke(1.5.dp, stateColor)
+                            ) {
+                                AnimatedContent(
+                                    targetState = repeatState,
+                                    transitionSpec = {
+                                        fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300))
+                                    },
+                                    label = "stateTransition"
+                                ) { state ->
+                                    Text(
+                                        text = if (state == RepeatState.READING) "🔊 استمع..." else "🗣️ الآن دورك — ردد",
+                                        modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                                        textAlign = TextAlign.Center,
+                                        fontWeight = FontWeight.Bold,
+                                        color = stateColor,
+                                        style = MaterialTheme.typography.titleMedium
+                                    )
+                                }
+                            }
+                        }
+                        
                         Button(
                             onClick = { 
                                 if (isAutoPlaying) {
                                     isAutoPlaying = false
+                                    repeatState = RepeatState.IDLE
                                     audioPlayer.stop()
                                 } else {
                                     isAutoPlaying = true
@@ -323,6 +380,7 @@ fun AzkarScreen(
                             if (countRemaining == 0) {
                                 audioPlayer.stop()
                                 isAutoPlaying = false
+                                repeatState = RepeatState.IDLE
                                 if (isVibrationEnabled) {
                                     vibrate(context)
                                 }
