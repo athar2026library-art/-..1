@@ -1,16 +1,16 @@
 package com.example.ui.screens
 
-import android.app.Activity
 import android.content.Context
-import android.content.Intent
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
-import android.view.WindowManager
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -18,10 +18,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -34,14 +32,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.data.AzkarData
 import com.example.ui.AppViewModel
+import com.example.data.AzkarData
 import com.example.ui.AudioPlayer
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 enum class RepeatState {
-    IDLE, READING, WAITING
+    IDLE, READING, WAITING_USER
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -52,367 +50,348 @@ fun AzkarScreen(
     onNavigateBack: () -> Unit
 ) {
     val azkarList = if (category == "sabah") AzkarData.morningAzkar else AzkarData.eveningAzkar
-    
-    val initialLastReadIndex = remember { if (viewModel.lastReadCategory.value == category) viewModel.lastReadIndex.value else 0 }
-    val initialLastReadRemaining = remember { if (viewModel.lastReadCategory.value == category) viewModel.lastReadRemaining.value else -1 }
-    
-    var currentIndex by remember { mutableIntStateOf(initialLastReadIndex) }
-    
-    val context = LocalContext.current
-    val keepScreenOn by viewModel.keepScreenOn.collectAsState()
-    
-    // Audio Player
-    val audioPlayer = remember { AudioPlayer(context) }
-    var isAutoPlaying by remember { mutableStateOf(false) }
-    var repeatState by remember { mutableStateOf(RepeatState.IDLE) }
-    
-    DisposableEffect(keepScreenOn) {
-        val activity = context as? Activity
-        if (keepScreenOn) {
-            activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        } else {
-            activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        }
-        onDispose {
-            activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-            audioPlayer.shutdown()
-        }
-    }
+    val title = if (category == "sabah") "🌅 الصباح" else "🌙 المساء"
 
-    if (currentIndex >= azkarList.size) {
-        // Completed
-        LaunchedEffect(Unit) {
-            viewModel.clearLastReadState()
-            if (category == "sabah") {
-                viewModel.completeSabah()
-            } else {
-                viewModel.completeMasaa()
-            }
-        }
-        AlertDialog(
-            onDismissRequest = onNavigateBack,
-            title = { Text("تقبل الله") },
-            text = { Text("لقد أتممت الأذكار بنجاح.") },
-            confirmButton = {
-                Button(onClick = onNavigateBack) {
-                    Text("العودة")
-                }
-            }
-        )
-        return
-    }
-
-    val currentZekr = azkarList[currentIndex]
-    var countRemaining by remember(currentIndex) { 
-        mutableIntStateOf(
-            if (currentIndex == initialLastReadIndex && initialLastReadRemaining > 0) {
-                initialLastReadRemaining
-            } else {
-                currentZekr.repeatCount
-            }
-        )
-    }
-    
-    LaunchedEffect(currentIndex, countRemaining) {
-        if (currentIndex < azkarList.size) {
-            viewModel.saveLastReadState(category, currentIndex, countRemaining)
-        }
-    }
-    
+    val lastReadCategory by viewModel.lastReadCategory.collectAsState()
+    val lastReadIndex by viewModel.lastReadIndex.collectAsState()
+    val lastReadRemaining by viewModel.lastReadRemaining.collectAsState()
     val fontSize by viewModel.fontSize.collectAsState()
     val isVibrationEnabled by viewModel.isVibrationEnabled.collectAsState()
     val hideVirtues by viewModel.hideVirtues.collectAsState()
     val hideSources by viewModel.hideSources.collectAsState()
-    
+
+    var currentIndex by remember { mutableStateOf(0) }
+    var countRemaining by remember { mutableStateOf(1) }
+    var isInitialized by remember { mutableStateOf(false) }
+
     val coroutineScope = rememberCoroutineScope()
-    
-    // Auto-Play "Repeat with Me" Logic
-    LaunchedEffect(isAutoPlaying, currentIndex) {
-        if (isAutoPlaying && currentIndex < azkarList.size) {
-            while (countRemaining > 0 && isAutoPlaying) {
-                repeatState = RepeatState.READING
-                val start = System.currentTimeMillis()
-                val success = audioPlayer.playAndWait(azkarList[currentIndex].text)
-                
-                if (!success || !isAutoPlaying) {
-                    isAutoPlaying = false
-                    repeatState = RepeatState.IDLE
-                    break
-                }
-                
-                val duration = System.currentTimeMillis() - start
-                
-                countRemaining--
-                viewModel.addTasbeeh(1)
-                if (isVibrationEnabled) vibrate(context)
-                
-                if (countRemaining > 0) {
-                    // Pause for user to repeat (give them 1 second more than it took to read)
-                    repeatState = RepeatState.WAITING
-                    delay(duration + 1000)
-                } else {
-                    // Finished this Zekr, wait briefly and move to next
-                    repeatState = RepeatState.WAITING
-                    delay(1500)
-                    currentIndex++
-                    repeatState = RepeatState.IDLE
+    val context = LocalContext.current
+    val audioPlayer = remember { AudioPlayer(context) }
+
+    // Raddid Ma'y state
+    var isAutoPlaying by remember { mutableStateOf(false) }
+    var repeatState by remember { mutableStateOf(RepeatState.IDLE) }
+
+    LaunchedEffect(Unit) {
+        if (lastReadCategory == category && lastReadIndex < azkarList.size) {
+            currentIndex = lastReadIndex
+            countRemaining = lastReadRemaining
+        } else {
+            currentIndex = 0
+            countRemaining = azkarList.firstOrNull()?.repeatCount ?: 1
+        }
+        isInitialized = true
+    }
+
+    LaunchedEffect(currentIndex, countRemaining) {
+        if (isInitialized) {
+            viewModel.saveLastReadState(category, currentIndex, countRemaining)
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            audioPlayer.stop()
+            audioPlayer.shutdown()
+        }
+    }
+
+    if (!isInitialized) return
+
+    if (currentIndex >= azkarList.size) {
+        LaunchedEffect(Unit) {
+            if (category == "sabah") viewModel.completeSabah() else viewModel.completeMasaa()
+            viewModel.clearLastReadState()
+        }
+        Scaffold(containerColor = MaterialTheme.colorScheme.background) { padding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("🎉", fontSize = 64.sp)
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("تقبل الله طاعتك", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(24.dp))
+                Button(onClick = onNavigateBack) {
+                    Text("العودة للرئيسية", fontSize = 18.sp)
                 }
             }
-        } else {
-            repeatState = RepeatState.IDLE
+        }
+        return
+    }
+
+    val currentZekr = azkarList[currentIndex]
+
+    LaunchedEffect(currentIndex) {
+        if (isInitialized) {
+            countRemaining = currentZekr.repeatCount
+        }
+    }
+
+    // Auto-play logic
+    LaunchedEffect(isAutoPlaying, currentIndex, repeatState) {
+        if (isAutoPlaying && countRemaining > 0) {
+            if (repeatState == RepeatState.IDLE) {
+                repeatState = RepeatState.READING
+            }
+
+            if (repeatState == RepeatState.READING) {
+                audioPlayer.playAndWait(currentZekr.text)
+                repeatState = RepeatState.WAITING_USER
+            } else if (repeatState == RepeatState.WAITING_USER) {
+                // Wait for user to tap the big button to continue
+            }
         }
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
-                title = { Text(if (category == "sabah") "أذكار الصباح" else "أذكار المساء") },
+                title = { Text(title, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
-                actions = {
-                    IconButton(onClick = {
-                        val shareText = "🌿\n${currentZekr.text}\n\n${currentZekr.repeatCount} مرات\n\n📖 ${currentZekr.source}\n\n- تمت القراءة عبر تطبيق أذكار 🌴"
-                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                            type = "text/plain"
-                            putExtra(Intent.EXTRA_TEXT, shareText)
-                        }
-                        context.startActivity(Intent.createChooser(shareIntent, "مشاركة الذكر"))
-                    }) {
-                        Icon(Icons.Default.Share, contentDescription = "مشاركة")
-                    }
-                }
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
+                )
             )
-        }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Progress Header
-            LinearProgressIndicator(
-                progress = { currentIndex.toFloat() / azkarList.size },
-                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-            )
-            
-            Text("${currentIndex + 1} / ${azkarList.size}", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Main Content Area
+        },
+        bottomBar = {
+            // Big Tap Button Area
             Box(
                 modifier = Modifier
-                    .weight(1f)
                     .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
-                contentAlignment = Alignment.Center
+                    .padding(24.dp)
             ) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .padding(24.dp)
-                            .fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = currentZekr.text,
-                            fontSize = fontSize.sp,
-                            lineHeight = (fontSize * 1.5).sp,
-                            textAlign = TextAlign.Center,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        
-                        Spacer(modifier = Modifier.height(24.dp))
-                        
-                        Text(
-                            text = "× ${currentZekr.repeatCount}",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        
-                        if ((currentZekr.fadl.isNotEmpty() && !hideVirtues) || (currentZekr.source.isNotEmpty() && !hideSources)) {
-                            Divider(modifier = Modifier.padding(vertical = 16.dp))
-                            
-                            var expanded by remember(currentIndex) { mutableStateOf(false) }
-                            val toggleText = if (currentZekr.fadl.isNotEmpty() && !hideVirtues) "🌿 فضله" else "📖 المصدر"
-                            
-                            Row(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .clickable { expanded = !expanded }
-                                    .padding(8.dp),
-                                horizontalArrangement = Arrangement.Center,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(toggleText, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                                Icon(if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                            }
-                            
-                            AnimatedVisibility(visible = expanded) {
-                                Column(
-                                    horizontalAlignment = Alignment.Start,
-                                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
-                                ) {
-                                    if (currentZekr.fadl.isNotEmpty() && !hideVirtues) {
-                                        Text(
-                                            text = "🌿 فضله",
-                                            color = MaterialTheme.colorScheme.primary,
-                                            fontWeight = FontWeight.Bold,
-                                            style = MaterialTheme.typography.titleMedium
-                                        )
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        Text(
-                                            text = currentZekr.fadl,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            textAlign = TextAlign.Start,
-                                            style = MaterialTheme.typography.bodyLarge
-                                        )
-                                        Spacer(modifier = Modifier.height(16.dp))
-                                    }
-                                    if (currentZekr.source.isNotEmpty() && !hideSources) {
-                                        Text(
-                                            text = "📖 المصدر",
-                                            color = MaterialTheme.colorScheme.primary,
-                                            fontWeight = FontWeight.Bold,
-                                            style = MaterialTheme.typography.titleSmall
-                                        )
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        Text(
-                                            text = currentZekr.source,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
-                                            textAlign = TextAlign.Start,
-                                            style = MaterialTheme.typography.bodyMedium
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                        
-                        Spacer(modifier = Modifier.height(24.dp))
-                        
-                        AnimatedVisibility(visible = isAutoPlaying) {
-                            val isReading = repeatState == RepeatState.READING
-                            val stateColor = if (isReading) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary
-                            
-                            val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-                            val pulseAlpha by infiniteTransition.animateFloat(
-                                initialValue = 0.5f,
-                                targetValue = 1f,
-                                animationSpec = infiniteRepeatable(
-                                    animation = tween(800, easing = FastOutSlowInEasing),
-                                    repeatMode = RepeatMode.Reverse
-                                ),
-                                label = "pulseAlpha"
-                            )
-
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(bottom = 16.dp)
-                                    .alpha(pulseAlpha),
-                                colors = CardDefaults.cardColors(containerColor = stateColor.copy(alpha = 0.15f)),
-                                border = androidx.compose.foundation.BorderStroke(1.5.dp, stateColor)
-                            ) {
-                                AnimatedContent(
-                                    targetState = repeatState,
-                                    transitionSpec = {
-                                        fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300))
-                                    },
-                                    label = "stateTransition"
-                                ) { state ->
-                                    Text(
-                                        text = if (state == RepeatState.READING) "🔊 استمع..." else "🗣️ الآن دورك — ردد",
-                                        modifier = Modifier.padding(16.dp).fillMaxWidth(),
-                                        textAlign = TextAlign.Center,
-                                        fontWeight = FontWeight.Bold,
-                                        color = stateColor,
-                                        style = MaterialTheme.typography.titleMedium
-                                    )
-                                }
-                            }
-                        }
-                        
-                        Button(
-                            onClick = { 
-                                if (isAutoPlaying) {
-                                    isAutoPlaying = false
-                                    repeatState = RepeatState.IDLE
-                                    audioPlayer.stop()
-                                } else {
-                                    isAutoPlaying = true
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (isAutoPlaying) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
-                            )
-                        ) {
-                            Icon(if (isAutoPlaying) Icons.Default.Stop else Icons.Default.PlayArrow, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(if (isAutoPlaying) "إيقاف" else "🗣️ ردّد معي", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Manual Counter Button
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(120.dp)
-                    .clip(CircleShape)
-                    .clickable {
+                Button(
+                    onClick = {
                         if (countRemaining > 0) {
                             countRemaining--
                             viewModel.addTasbeeh(1)
+                            
+                            if (isVibrationEnabled) {
+                                vibrate(context)
+                            }
+                            
+                            if (isAutoPlaying && repeatState == RepeatState.WAITING_USER) {
+                                repeatState = RepeatState.READING
+                            }
+
                             if (countRemaining == 0) {
                                 audioPlayer.stop()
                                 isAutoPlaying = false
                                 repeatState = RepeatState.IDLE
-                                if (isVibrationEnabled) {
-                                    vibrate(context)
-                                }
                                 coroutineScope.launch {
                                     delay(300)
                                     currentIndex++
                                 }
                             }
                         }
-                    }
-            ) {
-                CircularProgressIndicator(
-                    progress = { (currentZekr.repeatCount - countRemaining).toFloat() / currentZekr.repeatCount },
-                    modifier = Modifier.fillMaxSize(),
-                    strokeWidth = 8.dp
-                )
-                Surface(
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    modifier = Modifier.size(100.dp)
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(80.dp),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (repeatState == RepeatState.WAITING_USER) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
+                    AnimatedContent(
+                        targetState = countRemaining,
+                        transitionSpec = {
+                            fadeIn() togetherWith fadeOut()
+                        },
+                        label = "button_content"
+                    ) { count ->
+                        if (count == 0) {
+                            Icon(Icons.Default.Check, contentDescription = "Done", modifier = Modifier.size(32.dp))
+                        } else {
+                            val text = if (isAutoPlaying && repeatState == RepeatState.WAITING_USER) "ردّدت (${count})" else "اضغط ($count)"
+                            Text(
+                                text = text,
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Zekr Progress
+            Text(
+                text = "الذكر ${currentIndex + 1} من ${azkarList.size}",
+                fontSize = 16.sp,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                modifier = Modifier.padding(vertical = 16.dp)
+            )
+            
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 48.dp), color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f))
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Raddid Ma'y Mode Indicator
+            AnimatedVisibility(visible = isAutoPlaying) {
+                val isReading = repeatState == RepeatState.READING
+                val stateColor = if (isReading) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary
+                
+                val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+                val pulseAlpha by infiniteTransition.animateFloat(
+                    initialValue = 0.6f,
+                    targetValue = 1f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(800, easing = FastOutSlowInEasing),
+                        repeatMode = RepeatMode.Reverse
+                    ),
+                    label = "pulseAlpha"
+                )
+
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp)
+                        .padding(bottom = 24.dp)
+                        .alpha(if (isReading) 1f else pulseAlpha),
+                    colors = CardDefaults.cardColors(containerColor = stateColor.copy(alpha = 0.1f)),
+                    border = BorderStroke(1.5.dp, stateColor)
+                ) {
+                    AnimatedContent(
+                        targetState = repeatState,
+                        transitionSpec = {
+                            fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300))
+                        },
+                        label = "stateTransition"
+                    ) { state ->
                         Text(
-                            text = countRemaining.toString(),
-                            fontSize = 36.sp,
+                            text = if (state == RepeatState.READING) "🔊 استمع..." else "🗣️ دورك الآن — ردد الذكر",
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .fillMaxWidth(),
+                            textAlign = TextAlign.Center,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                            color = stateColor,
+                            fontSize = 18.sp
                         )
                     }
                 }
             }
+
+            // The Zekr Text
+            Text(
+                text = currentZekr.text,
+                fontSize = fontSize.sp,
+                lineHeight = (fontSize * 1.6f).sp,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.padding(horizontal = 24.dp)
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 48.dp), color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f))
             Spacer(modifier = Modifier.height(24.dp))
+
+            Text(
+                text = "🔁 ${currentZekr.repeatCount} مرات",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.primary
+            )
+            
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Raddid Ma'y Toggle
+            Card(
+                modifier = Modifier
+                    .wrapContentWidth()
+                    .clickable {
+                        if (isAutoPlaying) {
+                            isAutoPlaying = false
+                            repeatState = RepeatState.IDLE
+                            audioPlayer.stop()
+                        } else {
+                            isAutoPlaying = true
+                        }
+                    },
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (isAutoPlaying) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surface
+                ),
+                border = BorderStroke(1.dp, if (isAutoPlaying) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        if (isAutoPlaying) Icons.Default.Stop else Icons.Default.PlayArrow,
+                        contentDescription = null,
+                        tint = if (isAutoPlaying) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (isAutoPlaying) "إيقاف الترديد" else "🗣️ ردّد معي",
+                        fontWeight = FontWeight.Bold,
+                        color = if (isAutoPlaying) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Virtues and Sources
+            if (currentZekr.fadl.isNotEmpty() && !hideVirtues) {
+                Column(modifier = Modifier.padding(horizontal = 24.dp).fillMaxWidth()) {
+                    Text(
+                        text = "🌿 فضله",
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = currentZekr.fadl,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                        fontSize = 14.sp
+                    )
+                }
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+            
+            if (currentZekr.source.isNotEmpty() && !hideSources) {
+                Column(modifier = Modifier.padding(horizontal = 24.dp).fillMaxWidth()) {
+                    Text(
+                        text = "📖 المصدر",
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = currentZekr.source,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                        fontSize = 14.sp
+                    )
+                }
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+
+            // extra space for the bottom tap button
+            Spacer(modifier = Modifier.height(80.dp))
         }
     }
 }
@@ -427,9 +406,9 @@ fun vibrate(context: Context) {
     }
     
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        vibrator.vibrate(VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE))
+        vibrator.vibrate(VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE))
     } else {
         @Suppress("DEPRECATION")
-        vibrator.vibrate(100)
+        vibrator.vibrate(50)
     }
 }

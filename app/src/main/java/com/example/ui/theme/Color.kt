@@ -2,22 +2,20 @@ package com.example.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Emerald = Color(0xFF10b981)
-val EmeraldDark = Color(0xFF047857)
-val EmeraldLight = Color(0xFFa7f3d0)
+// Light Theme Colors
+val OliveGreen = Color(0xFF2E5B4F)
+val OliveGreenLight = Color(0xFF4A7C6E)
+val OliveGreenDark = Color(0xFF1D3D33)
+val CreamBackground = Color(0xFFFAF9F4)
+val PureWhite = Color(0xFFFFFFFF)
+val GoldAccent = Color(0xFFC5A059)
+val TextDarkPrimary = Color(0xFF1E293B)
+val TextDarkSecondary = Color(0xFF475569)
 
-val BackgroundLight = Color(0xFFF8FAFC)
-val SurfaceLight = Color(0xFFFFFFFF)
-val TextLight = Color(0xFF0F172A)
-
-val BackgroundDark = Color(0xFF0F172A)
-val SurfaceDark = Color(0xFF1E293B)
-val TextDark = Color(0xFFF8FAFC)
-
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
-
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
+// Dark Theme Colors
+val DarkBackground = Color(0xFF121615)
+val DarkSurface = Color(0xFF1A211F)
+val DarkOlive = Color(0xFF679C8D)
+val DarkGold = Color(0xFFD4AF37)
+val TextLightPrimary = Color(0xFFF8FAFC)
+val TextLightSecondary = Color(0xFFCBD5E1)
