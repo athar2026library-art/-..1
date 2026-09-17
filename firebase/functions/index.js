@@ -12,7 +12,7 @@ exports.dispatchOwnerNotification = onDocumentCreated("notifications/{notificati
   if (notification.status !== "queued") return;
 
   const db = getFirestore();
-  const users = await db.collection("users").where("notificationsEnabled", "==", true).limit(500).get();
+  const users = await db.collection("users").where("notificationsEnabled", "==", true).get();
   const tokens = users.docs.flatMap((user) => user.data().fcmTokens || []).filter(Boolean);
 
   if (!tokens.length) {
@@ -20,12 +20,19 @@ exports.dispatchOwnerNotification = onDocumentCreated("notifications/{notificati
     return;
   }
 
-  const result = await getMessaging().sendEachForMulticast({
-    tokens,
-    notification: { title: notification.title, body: notification.body },
-    data: { notificationId: event.params.notificationId, title: notification.title, body: notification.body },
-    android: { priority: "high", notification: { channelId: "owner_updates" } },
-  });
+  let successCount = 0;
+  let failureCount = 0;
+  for (let index = 0; index < tokens.length; index += 500) {
+    const batch = tokens.slice(index, index + 500);
+    const result = await getMessaging().sendEachForMulticast({
+      tokens: batch,
+      notification: { title: notification.title, body: notification.body },
+      data: { notificationId: event.params.notificationId, title: notification.title, body: notification.body },
+      android: { priority: "high", notification: { channelId: "owner_updates" } },
+    });
+    successCount += result.successCount;
+    failureCount += result.failureCount;
+  }
 
-  await snapshot.ref.update({ status: "sent", deliveryCount: result.successCount, failedCount: result.failureCount, sentAt: FieldValue.serverTimestamp() });
+  await snapshot.ref.update({ status: "sent", deliveryCount: successCount, failedCount: failureCount, sentAt: FieldValue.serverTimestamp() });
 });
