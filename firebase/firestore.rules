@@ -43,6 +43,16 @@ service cloud.firestore {
       allow update: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid
         && request.resource.data.userId == resource.data.userId);
       allow delete: if isAdmin();
+      match /timeline/{eventId} {
+        allow read: if isAdmin() || (signedIn() && get(/databases/$(database)/documents/feedback/$(feedbackId)).data.userId == request.auth.uid);
+        allow create: if isAdmin();
+        allow update, delete: if false;
+      }
+    }
+
+    match /users/{uid}/notifications/{notificationId} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow write: if false;
     }
 
     match /notifications/{notificationId} {
