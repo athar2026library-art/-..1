@@ -2,6 +2,7 @@ package com.example.ui.screens
 
 import android.app.NotificationManager
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -20,7 +21,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -54,6 +57,8 @@ fun AzkarScreen(
     val isVibrationEnabled by viewModel.isVibrationEnabled.collectAsState()
     val keepScreenOn by viewModel.keepScreenOn.collectAsState()
     val autoDnd by viewModel.autoDnd.collectAsState()
+    val hideVirtues by viewModel.hideVirtues.collectAsState()
+    val hideSources by viewModel.hideSources.collectAsState()
 
     var currentIndex by remember { mutableStateOf(0) }
     var countRemaining by remember { mutableStateOf(1) }
@@ -334,6 +339,19 @@ fun AzkarScreen(
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f)
                 )
+                Spacer(modifier = Modifier.height(14.dp))
+                Button(
+                    onClick = onDecrement,
+                    modifier = Modifier.fillMaxWidth().height(54.dp),
+                    shape = RoundedCornerShape(18.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Text(
+                        text = if (countRemaining > 1) "سبّح • متبقي $countRemaining" else "تمّ الذكر",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
 
@@ -351,20 +369,42 @@ fun AzkarScreen(
                     Text("شرح وفضل الذكر", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     Spacer(modifier = Modifier.height(24.dp))
                     
-                    if (currentZekr.fadl.isNotEmpty()) {
+                    if (!hideVirtues && currentZekr.fadl.isNotEmpty()) {
                         Text("الفضل:", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(currentZekr.fadl, color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 24.sp)
                         Spacer(modifier = Modifier.height(16.dp))
-                    } else {
+                    } else if (!hideVirtues) {
                         Text("لم يرد فضل محدد نصاً لهذا الذكر، وهو من مجمل ذكر الله تعالى.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(modifier = Modifier.height(16.dp))
                     }
                     
-                    if (currentZekr.source.isNotEmpty()) {
+                    if (!hideSources && currentZekr.source.isNotEmpty()) {
                         Text("المصدر:", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(currentZekr.source, color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 24.sp)
+                    }
+
+                    Spacer(modifier = Modifier.height(22.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        OutlinedButton(
+                            onClick = { copyText(context, currentZekr.text); showBottomSheet = false },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(14.dp)
+                        ) {
+                            Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(7.dp))
+                            Text("نسخ")
+                        }
+                        Button(
+                            onClick = { shareText(context, currentZekr.text); showBottomSheet = false },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(14.dp)
+                        ) {
+                            Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(7.dp))
+                            Text("مشاركة")
+                        }
                     }
                 }
             }
@@ -389,4 +429,16 @@ fun vibrateLight(context: Context) {
         @Suppress("DEPRECATION")
         vibrator.vibrate(20)
     }
+}
+
+private fun copyText(context: Context, text: String) {
+    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+    clipboard.setPrimaryClip(android.content.ClipData.newPlainText("الذكر", text))
+}
+
+private fun shareText(context: Context, text: String) {
+    context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(Intent.EXTRA_TEXT, text)
+    }, "مشاركة الذكر"))
 }

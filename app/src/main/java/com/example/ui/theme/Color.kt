@@ -2,18 +2,17 @@ package com.example.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Light Theme Colors (Soft Sage Green / Off-white)
-val BackgroundLight = Color(0xFFF9FAFB)
+// Calm olive / sand palette designed for long Arabic reading sessions.
+val BackgroundLight = Color(0xFFF7F8F3)
 val SurfaceLight = Color(0xFFFFFFFF)
-val PrimaryLight = Color(0xFF8FBC8F) // Soft Sage Green
-val OnBackgroundLight = Color(0xFF374151) // Charcoal
-val OnSurfaceLight = Color(0xFF4B5563)
-val OutlineLight = Color(0xFFE5E7EB)
+val PrimaryLight = Color(0xFF557A61)
+val OnBackgroundLight = Color(0xFF1D2A22)
+val OnSurfaceLight = Color(0xFF27352C)
+val OutlineLight = Color(0xFFDCE5DD)
 
-// Dark Theme Colors (Deep Night / Charcoal)
-val BackgroundDark = Color(0xFF111827)
-val SurfaceDark = Color(0xFF1F2937)
-val PrimaryDark = Color(0xFF6B8E23) // Olive Drab / Darker Sage
-val OnBackgroundDark = Color(0xFFF3F4F6)
-val OnSurfaceDark = Color(0xFFE5E7EB)
-val OutlineDark = Color(0xFF374151)
+val BackgroundDark = Color(0xFF101713)
+val SurfaceDark = Color(0xFF19231D)
+val PrimaryDark = Color(0xFFA7C9A6)
+val OnBackgroundDark = Color(0xFFE8F1E8)
+val OnSurfaceDark = Color(0xFFDCE9DD)
+val OutlineDark = Color(0xFF35463A)

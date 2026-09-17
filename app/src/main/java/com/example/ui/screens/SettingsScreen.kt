@@ -29,6 +29,8 @@ fun SettingsScreen(
     val isVibrationEnabled by viewModel.isVibrationEnabled.collectAsState()
     val keepScreenOn by viewModel.keepScreenOn.collectAsState()
     val autoDnd by viewModel.autoDnd.collectAsState()
+    val hideVirtues by viewModel.hideVirtues.collectAsState()
+    val hideSources by viewModel.hideSources.collectAsState()
     
     val userSignedIn by viewModel.userSignedIn.collectAsState()
     val context = LocalContext.current
@@ -147,7 +149,7 @@ fun SettingsScreen(
                         }
                         Switch(
                             checked = autoDnd,
-                            onCheckedChange = { checked -> 
+                            onCheckedChange = { checked ->
                                 if (checked) {
                                     val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
                                     if (!notificationManager.isNotificationPolicyAccessGranted) {
@@ -161,6 +163,38 @@ fun SettingsScreen(
                                 }
                             }
                         )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("إخفاء الفضائل", fontSize = 16.sp)
+                            Text("قراءة النص فقط بدون تفاصيل إضافية", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Switch(checked = hideVirtues, onCheckedChange = { viewModel.setHideVirtues(it) })
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("إخفاء المصادر", fontSize = 16.sp)
+                            Text("تبسيط شاشة القراءة من غير إلغاء المصدر", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Switch(checked = hideSources, onCheckedChange = { viewModel.setHideSources(it) })
                     }
                 }
             }
