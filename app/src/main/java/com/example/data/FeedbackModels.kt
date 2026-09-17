@@ -6,7 +6,8 @@ data class FeedbackDraft(
     val message: String = "",
     val aiSummary: String = "",
     val aiCategory: String = "",
-    val priority: String = "normal"
+    val priority: String = "normal",
+    val attachmentUri: android.net.Uri? = null
 )
 
 data class FeedbackItem(

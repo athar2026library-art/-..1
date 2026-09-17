@@ -1,5 +1,7 @@
 package com.example.ui.screens
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -24,6 +26,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -39,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.net.Uri
 import com.example.data.FeedbackDraft
 import com.example.ui.AppViewModel
 
@@ -50,7 +54,9 @@ fun FeedbackScreen(viewModel: AppViewModel) {
     val history by viewModel.myFeedback.collectAsState()
     var type by remember { mutableStateOf("suggestion") }
     var message by remember { mutableStateOf("") }
+    var attachmentUri by remember { mutableStateOf<Uri?>(null) }
     var showConfirmation by remember { mutableStateOf(false) }
+    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri -> attachmentUri = uri }
 
     Scaffold(
         topBar = { TopAppBar(title = { Text("الشكاوى والاقتراحات", fontWeight = FontWeight.Bold) }, colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)) }
@@ -83,6 +89,11 @@ fun FeedbackScreen(viewModel: AppViewModel) {
                 OutlinedTextField(value = message, onValueChange = { message = it }, modifier = Modifier.fillMaxWidth(), minLines = 6, label = { Text("اكتب رسالتك") }, placeholder = { Text("مثلاً: أقترح إضافة...") }, shape = RoundedCornerShape(16.dp))
             }
             item {
+                OutlinedButton(onClick = { imagePicker.launch("image/*") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
+                    Text(if (attachmentUri == null) "إرفاق صورة للمشكلة" else "تم اختيار صورة ✓")
+                }
+            }
+            item {
                 Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
                     Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.Lock, null, tint = MaterialTheme.colorScheme.primary)
@@ -110,7 +121,7 @@ fun FeedbackScreen(viewModel: AppViewModel) {
         }
     }
     if (showConfirmation) {
-        androidx.compose.material3.AlertDialog(onDismissRequest = { showConfirmation = false }, title = { Text("تأكيد الإرسال") }, text = { Text("سيتم إرسال رسالتك إلى فريق أذكار، ويمكنك متابعة حالتها بعد تسجيل الدخول.") }, confirmButton = { Button(onClick = { showConfirmation = false; viewModel.submitFeedback(FeedbackDraft(type = type, title = if (type == "suggestion") "اقتراح مستخدم" else "طلب من المستخدم", message = message, aiSummary = message.take(140), aiCategory = type)) }) { Icon(Icons.Default.CheckCircle, null); Spacer(Modifier.padding(3.dp)); Text("تأكيد") } }, dismissButton = { Button(onClick = { showConfirmation = false }) { Text("تعديل") } })
+        androidx.compose.material3.AlertDialog(onDismissRequest = { showConfirmation = false }, title = { Text("تأكيد الإرسال") }, text = { Text("سيتم إرسال رسالتك إلى فريق أذكار، ويمكنك متابعة حالتها بعد تسجيل الدخول.") }, confirmButton = { Button(onClick = { showConfirmation = false; viewModel.submitFeedback(FeedbackDraft(type = type, title = if (type == "suggestion") "اقتراح مستخدم" else "طلب من المستخدم", message = message, aiSummary = message.take(140), aiCategory = type, attachmentUri = attachmentUri)) }) { Icon(Icons.Default.CheckCircle, null); Spacer(Modifier.padding(3.dp)); Text("تأكيد") } }, dismissButton = { Button(onClick = { showConfirmation = false }) { Text("تعديل") } })
     }
 }
 

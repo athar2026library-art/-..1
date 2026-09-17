@@ -207,7 +207,7 @@ class AppViewModel(
                 _userSignedIn.value = signedIn
                 if (!signedIn) { _aiResponse.value = "يجب تسجيل الدخول لإرسال الطلب."; return@launch }
             }
-            val result = firestoreRepository.submitFeedback(draft)
+            val result = firestoreRepository.submitFeedback(draft, draft.attachmentUri)
             _aiResponse.value = if (result.isSuccess) "تم إرسال طلبك بنجاح، ويمكنك متابعة حالته من هنا." else "تعذر إرسال الطلب. حاول مرة أخرى."
         }
     }

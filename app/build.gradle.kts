@@ -108,6 +108,7 @@ dependencies {
   // Sign-In via Credential Manager:
   implementation(libs.firebase.auth)
   implementation("com.google.firebase:firebase-messaging")
+  implementation("com.google.firebase:firebase-storage")
   implementation(libs.androidx.credentials)
   implementation(libs.androidx.credentials.play.services)
   implementation(libs.googleid)

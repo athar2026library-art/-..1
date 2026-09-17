@@ -1,8 +1,10 @@
 package com.example.data
 
 import android.util.Log
+import android.net.Uri
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -104,11 +106,16 @@ class FirestoreRepository {
             }
         awaitClose { registration.remove() }
     }
-    suspend fun submitFeedback(draft: FeedbackDraft): Result<String> {
+    suspend fun submitFeedback(draft: FeedbackDraft, attachmentUri: Uri? = null): Result<String> {
         val user = auth?.currentUser ?: return Result.failure(IllegalStateException("AUTH_REQUIRED"))
         val db = firestore ?: return Result.failure(IllegalStateException("FIRESTORE_UNAVAILABLE"))
         return try {
             val ref = db.collection("feedback").document()
+            val attachmentUrls = if (attachmentUri != null) {
+                val storageRef = FirebaseStorage.getInstance().reference.child("feedback/${user.uid}/${ref.id}/attachment.jpg")
+                storageRef.putFile(attachmentUri).await()
+                listOf(storageRef.downloadUrl.await().toString())
+            } else emptyList()
             val data = hashMapOf(
                 "id" to ref.id,
                 "userId" to user.uid,
@@ -121,6 +128,7 @@ class FirestoreRepository {
                 "priority" to draft.priority,
                 "status" to "new",
                 "adminReply" to "",
+                "attachmentUrls" to attachmentUrls,
                 "createdAt" to com.google.firebase.firestore.FieldValue.serverTimestamp(),
                 "updatedAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
             )
