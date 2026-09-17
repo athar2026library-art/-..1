@@ -9,6 +9,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -257,6 +259,19 @@ fun SettingsScreen(
                     Text("تطبيق هادئ يساعدك على المحافظة على الأذكار والورد اليومي، مع تجربة قراءة واضحة، متابعة للتقدم، ومحتوى موثوق يصل إليك في وقته.", fontSize = 13.sp, lineHeight = 22.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(modifier = Modifier.height(10.dp))
                     Text("محتوى موثوق · تجربة هادئة", fontSize = 11.sp, color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(onClick = {
+                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_SUBJECT, "جرّب تطبيق الباقيات")
+                            putExtra(Intent.EXTRA_TEXT, "جرّب تطبيق الباقيات للمحافظة على الأذكار والورد اليومي. تطبيق هادئ ومحتوى موثوق.")
+                        }
+                        context.startActivity(Intent.createChooser(shareIntent, "مشاركة الباقيات"))
+                    }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
+                        Icon(Icons.Default.Share, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("مشاركة التطبيق")
+                    }
                 }
             }
             Spacer(modifier = Modifier.height(32.dp))

@@ -29,6 +29,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     private val LAST_READ_REMAINING = intPreferencesKey("last_read_remaining")
 
     private val AUTO_DND = booleanPreferencesKey("auto_dnd")
+    private val ONBOARDING_COMPLETE = booleanPreferencesKey("onboarding_complete")
 
     val fontSizeFlow: Flow<Float> = dataStore.data.map { it[FONT_SIZE] ?: 24f }
     val darkModeFlow: Flow<Boolean> = dataStore.data.map { it[DARK_MODE] ?: true }
@@ -37,6 +38,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     val autoDndFlow: Flow<Boolean> = dataStore.data.map { it[AUTO_DND] ?: false }
     val hideVirtuesFlow: Flow<Boolean> = dataStore.data.map { it[HIDE_VIRTUES] ?: false }
     val hideSourcesFlow: Flow<Boolean> = dataStore.data.map { it[HIDE_SOURCES] ?: false }
+    val onboardingCompleteFlow: Flow<Boolean> = dataStore.data.map { it[ONBOARDING_COMPLETE] ?: false }
     
     val lastReadCategoryFlow: Flow<String> = dataStore.data.map { it[LAST_READ_CATEGORY] ?: "" }
     val lastReadIndexFlow: Flow<Int> = dataStore.data.map { it[LAST_READ_INDEX] ?: 0 }
@@ -80,6 +82,10 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
 
     suspend fun setHideVirtues(hide: Boolean) {
         dataStore.edit { it[HIDE_VIRTUES] = hide }
+    }
+
+    suspend fun setOnboardingComplete() {
+        dataStore.edit { it[ONBOARDING_COMPLETE] = true }
     }
 
     suspend fun setHideSources(hide: Boolean) {
