@@ -99,7 +99,7 @@ class AiRepository {
             generationConfig = GenerationConfig(temperature = 0.4f)
         )
         return try {
-            val response = RetrofitClient.service.generateContent("gemini-3.5-flash", BuildConfig.GEMINI_API_KEY, request)
+            val response = RetrofitClient.service.generateContent("gemini-2.5-flash", BuildConfig.GEMINI_API_KEY, request)
             response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text ?: "عذراً، لم أتمكن من استخراج الإجابة."
         } catch (e: Exception) {
             if (e is java.net.UnknownHostException || e is java.net.SocketTimeoutException) {

@@ -110,9 +110,12 @@ fun AzkarScreen(
         isInitialized = true
     }
 
-    LaunchedEffect(currentIndex, countRemaining) {
-        if (isInitialized) {
-            viewModel.saveLastReadState(category, currentIndex, countRemaining)
+    val latestCountRemaining by rememberUpdatedState(countRemaining)
+    DisposableEffect(category, currentIndex, isInitialized) {
+        onDispose {
+            if (isInitialized && currentIndex < azkarList.size) {
+                viewModel.saveLastReadState(category, currentIndex, latestCountRemaining)
+            }
         }
     }
 
