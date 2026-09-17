@@ -11,6 +11,7 @@ import com.example.data.AuthRepository
 import com.example.data.FirestoreRepository
 import com.example.data.Zekr
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -213,6 +214,9 @@ class AppViewModel(
 
     suspend fun fetchPublishedAzkar(category: String): List<Zekr> =
         firestoreRepository.fetchPublishedAzkar(category)
+
+    fun observePublishedAzkar(category: String): Flow<List<Zekr>> =
+        firestoreRepository.observePublishedAzkar(category)
 }
 
 class AppViewModelFactory(

@@ -4,6 +4,9 @@ import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 
 class FirestoreRepository {
     private val firestore by lazy {
@@ -66,5 +69,39 @@ class FirestoreRepository {
             Log.e("FirestoreRepository", "Content fetch failed", e)
             emptyList()
         }
+    }
+
+    fun observePublishedAzkar(category: String): Flow<List<Zekr>> = callbackFlow {
+        val db = firestore
+        if (db == null) {
+            trySend(emptyList())
+            close()
+            return@callbackFlow
+        }
+        val registration = db.collection("content").document("azkar").collection("items")
+            .whereEqualTo("category", category)
+            .whereEqualTo("published", true)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Log.e("FirestoreRepository", "Realtime content listener failed", error)
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+                val items = snapshot?.documents.orEmpty()
+                    .sortedBy { it.getLong("order") ?: Long.MAX_VALUE }
+                    .mapIndexed { index, doc ->
+                        Zekr(
+                            id = (doc.getLong("id") ?: index.toLong()).toInt(),
+                            text = doc.getString("text").orEmpty(),
+                            source = doc.getString("source").orEmpty(),
+                            fadl = doc.getString("fadl").orEmpty(),
+                            repeatCount = (doc.getLong("repeat") ?: 1L).toInt().coerceAtLeast(1),
+                            category = category
+                        )
+                    }
+                    .filter { it.text.isNotBlank() }
+                trySend(items)
+            }
+        awaitClose { registration.remove() }
     }
 }
