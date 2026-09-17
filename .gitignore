@@ -19,3 +19,5 @@ local.properties
 !.env.example
 debug.keystore
 admin-panel/firebase-config.js
+
+app/google-services.json
