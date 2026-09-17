@@ -4,12 +4,28 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.Composable
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.data.ProgressRepository
 import com.example.data.SettingsRepository
@@ -69,6 +85,9 @@ class MainActivity : ComponentActivity() {
         }
         
         setContent {
+            var showSplash by remember { mutableStateOf(true) }
+            LaunchedEffect(Unit) { kotlinx.coroutines.delay(1400); showSplash = false }
+            if (showSplash) { BaqiyatSplash() } else {
             val viewModel: AppViewModel = viewModel(
                 factory = AppViewModelFactory(
                     progressRepository,
@@ -93,6 +112,17 @@ class MainActivity : ComponentActivity() {
                     AppNavGraph(viewModel = viewModel)
                 }
             }
+            }
         }
+    }
+}
+
+@Composable
+private fun BaqiyatSplash() {
+    var revealed by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { revealed = true }
+    val scale = animateFloatAsState(if (revealed) 1f else .82f, animationSpec = tween(800), label = "splashScale")
+    Box(Modifier.fillMaxSize().background(Color(0xFFFBFAF3)), contentAlignment = Alignment.Center) {
+        Image(painterResource(com.example.R.drawable.logo_baqiyat), contentDescription = "شعار الباقيات", modifier = Modifier.size(148.dp).scale(scale.value))
     }
 }

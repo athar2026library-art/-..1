@@ -2,17 +2,19 @@ package com.example.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Calm olive / sand palette designed for long Arabic reading sessions.
-val BackgroundLight = Color(0xFFF7F8F3)
+// Baqiyat palette: deep green, warm gold, and ivory inspired by the supplied logo.
+val BackgroundLight = Color(0xFFFBFAF3)
 val SurfaceLight = Color(0xFFFFFFFF)
-val PrimaryLight = Color(0xFF557A61)
-val OnBackgroundLight = Color(0xFF1D2A22)
-val OnSurfaceLight = Color(0xFF27352C)
-val OutlineLight = Color(0xFFDCE5DD)
+val PrimaryLight = Color(0xFF1B4B3A)
+val SecondaryLight = Color(0xFFC9A63D)
+val OnBackgroundLight = Color(0xFF17372B)
+val OnSurfaceLight = Color(0xFF203D31)
+val OutlineLight = Color(0xFFE5E0C9)
 
-val BackgroundDark = Color(0xFF101713)
-val SurfaceDark = Color(0xFF19231D)
-val PrimaryDark = Color(0xFFA7C9A6)
-val OnBackgroundDark = Color(0xFFE8F1E8)
-val OnSurfaceDark = Color(0xFFDCE9DD)
-val OutlineDark = Color(0xFF35463A)
+val BackgroundDark = Color(0xFF102A20)
+val SurfaceDark = Color(0xFF183A2C)
+val PrimaryDark = Color(0xFFE2C968)
+val SecondaryDark = Color(0xFFB9D4B6)
+val OnBackgroundDark = Color(0xFFF4F2E7)
+val OnSurfaceDark = Color(0xFFE8E9DB)
+val OutlineDark = Color(0xFF3D5D4B)
