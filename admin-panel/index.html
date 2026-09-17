@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet" />
+  <meta name="googlebot" content="noindex, nofollow" />
+  <meta name="description" content="لوحة الإدارة الخاصة بتطبيق أذكار" />
+  <title>إدارة أذكار — خاصة</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-mark">ذ</span><div><strong>أذكار</strong><small>لوحة الإدارة</small></div></div>
+      <div class="private-badge">خاصة · غير مفهرسة</div>
+      <nav aria-label="التنقل الرئيسي">
+        <button class="nav-item active" data-view="overview">نظرة عامة <span>⌂</span></button>
+        <button class="nav-item" data-view="azkar">مكتبة الأذكار <span>☷</span></button>
+        <button class="nav-item" data-view="categories">التصنيفات <span>◈</span></button>
+        <button class="nav-item" data-view="settings">إعدادات التطبيق <span>⚙</span></button>
+      </nav>
+      <div class="sidebar-foot"><span class="status-dot"></span> وضع الإدارة المحلي<br><small>لا توجد بيانات تُرسل من هذه الواجهة</small></div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar"><div><p class="eyebrow">مساحة خاصة · أذكار</p><h1 id="page-title">نظرة عامة</h1></div><div class="top-actions"><button class="ghost" id="preview-btn">معاينة التطبيق ↗</button><button class="avatar">م</button></div></header>
+      <section id="overview" class="view active-view">
+        <div class="welcome"><div><p class="eyebrow">صباح الخير يا معلم</p><h2>خلّي تجربة الذكر أهدأ وأجمل.</h2><p>أدر المحتوى، راجع الإحصاءات، وجهّز أفكاراً جديدة للتطبيق من مكان واحد.</p></div><div class="orb">✦</div></div>
+        <div class="stats-grid"><article class="stat"><span>إجمالي الأذكار</span><strong id="stat-total">16</strong><small>في المكتبة الحالية</small></article><article class="stat"><span>أذكار الصباح</span><strong>8</strong><small>جاهزة للقراءة</small></article><article class="stat"><span>أذكار المساء</span><strong>8</strong><small>جاهزة للقراءة</small></article><article class="stat accent"><span>آخر تحديث</span><strong>اليوم</strong><small>المحتوى محلي</small></article></div>
+        <div class="content-grid"><article class="panel"><div class="panel-head"><div><p class="eyebrow">مركز العمل</p><h3>ابدأ من هنا</h3></div></div><div class="quick-actions"><button data-view="azkar"><b>＋</b><span><strong>أضف ذكراً جديداً</strong><small>إلى مكتبة التطبيق</small></span><i>←</i></button><button data-view="categories"><b>◈</b><span><strong>نظّم التصنيفات</strong><small>صباح، مساء، نوم، سفر...</small></span><i>←</i></button><button data-view="settings"><b>⚙</b><span><strong>راجع الإعدادات</strong><small>النصوص وتجربة القراءة</small></span><i>←</i></button></div></article><article class="panel note"><p class="eyebrow">فكرة للتطوير</p><h3>وضع التركيز الهادئ</h3><p>أضف وضعاً يخفف الحركة ويعرض الذكر بخط أكبر مع خلفية أكثر هدوءاً للقراءة قبل النوم.</p><span class="tag">اقتراح UX</span></article></div>
+      </section>
+
+      <section id="azkar" class="view"><div class="section-head"><div><p class="eyebrow">المحتوى</p><h2>مكتبة الأذكار</h2><p>أدر النص، التكرار، الفضل والمصدر قبل مزامنتها مع التطبيق.</p></div><button class="primary" id="add-zekr">＋ ذكر جديد</button></div><div class="toolbar"><input id="search" type="search" placeholder="ابحث في الأذكار..." /><select id="filter"><option value="all">كل التصنيفات</option><option value="sabah">الصباح</option><option value="masaa">المساء</option></select></div><div class="table-wrap"><table><thead><tr><th>الذكر</th><th>التصنيف</th><th>التكرار</th><th>المصدر</th><th></th></tr></thead><tbody id="azkar-table"></tbody></table></div></section>
+      <section id="categories" class="view"><div class="section-head"><div><p class="eyebrow">تنظيم المحتوى</p><h2>التصنيفات</h2><p>صمّم بنية المكتبة لتناسب حالات الاستخدام اليومية.</p></div><button class="primary" id="add-category">＋ تصنيف جديد</button></div><div class="category-grid" id="category-grid"></div></section>
+      <section id="settings" class="view"><div class="section-head"><div><p class="eyebrow">التحكم</p><h2>إعدادات التطبيق</h2><p>هذه الإعدادات نموذجية وستتصل بالـ backend عند تفعيله.</p></div></div><div class="settings-list"><label><span><strong>السماح بالوضع الليلي</strong><small>يظهر للمستخدم خيار القراءة ليلاً</small></span><input type="checkbox" checked /></label><label><span><strong>الاهتزاز عند العد</strong><small>تجربة لمس واضحة أثناء التسبيح</small></span><input type="checkbox" checked /></label><label><span><strong>إظهار الفضائل والمصادر</strong><small>شفافية أعلى في تجربة القراءة</small></span><input type="checkbox" checked /></label><label><span><strong>النشر التلقائي</strong><small>متوقف حتى يتم ربط Firebase أو API</small></span><input type="checkbox" /></label></div><div class="security-card"><span class="lock">⌑</span><div><strong>تنبيه الخصوصية</strong><p>الواجهة غير مفهرسة فقط، وليست محمية وحدها. فعّل تسجيل دخول Firebase أو حماية الخادم قبل نشرها على الإنترنت.</p></div></div></section>
+    </main>
+  </div>
+  <div class="toast" id="toast" role="status"></div>
+  <script src="./app.js"></script>
+</body>
+</html>
