@@ -14,11 +14,11 @@ import com.google.firebase.messaging.RemoteMessage
 
 class AzkarMessagingService : FirebaseMessagingService() {
     override fun onMessageReceived(message: RemoteMessage) {
-        val title = message.notification?.title ?: message.data["title"] ?: "أذكار"
+        val title = message.notification?.title ?: message.data["title"] ?: "الباقيات"
         val body = message.notification?.body ?: message.data["body"].orEmpty()
         val channelId = "owner_updates"
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(channelId, "تحديثات أذكار", NotificationManager.IMPORTANCE_DEFAULT).apply {
+            val channel = NotificationChannel(channelId, "تحديثات الباقيات", NotificationManager.IMPORTANCE_DEFAULT).apply {
                 description = "إشعارات المحتوى والتحديثات من لوحة المالك"
             }
             getSystemService(NotificationManager::class.java).createNotificationChannel(channel)

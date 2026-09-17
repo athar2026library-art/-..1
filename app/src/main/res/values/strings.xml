@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">أذكار</string>
+    <string name="app_name">الباقيات</string>
     <!-- سيتم استبدال هذا برقم العميل الحقيقي من Firebase -->
     <string name="default_web_client_id">372887186106-ori5bj4fde42ovqabuh34eedt3f1dcta.apps.googleusercontent.com</string>
 </resources>
