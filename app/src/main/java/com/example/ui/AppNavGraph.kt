@@ -29,10 +29,12 @@ import com.example.ui.screens.AzkarScreen
 import com.example.ui.screens.StatsScreen
 import com.example.ui.screens.SettingsScreen
 import com.example.ui.screens.AiServicesScreen
+import com.example.ui.screens.FeedbackScreen
 
 sealed class Screen(val route: String, val title: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
     object Home : Screen("home", "الأذكار", Icons.Default.List)
     object AiServices : Screen("ai_services", "المساعد", Icons.Outlined.Chat)
+    object Feedback : Screen("feedback", "تواصل معنا", Icons.Outlined.Chat)
     object Stats : Screen("stats", "الإحصائيات", Icons.Default.Star)
     object Settings : Screen("settings", "الإعدادات", Icons.Default.Settings)
 }
@@ -40,10 +42,12 @@ sealed class Screen(val route: String, val title: String, val icon: androidx.com
 val bottomNavItems = listOf(
     Screen.Home,
     Screen.AiServices,
+    Screen.Feedback,
     Screen.Stats,
     Screen.Settings
 )
 
+@androidx.compose.material3.ExperimentalMaterial3Api
 @Composable
 fun AppNavGraph(
     viewModel: AppViewModel,
@@ -109,6 +113,8 @@ fun AppNavGraph(
                 )
             }
             
+            composable("feedback") { FeedbackScreen(viewModel = viewModel) }
+
             composable("stats") {
                 StatsScreen(
                     viewModel = viewModel,

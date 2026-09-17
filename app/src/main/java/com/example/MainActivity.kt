@@ -21,6 +21,10 @@ import com.example.ui.AppNavGraph
 import com.example.ui.AppViewModel
 import com.example.ui.AppViewModelFactory
 import com.example.ui.theme.MyApplicationTheme
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.messaging.FirebaseMessaging
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.example.ui.NotificationWorker
@@ -32,6 +36,7 @@ import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
 
 class MainActivity : ComponentActivity() {
+    @androidx.compose.material3.ExperimentalMaterial3Api
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -54,6 +59,14 @@ class MainActivity : ComponentActivity() {
         val aiRepository = AiRepository()
         val authRepository = AuthRepository(applicationContext)
         val firestoreRepository = FirestoreRepository()
+
+        FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
+            val user = FirebaseAuth.getInstance().currentUser ?: return@addOnSuccessListener
+            FirebaseFirestore.getInstance().collection("users").document(user.uid).set(
+                mapOf("fcmTokens" to FieldValue.arrayUnion(token), "notificationsEnabled" to true, "updatedAt" to FieldValue.serverTimestamp()),
+                com.google.firebase.firestore.SetOptions.merge()
+            )
+        }
         
         setContent {
             val viewModel: AppViewModel = viewModel(

@@ -104,4 +104,59 @@ class FirestoreRepository {
             }
         awaitClose { registration.remove() }
     }
+    suspend fun submitFeedback(draft: FeedbackDraft): Result<String> {
+        val user = auth?.currentUser ?: return Result.failure(IllegalStateException("AUTH_REQUIRED"))
+        val db = firestore ?: return Result.failure(IllegalStateException("FIRESTORE_UNAVAILABLE"))
+        return try {
+            val ref = db.collection("feedback").document()
+            val data = hashMapOf(
+                "id" to ref.id,
+                "userId" to user.uid,
+                "userEmail" to (user.email ?: ""),
+                "type" to draft.type,
+                "title" to draft.title,
+                "message" to draft.message,
+                "aiSummary" to draft.aiSummary,
+                "aiCategory" to draft.aiCategory,
+                "priority" to draft.priority,
+                "status" to "new",
+                "adminReply" to "",
+                "createdAt" to com.google.firebase.firestore.FieldValue.serverTimestamp(),
+                "updatedAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
+            )
+            db.runBatch { batch ->
+                batch.set(ref, data)
+                batch.set(db.collection("users").document(user.uid).collection("feedback").document(ref.id), data)
+            }.await()
+            Result.success(ref.id)
+        } catch (e: Exception) {
+            Log.e("FirestoreRepository", "Feedback submission failed", e)
+            Result.failure(e)
+        }
+    }
+
+    fun observeMyFeedback(): Flow<List<FeedbackItem>> = callbackFlow {
+        val user = auth?.currentUser
+        val db = firestore
+        if (user == null || db == null) { close(); return@callbackFlow }
+        val registration = db.collection("feedback").whereEqualTo("userId", user.uid)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) { close(error); return@addSnapshotListener }
+                val items = snapshot?.documents.orEmpty().map { doc ->
+                    FeedbackItem(
+                        id = doc.id,
+                        type = doc.getString("type").orEmpty(),
+                        title = doc.getString("title").orEmpty(),
+                        message = doc.getString("message").orEmpty(),
+                        aiSummary = doc.getString("aiSummary").orEmpty(),
+                        status = doc.getString("status") ?: "new",
+                        adminReply = doc.getString("adminReply").orEmpty(),
+                        createdAt = doc.getTimestamp("createdAt")?.toDate()?.time ?: 0L
+                    )
+                }.sortedByDescending { it.createdAt }
+                trySend(items)
+            }
+        awaitClose { registration.remove() }
+    }
+
 }

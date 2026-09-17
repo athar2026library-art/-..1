@@ -9,18 +9,46 @@ service cloud.firestore {
       return signedIn() && request.auth.token.admin == true;
     }
 
-    // Published content is readable by the app; only admins can create or edit it.
-    match /content/{document=**} {
-      allow read: if resource.data.isPublished == true || isAdmin();
+    match /content/azkar/items/{itemId} {
+      allow read: if resource.data.published == true || isAdmin();
       allow create, update, delete: if isAdmin();
     }
 
-    // A user can only access their own progress and favorites.
-    match /users/{uid}/{document=**} {
+    match /content/categories/{categoryId} {
+      allow read: if resource.data.published == true || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /users/{uid} {
       allow read, write: if signedIn() && request.auth.uid == uid;
     }
 
-    // Deny everything not explicitly listed above.
+    match /users/{uid}/progress/{document=**} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+
+    match /users/{uid}/feedback/{feedbackId} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.userId == request.auth.uid;
+      allow update: if signedIn() && request.auth.uid == uid
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == resource.data.userId;
+      allow delete: if false;
+    }
+
+    match /feedback/{feedbackId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
+      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == resource.data.userId);
+      allow delete: if isAdmin();
+    }
+
+    match /notifications/{notificationId} {
+      allow read, write: if isAdmin();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

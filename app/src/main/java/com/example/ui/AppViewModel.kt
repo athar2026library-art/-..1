@@ -9,6 +9,8 @@ import com.example.data.UserProgress
 import com.example.data.AiRepository
 import com.example.data.AuthRepository
 import com.example.data.FirestoreRepository
+import com.example.data.FeedbackDraft
+import com.example.data.FeedbackItem
 import com.example.data.Zekr
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.Flow
@@ -70,6 +72,9 @@ class AppViewModel(
 
     private val _userSignedIn = MutableStateFlow(authRepository.getCurrentUser() != null)
     val userSignedIn: StateFlow<Boolean> = _userSignedIn.asStateFlow()
+
+    val myFeedback: StateFlow<List<FeedbackItem>> = firestoreRepository.observeMyFeedback()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {
         viewModelScope.launch {
@@ -193,6 +198,18 @@ class AppViewModel(
         authRepository.signOut()
         _userSignedIn.value = false
         _aiResponse.value = "تم تسجيل الخروج."
+    }
+
+    fun submitFeedback(draft: FeedbackDraft) {
+        viewModelScope.launch {
+            if (authRepository.getCurrentUser() == null) {
+                val signedIn = authRepository.signInWithGoogle()
+                _userSignedIn.value = signedIn
+                if (!signedIn) { _aiResponse.value = "يجب تسجيل الدخول لإرسال الطلب."; return@launch }
+            }
+            val result = firestoreRepository.submitFeedback(draft)
+            _aiResponse.value = if (result.isSuccess) "تم إرسال طلبك بنجاح، ويمكنك متابعة حالته من هنا." else "تعذر إرسال الطلب. حاول مرة أخرى."
+        }
     }
     
     fun syncData() {
