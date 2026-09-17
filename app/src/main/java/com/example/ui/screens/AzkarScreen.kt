@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.AppViewModel
 import com.example.data.AzkarData
+import com.example.data.Zekr
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -48,7 +49,9 @@ fun AzkarScreen(
     viewModel: AppViewModel,
     onNavigateBack: () -> Unit
 ) {
-    val azkarList = if (category == "sabah") AzkarData.morningAzkar else AzkarData.eveningAzkar
+    val fallbackAzkar = if (category == "sabah") AzkarData.morningAzkar else AzkarData.eveningAzkar
+    var remoteAzkar by remember(category) { mutableStateOf<List<Zekr>?>(null) }
+    val azkarList = remoteAzkar?.takeIf { it.isNotEmpty() } ?: fallbackAzkar
     val title = if (category == "sabah") "أذكار الصباح" else "أذكار المساء"
     val lastReadCategory by viewModel.lastReadCategory.collectAsState()
     val lastReadIndex by viewModel.lastReadIndex.collectAsState()
@@ -68,6 +71,11 @@ fun AzkarScreen(
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
     val view = LocalView.current
+
+    LaunchedEffect(category) {
+        val published = viewModel.fetchPublishedAzkar(category)
+        if (published.isNotEmpty()) remoteAzkar = published
+    }
 
     // Screen On Logic
     DisposableEffect(keepScreenOn) {

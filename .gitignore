@@ -18,3 +18,4 @@ local.properties
 .env.*
 !.env.example
 debug.keystore
+admin-panel/firebase-config.js

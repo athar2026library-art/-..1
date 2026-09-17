@@ -41,4 +41,30 @@ class FirestoreRepository {
             emptyList()
         }
     }
+
+    suspend fun fetchPublishedAzkar(category: String): List<Zekr> {
+        val db = firestore ?: return emptyList()
+        return try {
+            db.collection("content").document("azkar").collection("items")
+                .whereEqualTo("category", category)
+                .whereEqualTo("published", true)
+                .get().await()
+                .documents
+                .sortedBy { it.getLong("order") ?: Long.MAX_VALUE }
+                .mapIndexed { index, doc ->
+                    Zekr(
+                        id = (doc.getLong("id") ?: index.toLong()).toInt(),
+                        text = doc.getString("text").orEmpty(),
+                        source = doc.getString("source").orEmpty(),
+                        fadl = doc.getString("fadl").orEmpty(),
+                        repeatCount = (doc.getLong("repeat") ?: 1L).toInt().coerceAtLeast(1),
+                        category = category
+                    )
+                }
+                .filter { it.text.isNotBlank() }
+        } catch (e: Exception) {
+            Log.e("FirestoreRepository", "Content fetch failed", e)
+            emptyList()
+        }
+    }
 }

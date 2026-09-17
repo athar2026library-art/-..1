@@ -9,6 +9,7 @@ import com.example.data.UserProgress
 import com.example.data.AiRepository
 import com.example.data.AuthRepository
 import com.example.data.FirestoreRepository
+import com.example.data.Zekr
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -209,6 +210,9 @@ class AppViewModel(
             }
         }
     }
+
+    suspend fun fetchPublishedAzkar(category: String): List<Zekr> =
+        firestoreRepository.fetchPublishedAzkar(category)
 }
 
 class AppViewModelFactory(

@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
+  <section class="auth-gate" id="auth-gate" aria-live="polite"><div class="auth-card"><span class="brand-mark">ذ</span><p class="eyebrow">منطقة محمية</p><h1>دخول المشرف</h1><p>هذه اللوحة خاصة بفريق إدارة أذكار. يلزم حساب Google مصرح له بصلاحية المشرف.</p><button class="primary" id="login-btn">تسجيل الدخول باستخدام Google</button><small id="auth-message">يتم التحقق من إعداد Firebase عند التحميل.</small></div></section>
   <div class="shell">
     <aside class="sidebar">
       <div class="brand"><span class="brand-mark">ذ</span><div><strong>أذكار</strong><small>لوحة الإدارة</small></div></div>
@@ -38,6 +39,6 @@
   </div>
   <div class="modal" id="editor-modal" aria-hidden="true"><div class="modal-card"><div class="modal-head"><div><p class="eyebrow">محرر المحتوى</p><h2 id="modal-title">إضافة ذكر</h2></div><button class="close" id="close-modal">×</button></div><label>نص الذكر<textarea id="field-text" rows="4" placeholder="اكتب النص مضبوطاً..." required></textarea></label><div class="form-grid"><label>التصنيف<select id="field-category"><option value="sabah">الصباح</option><option value="masaa">المساء</option></select></label><label>عدد التكرار<input id="field-repeat" type="number" min="1" value="1" /></label></div><label>الفضل<textarea id="field-fadl" rows="3" placeholder="الفضل أو الشرح المختصر"></textarea></label><label>المصدر<input id="field-source" placeholder="الكتاب أو التخريج" /></label><label class="publish-toggle"><span><strong>نشر في التطبيق</strong><small>إذا أوقفتها تحفظ الذكر كمسودة</small></span><input id="field-published" type="checkbox" checked /></label><div class="modal-actions"><button class="ghost" id="cancel-modal">إلغاء</button><button class="primary" id="save-zekr">حفظ الذكر</button></div></div></div>
   <div class="toast" id="toast" role="status"></div>
-  <script src="./app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script><script src="./firebase-config.js"></script><script src="./app.js"></script>
 </body>
 </html>
