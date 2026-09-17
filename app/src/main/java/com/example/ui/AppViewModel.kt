@@ -42,6 +42,9 @@ class AppViewModel(
     val keepScreenOn: StateFlow<Boolean> = settingsRepository.keepScreenOnFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
+    val autoDnd: StateFlow<Boolean> = settingsRepository.autoDndFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
     val hideVirtues: StateFlow<Boolean> = settingsRepository.hideVirtuesFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
@@ -50,7 +53,7 @@ class AppViewModel(
 
     val lastReadCategory: StateFlow<String> = settingsRepository.lastReadCategoryFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
-    
+        
     val lastReadIndex: StateFlow<Int> = settingsRepository.lastReadIndexFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
         
@@ -60,6 +63,9 @@ class AppViewModel(
     private val _aiResponse = MutableStateFlow<String>("")
     val aiResponse: StateFlow<String> = _aiResponse.asStateFlow()
     
+    private val _isLoadingAi = MutableStateFlow(false)
+    val isLoadingAi: StateFlow<Boolean> = _isLoadingAi.asStateFlow()
+
     private val _userSignedIn = MutableStateFlow(authRepository.getCurrentUser() != null)
     val userSignedIn: StateFlow<Boolean> = _userSignedIn.asStateFlow()
 
@@ -123,6 +129,12 @@ class AppViewModel(
         }
     }
 
+    fun setAutoDnd(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setAutoDnd(enabled)
+        }
+    }
+
     fun setHideVirtues(hide: Boolean) {
         viewModelScope.launch {
             settingsRepository.setHideVirtues(hide)
@@ -135,13 +147,30 @@ class AppViewModel(
         }
     }
     
-    fun askAi(question: String) {
+    fun explainZekr(zekr: String) {
         viewModelScope.launch {
-            _aiResponse.value = "جاري البحث..."
+            _isLoadingAi.value = true
+            _aiResponse.value = ""
             try {
-                _aiResponse.value = aiRepository.askScholar(question)
+                _aiResponse.value = aiRepository.explainZekr(zekr)
             } catch (e: Exception) {
                 _aiResponse.value = "تعذر الاتصال. يرجى التأكد من اتصالك بالإنترنت للميزات الذكية 🌐"
+            } finally {
+                _isLoadingAi.value = false
+            }
+        }
+    }
+
+    fun suggestZekr(feeling: String) {
+        viewModelScope.launch {
+            _isLoadingAi.value = true
+            _aiResponse.value = ""
+            try {
+                _aiResponse.value = aiRepository.suggestZekrForFeeling(feeling)
+            } catch (e: Exception) {
+                _aiResponse.value = "تعذر الاتصال. يرجى التأكد من اتصالك بالإنترنت للميزات الذكية 🌐"
+            } finally {
+                _isLoadingAi.value = false
             }
         }
     }

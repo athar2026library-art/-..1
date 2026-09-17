@@ -1,98 +1,151 @@
 package com.example.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.ui.AppViewModel
+
+data class ChatMessage(val text: String, val isUser: Boolean, val isLoading: Boolean = false)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AiServicesScreen(
-    viewModel: AppViewModel,
-    onNavigateBack: () -> Unit
+    viewModel: AppViewModel
 ) {
     val aiResponse by viewModel.aiResponse.collectAsState()
-    val userSignedIn by viewModel.userSignedIn.collectAsState()
+    val isLoadingAi by viewModel.isLoadingAi.collectAsState()
+    
+    var inputText by remember { mutableStateOf("") }
+    
+    // We maintain the chat history locally in this session for the minimalist feel
+    var messages by remember { mutableStateOf(listOf(ChatMessage("السلام عليكم، كيف يمكنني مساعدتك اليوم؟ (أذكار، أدعية، فضل ذكر معين...)", isUser = false))) }
 
-    var textInput by remember { mutableStateOf("") }
+    // Update messages when AI responds
+    LaunchedEffect(aiResponse, isLoadingAi) {
+        if (isLoadingAi) {
+            if (messages.lastOrNull()?.isLoading != true) {
+                messages = messages + ChatMessage("جاري البحث...", isUser = false, isLoading = true)
+            }
+        } else if (aiResponse.isNotEmpty()) {
+            messages = messages.filterNot { it.isLoading } + ChatMessage(aiResponse, isUser = false)
+        }
+    }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
-                title = { Text("المساعد الإسلامي والمزامنة") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                title = { Text("المساعد الذكي", fontWeight = FontWeight.Bold) },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
+                )
+            )
+        },
+        bottomBar = {
+            Surface(
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 2.dp,
+                shadowElevation = 8.dp
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                        .navigationBarsPadding(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = inputText,
+                        onValueChange = { inputText = it },
+                        modifier = Modifier.weight(1f),
+                        placeholder = { Text("بماذا تشعر؟ أو ادخل ذكراً لتدبره...") },
+                        shape = RoundedCornerShape(24.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                            focusedBorderColor = MaterialTheme.colorScheme.primary
+                        )
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    IconButton(
+                        onClick = {
+                            if (inputText.isNotBlank() && !isLoadingAi) {
+                                val userMessage = inputText
+                                inputText = ""
+                                messages = messages + ChatMessage(userMessage, isUser = true)
+                                viewModel.suggestZekr(userMessage) // Using the suggestZekr as it acts as a generic AI call
+                            }
+                        },
+                        modifier = Modifier
+                            .background(MaterialTheme.colorScheme.primary, CircleShape)
+                            .padding(4.dp),
+                        enabled = inputText.isNotBlank() && !isLoadingAi
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", tint = MaterialTheme.colorScheme.onPrimary)
                     }
                 }
-            )
+            }
         }
     ) { padding ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp)
-                .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(horizontal = 16.dp),
+            contentPadding = PaddingValues(vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            
-            // --- Section 1: Auth and Sync ---
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text("المزامنة السحابية (Firestore)", style = MaterialTheme.typography.titleMedium)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    if (userSignedIn) {
-                        Text("تم تسجيل الدخول", color = MaterialTheme.colorScheme.primary)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Row {
-                            Button(onClick = { viewModel.syncData() }) {
-                                Text("مزامنة الإنجاز 🌴")
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            OutlinedButton(onClick = { viewModel.signOut() }) {
-                                Text("تسجيل الخروج")
-                            }
-                        }
-                    } else {
-                        Button(onClick = { viewModel.signIn() }) {
-                            Text("تسجيل الدخول باستخدام Google")
-                        }
-                    }
-                }
+            items(messages) { message ->
+                ChatBubble(message)
             }
+        }
+    }
+}
 
-            Spacer(modifier = Modifier.height(16.dp))
+@Composable
+fun ChatBubble(message: ChatMessage) {
+    val alignment = if (message.isUser) Alignment.CenterStart else Alignment.CenterEnd // RTL mapping (Start is right, End is left)
+    val bubbleColor = if (message.isUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
+    val textColor = if (message.isUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+    val shape = if (message.isUser) {
+        RoundedCornerShape(24.dp, 24.dp, 4.dp, 24.dp)
+    } else {
+        RoundedCornerShape(24.dp, 24.dp, 24.dp, 4.dp)
+    }
 
-            // --- Section 2: AI Inputs ---
-            Text("المساعد الإسلامي 🤖", style = MaterialTheme.typography.titleLarge)
-            Spacer(modifier = Modifier.height(8.dp))
-            OutlinedTextField(
-                value = textInput,
-                onValueChange = { textInput = it },
-                label = { Text("اسأل عن أذكار، أدعية، أو فتاوى...") },
-                modifier = Modifier.fillMaxWidth()
-            )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Button(onClick = { viewModel.askAi(textInput) }, modifier = Modifier.fillMaxWidth()) {
-                Text("بحث في المصادر الموثوقة")
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // --- Section 3: AI Response ---
-            if (aiResponse.isNotEmpty()) {
-                Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
-                    Text(text = aiResponse, modifier = Modifier.padding(16.dp))
+    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = alignment) {
+        Card(
+            shape = shape,
+            colors = CardDefaults.cardColors(containerColor = bubbleColor),
+            elevation = CardDefaults.cardElevation(defaultElevation = if (message.isUser) 0.dp else 1.dp),
+            modifier = Modifier.widthIn(max = 300.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                if (message.isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text(
+                        text = message.text,
+                        color = textColor,
+                        fontSize = 16.sp,
+                        lineHeight = 24.sp
+                    )
                 }
             }
         }

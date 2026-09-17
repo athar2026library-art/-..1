@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -32,7 +34,20 @@ fun StatsScreen(
     val recentProgress by viewModel.recentProgress.collectAsState()
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            TopAppBar(
+                title = { Text("تقدمي 🌿", fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
+                )
+            )
+        }
     ) { padding ->
         Column(
             modifier = Modifier
@@ -41,17 +56,6 @@ fun StatsScreen(
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            Text(
-                text = "تقدمي 🌿",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-            
-            Spacer(modifier = Modifier.height(48.dp))
-            
             val streak = calculateStreak(recentProgress)
             val sabahPercent = calculateSabahPercent(recentProgress)
             val masaaPercent = calculateMasaaPercent(recentProgress)
@@ -66,92 +70,80 @@ fun StatsScreen(
                 color = MaterialTheme.colorScheme.primary
             )
             Text(
-                text = "سلسلة الالتزام",
+                text = "أيام الالتزام المتتالية",
                 fontSize = 18.sp,
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
             )
             
             Spacer(modifier = Modifier.height(48.dp))
             
-            // This week
+            // This week Bar Chart
             Column(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(MaterialTheme.colorScheme.surface)
+                    .padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "هذا الأسبوع",
+                    text = "إحصائيات التسبيح الأسبوعية",
                     fontSize = 16.sp,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Bold
                 )
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
+
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.Bottom
                 ) {
-                    // Just a mock display for 7 days based on recent progress
                     val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-                    val cal = Calendar.getInstance()
-                    // Get last 7 days
+                    val dayFormat = SimpleDateFormat("EE", Locale("ar"))
+                    
+                    // Find max tasbeeh to scale the bars
+                    var maxTasbeeh = 1
+                    val weekData = mutableListOf<Pair<String, Int>>()
                     for (i in 6 downTo 0) {
                         val calDay = Calendar.getInstance()
                         calDay.add(Calendar.DAY_OF_YEAR, -i)
                         val dateStr = sdf.format(calDay.time)
                         val progress = recentProgress.find { it.date == dateStr }
-                        val done = progress?.completedSabah == true || progress?.completedMasaa == true
-                        
-                        Box(
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(CircleShape)
-                                .background(
-                                    if (done) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
-                                ),
-                            contentAlignment = Alignment.Center
+                        val tasbeeh = progress?.totalTasbeeh ?: 0
+                        if (tasbeeh > maxTasbeeh) maxTasbeeh = tasbeeh
+                        weekData.add(Pair(dayFormat.format(calDay.time), tasbeeh))
+                    }
+
+                    for ((dayName, tasbeehCount) in weekData) {
+                        val heightFraction = (tasbeehCount.toFloat() / maxTasbeeh.toFloat()).coerceIn(0.1f, 1f)
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Bottom,
+                            modifier = Modifier.fillMaxHeight()
                         ) {
-                            if (done) {
-                                Text("✓", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold)
-                            } else {
-                                Text("·", color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
+                            if (tasbeehCount > 0) {
+                                Text(
+                                    text = tasbeehCount.toString(), 
+                                    fontSize = 10.sp, 
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
                             }
+                            Box(
+                                modifier = Modifier
+                                    .width(16.dp)
+                                    .fillMaxHeight(heightFraction)
+                                    .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp))
+                                    .background(
+                                        if (tasbeehCount > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
+                                    )
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(text = dayName, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                    }
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(48.dp))
-            
-            // Sabah / Masaa completion
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Card(
-                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(24.dp)),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(24.dp).fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text("الصباح", fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text("$sabahPercent%", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                    }
-                }
-                
-                Card(
-                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(24.dp)),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(24.dp).fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text("المساء", fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text("$masaaPercent%", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     }
                 }
             }
@@ -164,21 +156,20 @@ fun StatsScreen(
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("أذكار مقروءة", fontSize = 14.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
+                    Text("إجمالي التسبيح", fontSize = 14.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text("$totalAzkar", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                    Text("$totalAzkar", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("أيام مكتملة", fontSize = 14.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text("$completedDays", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                    Text("$completedDays", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 }
             }
         }
     }
 }
 
-// Keeping the helper functions from before
 fun calculateStreak(progress: List<UserProgress>): Int {
     if (progress.isEmpty()) return 0
     val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
@@ -201,7 +192,7 @@ fun calculateStreak(progress: List<UserProgress>): Int {
     expectedCal.time = sdf.parse(expectedDateStr) ?: Date()
     
     for (p in sorted) {
-        if (p.date == expectedDateStr && (p.completedSabah || p.completedMasaa)) {
+        if (p.date == expectedDateStr && (p.completedSabah || p.completedMasaa || p.totalTasbeeh > 0)) {
             streak++
             expectedCal.add(Calendar.DAY_OF_YEAR, -1)
             expectedDateStr = sdf.format(expectedCal.time)

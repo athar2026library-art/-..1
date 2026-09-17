@@ -14,23 +14,13 @@ import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
 import java.util.concurrent.TimeUnit
-import com.squareup.moshi.Json
 
 @JsonClass(generateAdapter = true)
 data class GenerateContentRequest(
     val contents: List<Content>,
     val generationConfig: GenerationConfig? = null,
-    val tools: List<Tool>? = null,
     val systemInstruction: Content? = null
 )
-
-@JsonClass(generateAdapter = true)
-data class Tool(
-    val googleSearch: GoogleSearchTool? = null
-)
-
-@JsonClass(generateAdapter = true)
-class GoogleSearchTool()
 
 @JsonClass(generateAdapter = true)
 data class Content(
@@ -80,7 +70,7 @@ object RetrofitClient {
         val moshi = Moshi.Builder()
             .add(KotlinJsonAdapterFactory())
             .build()
-            
+        
         val retrofit = Retrofit.Builder()
             .baseUrl(BASE_URL)
             .client(okHttpClient)
@@ -91,17 +81,32 @@ object RetrofitClient {
 }
 
 class AiRepository {
-    suspend fun askScholar(question: String): String = withContext(Dispatchers.IO) {
+
+    suspend fun explainZekr(zekr: String): String = withContext(Dispatchers.IO) {
+        val prompt = "قم بشرح وتدبر هذا الذكر بأسلوب إيماني، ميسر ومختصر جداً: \n\n\"$zekr\""
+        callGemini(prompt)
+    }
+
+    suspend fun suggestZekrForFeeling(feeling: String): String = withContext(Dispatchers.IO) {
+        val prompt = "أشعر بـ ($feeling) أو أحتاج إلى دعاء بهذا الخصوص. اقترح لي ذكراً أو دعاءً من الأحاديث الصحيحة وحصن المسلم يناسب حالتي.\nنرجو الرد بالتنسيق التالي حصراً:\nالذكر: [النص]\nفضله: [شرح مبسط ومختصر لفضله]\nالمصدر والتخريج: [الكتاب الراوي واسم المرجع كحصن المسلم]"
+        callGemini(prompt)
+    }
+
+    private suspend fun callGemini(prompt: String): String {
         val request = GenerateContentRequest(
-            contents = listOf(Content(parts = listOf(Part(text = question)))),
-            systemInstruction = Content(parts = listOf(Part(text = "أنت مساعد إسلامي مفيد. لا تصدر أحكاماً شرعية من عندك، بل ابحث واسترجع المحتوى الموثق واعرض المصدر. قدم إجابات موثقة لأدعية وأذكار."))),
-            tools = listOf(Tool(googleSearch = GoogleSearchTool()))
+            contents = listOf(Content(parts = listOf(Part(text = prompt)))),
+            systemInstruction = Content(parts = listOf(Part(text = "أنت مساعد إسلامي متخصص في الأذكار والدعاء. اعتمد فقط على الأحاديث الصحيحة وكتاب (حصن المسلم). قدم إجاباتك بأسلوب ميسر، مختصر جداً، وهادئ. لا تفتي ولا تصدر أحكاماً شرعية من عندك، واكتفِ بشرح وتدبر الأذكار، أو اقتراح أذكار تناسب حاجة المستخدم بناءً على المصادر الموثوقة المذكورة."))),
+            generationConfig = GenerationConfig(temperature = 0.4f)
         )
-        try {
+        return try {
             val response = RetrofitClient.service.generateContent("gemini-3.5-flash", BuildConfig.GEMINI_API_KEY, request)
-            response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text ?: "عذراً، لم أتمكن من العثور على إجابة."
+            response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text ?: "عذراً، لم أتمكن من استخراج الإجابة."
         } catch (e: Exception) {
-            "عذراً، لا يوجد اتصال بالإنترنت. يرجى تفعيل الشبكة للميزات الذكية 🌐"
+            if (e is java.net.UnknownHostException || e is java.net.SocketTimeoutException) {
+                "عذراً، لا يوجد اتصال بالإنترنت. يرجى التحقق من الشبكة والمحاولة مرة أخرى 🌐"
+            } else {
+                "حدث خطأ غير متوقع أثناء الاتصال. حاول مرة أخرى لاحقاً. ⚠️\nالخطأ: ${e.message}"
+            }
         }
     }
 }

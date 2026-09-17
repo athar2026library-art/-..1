@@ -28,11 +28,13 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     private val LAST_READ_INDEX = intPreferencesKey("last_read_index")
     private val LAST_READ_REMAINING = intPreferencesKey("last_read_remaining")
 
+    private val AUTO_DND = booleanPreferencesKey("auto_dnd")
+
     val fontSizeFlow: Flow<Float> = dataStore.data.map { it[FONT_SIZE] ?: 24f }
     val darkModeFlow: Flow<Boolean> = dataStore.data.map { it[DARK_MODE] ?: true }
     val vibrationFlow: Flow<Boolean> = dataStore.data.map { it[VIBRATION] ?: true }
-    
     val keepScreenOnFlow: Flow<Boolean> = dataStore.data.map { it[KEEP_SCREEN_ON] ?: true }
+    val autoDndFlow: Flow<Boolean> = dataStore.data.map { it[AUTO_DND] ?: false }
     val hideVirtuesFlow: Flow<Boolean> = dataStore.data.map { it[HIDE_VIRTUES] ?: false }
     val hideSourcesFlow: Flow<Boolean> = dataStore.data.map { it[HIDE_SOURCES] ?: false }
     
@@ -70,6 +72,10 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     
     suspend fun setKeepScreenOn(enabled: Boolean) {
         dataStore.edit { it[KEEP_SCREEN_ON] = enabled }
+    }
+
+    suspend fun setAutoDnd(enabled: Boolean) {
+        dataStore.edit { it[AUTO_DND] = enabled }
     }
 
     suspend fun setHideVirtues(hide: Boolean) {

@@ -2,20 +2,18 @@ package com.example.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Light Theme Colors
-val OliveGreen = Color(0xFF2E5B4F)
-val OliveGreenLight = Color(0xFF4A7C6E)
-val OliveGreenDark = Color(0xFF1D3D33)
-val CreamBackground = Color(0xFFFAF9F4)
-val PureWhite = Color(0xFFFFFFFF)
-val GoldAccent = Color(0xFFC5A059)
-val TextDarkPrimary = Color(0xFF1E293B)
-val TextDarkSecondary = Color(0xFF475569)
+// Light Theme Colors (Soft Sage Green / Off-white)
+val BackgroundLight = Color(0xFFF9FAFB)
+val SurfaceLight = Color(0xFFFFFFFF)
+val PrimaryLight = Color(0xFF8FBC8F) // Soft Sage Green
+val OnBackgroundLight = Color(0xFF374151) // Charcoal
+val OnSurfaceLight = Color(0xFF4B5563)
+val OutlineLight = Color(0xFFE5E7EB)
 
-// Dark Theme Colors
-val DarkBackground = Color(0xFF121615)
-val DarkSurface = Color(0xFF1A211F)
-val DarkOlive = Color(0xFF679C8D)
-val DarkGold = Color(0xFFD4AF37)
-val TextLightPrimary = Color(0xFFF8FAFC)
-val TextLightSecondary = Color(0xFFCBD5E1)
+// Dark Theme Colors (Deep Night / Charcoal)
+val BackgroundDark = Color(0xFF111827)
+val SurfaceDark = Color(0xFF1F2937)
+val PrimaryDark = Color(0xFF6B8E23) // Olive Drab / Darker Sage
+val OnBackgroundDark = Color(0xFFF3F4F6)
+val OnSurfaceDark = Color(0xFFE5E7EB)
+val OutlineDark = Color(0xFF374151)

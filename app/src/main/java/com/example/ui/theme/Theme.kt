@@ -11,47 +11,28 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 
-val FajrColorScheme = darkColorScheme(
-    primary = DarkOlive,
-    secondary = DarkOlive,
-    tertiary = DarkGold,
-    background = Color.Black,
-    surface = Color.Black,
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.Black,
-    onBackground = Color.White,
-    onSurface = Color.White
-)
-
 private val DarkColorScheme = darkColorScheme(
-    primary = DarkOlive,
-    secondary = DarkGold,
-    tertiary = GoldAccent,
-    background = DarkBackground,
-    surface = DarkSurface,
+    primary = PrimaryDark,
+    background = BackgroundDark,
+    surface = SurfaceDark,
     onPrimary = Color.White,
-    onSecondary = Color.Black,
-    onTertiary = Color.Black,
-    onBackground = TextLightPrimary,
-    onSurface = TextLightPrimary,
-    surfaceVariant = Color(0xFF232D2A),
-    onSurfaceVariant = TextLightSecondary
+    onBackground = OnBackgroundDark,
+    onSurface = OnSurfaceDark,
+    outline = OutlineDark,
+    surfaceVariant = SurfaceDark,
+    onSurfaceVariant = OnSurfaceDark
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = OliveGreen,
-    secondary = GoldAccent,
-    tertiary = OliveGreenLight,
-    background = CreamBackground,
-    surface = PureWhite,
+    primary = PrimaryLight,
+    background = BackgroundLight,
+    surface = SurfaceLight,
     onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = TextDarkPrimary,
-    onSurface = TextDarkPrimary,
-    surfaceVariant = PureWhite,
-    onSurfaceVariant = TextDarkSecondary
+    onBackground = OnBackgroundLight,
+    onSurface = OnSurfaceLight,
+    outline = OutlineLight,
+    surfaceVariant = SurfaceLight,
+    onSurfaceVariant = OnSurfaceLight
 )
 
 @Composable
@@ -62,12 +43,11 @@ fun MyApplicationTheme(
     content: @Composable () -> Unit,
 ) {
     val colorScheme = when {
-        isFajrMode -> FajrColorScheme
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
-        darkTheme -> DarkColorScheme
+        darkTheme || isFajrMode -> DarkColorScheme // simplifying theme logic
         else -> LightColorScheme
     }
 
