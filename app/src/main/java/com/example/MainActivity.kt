@@ -1,5 +1,8 @@
 package com.example
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -10,26 +13,26 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
+import com.example.data.AiRepository
+import com.example.data.AppDatabase
+import com.example.data.AuthRepository
+import com.example.data.FirestoreRepository
 import com.example.data.ProgressRepository
 import com.example.data.SettingsRepository
 import com.example.data.dataStore
-import com.example.data.AiRepository
-import com.example.data.AuthRepository
-import com.example.data.FirestoreRepository
 import com.example.ui.AppNavGraph
 import com.example.ui.AppViewModel
 import com.example.ui.AppViewModelFactory
-import com.example.ui.theme.MyApplicationTheme
-import androidx.work.PeriodicWorkRequestBuilder
-import androidx.work.WorkManager
 import com.example.ui.NotificationWorker
+import com.example.ui.theme.MyApplicationTheme
+import java.util.Calendar
 import java.util.concurrent.TimeUnit
-import android.Manifest
-import android.os.Build
-import androidx.core.app.ActivityCompat
-import android.content.pm.PackageManager
-import androidx.core.content.ContextCompat
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -45,16 +48,17 @@ class MainActivity : ComponentActivity() {
         val workRequest = PeriodicWorkRequestBuilder<NotificationWorker>(2, TimeUnit.HOURS).build()
         WorkManager.getInstance(applicationContext).enqueueUniquePeriodicWork(
             "AzkarNotifications",
-            androidx.work.ExistingPeriodicWorkPolicy.KEEP,
+            ExistingPeriodicWorkPolicy.KEEP,
             workRequest
         )
-        
-        val progressRepository = ProgressRepository.getInstance(applicationContext)
-        val settingsRepository = SettingsRepository(applicationContext.dataStore)
+
+        val progressDao = AppDatabase.getDatabase(this).progressDao()
+        val progressRepository = ProgressRepository(progressDao)
+        val settingsRepository = SettingsRepository(this.dataStore)
         val aiRepository = AiRepository()
-        val authRepository = AuthRepository(applicationContext)
+        val authRepository = AuthRepository(this)
         val firestoreRepository = FirestoreRepository()
-        
+
         setContent {
             val viewModel: AppViewModel = viewModel(
                 factory = AppViewModelFactory(
@@ -68,7 +72,7 @@ class MainActivity : ComponentActivity() {
             
             val isDarkMode by viewModel.isDarkMode.collectAsState()
             
-            val currentHour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+            val currentHour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
             val isFajrTime = currentHour in 3..6
             val finalDarkMode = isDarkMode || isFajrTime
             

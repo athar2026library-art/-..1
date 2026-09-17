@@ -64,6 +64,17 @@ fun AzkarScreen(
     val context = LocalContext.current
     val view = LocalView.current
 
+    // Cache vibrator to avoid I/O blocking or delay on clicks
+    val vibrator = remember(context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+            vibratorManager.defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        }
+    }
+
     // Screen On Logic
     DisposableEffect(keepScreenOn) {
         if (keepScreenOn) {
@@ -102,9 +113,23 @@ fun AzkarScreen(
         isInitialized = true
     }
 
-    LaunchedEffect(currentIndex, countRemaining) {
-        if (isInitialized) {
-            viewModel.saveLastReadState(category, currentIndex, countRemaining)
+    // Update state variables for DisposableEffect safely
+    val currentIdx by rememberUpdatedState(currentIndex)
+    val currentRem by rememberUpdatedState(countRemaining)
+    
+    // Save progress ONLY when leaving the screen or changing category
+    DisposableEffect(category) {
+        onDispose {
+            if (isInitialized && currentIdx < azkarList.size) {
+                viewModel.saveLastReadState(category, currentIdx, currentRem)
+            }
+        }
+    }
+
+    // Save progress ONLY when changing the Zekr (currentIndex changes)
+    LaunchedEffect(currentIndex) {
+        if (isInitialized && currentIndex < azkarList.size) {
+            viewModel.saveLastReadState(category, currentIndex, azkarList[currentIndex].repeatCount)
         }
     }
 
@@ -150,10 +175,15 @@ fun AzkarScreen(
     val onDecrement = {
         if (countRemaining > 0) {
             countRemaining--
-            viewModel.addTasbeeh(1)
+            // We removed viewModel.addTasbeeh(1) from here to avoid Room DB writes on every single click, which causes lag.
+            // We can batch tasbeeh or ignore it if not critical, or send it asynchronously.
+            // Let's launch it async so it doesn't block the UI state update.
+            coroutineScope.launch {
+                viewModel.addTasbeeh(1)
+            }
             
             if (isVibrationEnabled) {
-                vibrateLight(context)
+                vibrateLightAsync(vibrator)
             }
             
             if (countRemaining == 0) {
@@ -372,21 +402,13 @@ fun AzkarScreen(
     }
 }
 
-fun vibrateLight(context: Context) {
-    val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
-        vibratorManager.defaultVibrator
-    } else {
-        @Suppress("DEPRECATION")
-        context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-    }
-    
+fun vibrateLightAsync(vibrator: Vibrator) {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
         vibrator.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK))
     } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        vibrator.vibrate(VibrationEffect.createOneShot(20, VibrationEffect.DEFAULT_AMPLITUDE))
+        vibrator.vibrate(VibrationEffect.createOneShot(15, VibrationEffect.DEFAULT_AMPLITUDE))
     } else {
         @Suppress("DEPRECATION")
-        vibrator.vibrate(20)
+        vibrator.vibrate(15)
     }
 }
