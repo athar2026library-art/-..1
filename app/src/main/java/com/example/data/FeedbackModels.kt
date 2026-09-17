@@ -18,5 +18,6 @@ data class FeedbackItem(
     val aiSummary: String = "",
     val status: String = "new",
     val adminReply: String = "",
+    val replyUnread: Boolean = false,
     val createdAt: Long = 0L
 )

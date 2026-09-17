@@ -76,6 +76,10 @@ class AppViewModel(
     val myFeedback: StateFlow<List<FeedbackItem>> = firestoreRepository.observeMyFeedback()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val unreadFeedbackCount: StateFlow<Int> = myFeedback
+        .let { flow -> kotlinx.coroutines.flow.flow { flow.collect { emit(it.count { item -> item.replyUnread }) } } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
     init {
         viewModelScope.launch {
             progressRepository.initTodayProgress()
@@ -198,6 +202,10 @@ class AppViewModel(
         authRepository.signOut()
         _userSignedIn.value = false
         _aiResponse.value = "تم تسجيل الخروج."
+    }
+
+    fun markFeedbackReplyRead(feedbackId: String) {
+        viewModelScope.launch { firestoreRepository.markFeedbackReplyRead(feedbackId) }
     }
 
     fun submitFeedback(draft: FeedbackDraft) {

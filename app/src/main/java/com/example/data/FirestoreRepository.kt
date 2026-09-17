@@ -159,12 +159,22 @@ class FirestoreRepository {
                         aiSummary = doc.getString("aiSummary").orEmpty(),
                         status = doc.getString("status") ?: "new",
                         adminReply = doc.getString("adminReply").orEmpty(),
+                        replyUnread = doc.getBoolean("replyUnread") ?: false,
                         createdAt = doc.getTimestamp("createdAt")?.toDate()?.time ?: 0L
                     )
                 }.sortedByDescending { it.createdAt }
                 trySend(items)
             }
         awaitClose { registration.remove() }
+    }
+
+    suspend fun markFeedbackReplyRead(feedbackId: String) {
+        val user = auth?.currentUser ?: return
+        val db = firestore ?: return
+        try {
+            db.collection("feedback").document(feedbackId).update("replyUnread", false).await()
+            db.collection("users").document(user.uid).collection("feedback").document(feedbackId).update("replyUnread", false).await()
+        } catch (e: Exception) { Log.e("FirestoreRepository", "Mark reply read failed", e) }
     }
 
 }

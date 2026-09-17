@@ -52,6 +52,7 @@ fun FeedbackScreen(viewModel: AppViewModel) {
     val response by viewModel.aiResponse.collectAsState()
     val signedIn by viewModel.userSignedIn.collectAsState()
     val history by viewModel.myFeedback.collectAsState()
+    val unreadCount by viewModel.unreadFeedbackCount.collectAsState()
     var type by remember { mutableStateOf("suggestion") }
     var message by remember { mutableStateOf("") }
     var attachmentUri by remember { mutableStateOf<Uri?>(null) }
@@ -111,10 +112,10 @@ fun FeedbackScreen(viewModel: AppViewModel) {
                 if (response.isNotBlank()) { Spacer(Modifier.height(9.dp)); Text(response, color = MaterialTheme.colorScheme.primary, fontSize = 12.sp) }
             }
             if (history.isNotEmpty()) {
-                item { Text("طلباتي السابقة", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
+                item { Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) { Text("طلباتي السابقة", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); if (unreadCount > 0) { Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer), shape = RoundedCornerShape(20.dp)) { Text("$unreadCount تحديث غير مقروء", modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp), color = MaterialTheme.colorScheme.onErrorContainer, fontSize = 11.sp, fontWeight = FontWeight.Bold) } } } }
                 items(history) { item ->
-                    Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
-                        Column(Modifier.padding(15.dp)) { Text(item.title.ifBlank { item.message.take(52) }, fontWeight = FontWeight.Bold); Spacer(Modifier.height(5.dp)); Text(statusLabel(item.status), color = MaterialTheme.colorScheme.primary, fontSize = 11.sp); if (item.adminReply.isNotBlank()) { Spacer(Modifier.height(7.dp)); Text("رد المالك: ${item.adminReply}", fontSize = 12.sp) } }
+                    Card(onClick = { if (item.replyUnread) viewModel.markFeedbackReplyRead(item.id) }, shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = if (item.replyUnread) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface)) {
+                        Column(Modifier.padding(15.dp)) { Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) { Text(item.title.ifBlank { item.message.take(52) }, fontWeight = FontWeight.Bold); if (item.replyUnread) Text("جديد", color = MaterialTheme.colorScheme.error, fontSize = 10.sp, fontWeight = FontWeight.Bold) }; Spacer(Modifier.height(5.dp)); Text(statusLabel(item.status), color = MaterialTheme.colorScheme.primary, fontSize = 11.sp); if (item.adminReply.isNotBlank()) { Spacer(Modifier.height(7.dp)); Text("رد المالك: ${item.adminReply}", fontSize = 12.sp) } }
                     }
                 }
             }
@@ -125,4 +126,4 @@ fun FeedbackScreen(viewModel: AppViewModel) {
     }
 }
 
-private fun statusLabel(status: String): String = when (status) { "new" -> "جديد"; "in_progress" -> "قيد المعالجة"; "resolved" -> "تم الحل"; else -> "مغلق" }
+private fun statusLabel(status: String): String = when (status) { "new" -> "جديد"; "in_progress" -> "قيد المعالجة"; "resolved" -> "تم الحل"; "completed" -> "مكتملة"; else -> "مغلق" }
