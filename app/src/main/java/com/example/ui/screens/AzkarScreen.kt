@@ -11,7 +11,6 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -29,7 +28,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
@@ -151,6 +149,9 @@ fun AzkarScreen(
     }
 
     val currentZekr = azkarList[currentIndex]
+    val completedItems = currentIndex +
+        ((currentZekr.repeatCount - countRemaining).toFloat() / currentZekr.repeatCount.coerceAtLeast(1))
+    val readingProgress = (completedItems / azkarList.size.coerceAtLeast(1)).coerceIn(0f, 1f)
 
     LaunchedEffect(currentIndex) {
         if (isInitialized) {
@@ -168,6 +169,9 @@ fun AzkarScreen(
             }
             
             if (countRemaining == 0) {
+                if (isVibrationEnabled) {
+                    vibrateCompletion(context)
+                }
                 coroutineScope.launch {
                     delay(300)
                     currentIndex++
@@ -201,7 +205,7 @@ fun AzkarScreen(
                 )
                 // Thin Progress Bar
                 LinearProgressIndicator(
-                    progress = { (currentIndex.toFloat() / azkarList.size).coerceIn(0f, 1f) },
+                    progress = { readingProgress },
                     modifier = Modifier.fillMaxWidth().height(2.dp),
                     color = MaterialTheme.colorScheme.primary,
                     trackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
@@ -232,18 +236,25 @@ fun AzkarScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Previous
-                    IconButton(
+                    TextButton(
                         onClick = { if (currentIndex > 0) currentIndex-- },
                         enabled = currentIndex > 0
                     ) {
                         Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Previous") // ArrowForward is RTL "Previous"
+                        Spacer(Modifier.width(4.dp))
+                        Text("السابق")
                     }
                     
                     // Reset
-                    IconButton(
-                        onClick = { countRemaining = currentZekr.repeatCount }
+                    TextButton(
+                        onClick = {
+                            countRemaining = currentZekr.repeatCount
+                            if (isVibrationEnabled) vibrateLight(context)
+                        }
                     ) {
                         Icon(Icons.Default.Refresh, contentDescription = "Reset")
+                        Spacer(Modifier.width(4.dp))
+                        Text("إعادة الضبط")
                     }
                     
                     // Info / Virtues
@@ -254,9 +265,11 @@ fun AzkarScreen(
                     }
 
                     // Next
-                    IconButton(
+                    TextButton(
                         onClick = { if (currentIndex < azkarList.size - 1) currentIndex++ }
                     ) {
+                        Text("التالي")
+                        Spacer(Modifier.width(4.dp))
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Next") // ArrowBack is RTL "Next"
                     }
                 }
@@ -266,12 +279,7 @@ fun AzkarScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .pointerInput(Unit) {
-                    detectTapGestures(
-                        onTap = { onDecrement() }
-                    )
-                },
+                .padding(padding),
             contentAlignment = Alignment.Center
         ) {
             Column(
@@ -285,7 +293,8 @@ fun AzkarScreen(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(32.dp)),
+                        .clip(RoundedCornerShape(32.dp))
+                        .clickable(onClick = onDecrement),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                     border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
@@ -341,7 +350,7 @@ fun AzkarScreen(
                 
                 Spacer(modifier = Modifier.height(24.dp))
                 Text(
-                    text = "اضغط في أي مكان",
+                    text = "اضغط على بطاقة الذكر أو الزر للمتابعة",
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f)
                 )
@@ -434,6 +443,23 @@ fun vibrateLight(context: Context) {
     } else {
         @Suppress("DEPRECATION")
         vibrator.vibrate(20)
+    }
+}
+
+private fun vibrateCompletion(context: Context) {
+    val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+        vibratorManager.defaultVibrator
+    } else {
+        @Suppress("DEPRECATION")
+        context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+    }
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        vibrator.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 22, 45, 35), -1))
+    } else {
+        @Suppress("DEPRECATION")
+        vibrator.vibrate(longArrayOf(0, 22, 45, 35), -1)
     }
 }
 
