@@ -7,12 +7,14 @@ import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
+import retrofit2.HttpException
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 import retrofit2.http.Body
 import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
+import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 @JsonClass(generateAdapter = true)
@@ -61,9 +63,9 @@ object RetrofitClient {
     private const val BASE_URL = "https://generativelanguage.googleapis.com/"
 
     private val okHttpClient = OkHttpClient.Builder()
-        .connectTimeout(60, TimeUnit.SECONDS)
-        .readTimeout(60, TimeUnit.SECONDS)
-        .writeTimeout(60, TimeUnit.SECONDS)
+        .connectTimeout(20, TimeUnit.SECONDS)
+        .readTimeout(20, TimeUnit.SECONDS)
+        .writeTimeout(20, TimeUnit.SECONDS)
         .build()
 
     val service: GeminiApiService by lazy {
@@ -102,8 +104,10 @@ class AiRepository {
             val response = RetrofitClient.service.generateContent("gemini-2.5-flash", BuildConfig.GEMINI_API_KEY, request)
             response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text ?: "عذراً، لم أتمكن من استخراج الإجابة."
         } catch (e: Exception) {
-            if (e is java.net.UnknownHostException || e is java.net.SocketTimeoutException) {
+            if (e is java.net.UnknownHostException || e is java.net.SocketTimeoutException || e is IOException) {
                 "عذراً، لا يوجد اتصال بالإنترنت. يرجى التحقق من الشبكة والمحاولة مرة أخرى 🌐"
+            } else if (e is HttpException && e.code() == 429) {
+                "عذراً، تم تجاوز حد الاستخدام المؤقت للمساعد الذكي. يرجى المحاولة بعد قليل. ⏳"
             } else {
                 "حدث خطأ غير متوقع أثناء الاتصال. حاول مرة أخرى لاحقاً. ⚠️\nالخطأ: ${e.message}"
             }
