@@ -6,7 +6,8 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return signedIn() && request.auth.token.admin == true;
+      return signedIn() && (request.auth.token.admin == true
+        || request.auth.token.email == 'mgedh.9ali@gmail.com');
     }
 
     match /content/azkar/items/{itemId} {
