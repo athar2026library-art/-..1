@@ -27,7 +27,7 @@ class AudioPlayer(context: Context) : TextToSpeech.OnInitListener {
 
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
-            val result = tts?.setLanguage(Locale("ar"))
+            val result = tts?.setLanguage(Locale.forLanguageTag("ar"))
             if (result != TextToSpeech.LANG_MISSING_DATA && result != TextToSpeech.LANG_NOT_SUPPORTED) {
                 isInitialized = true
                 tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
@@ -36,12 +36,12 @@ class AudioPlayer(context: Context) : TextToSpeech.OnInitListener {
                     }
                     override fun onDone(utteranceId: String) {
                         _isPlaying.value = false
-                        continuations.remove(utteranceId)?.resume(true, null)
+                        continuations.remove(utteranceId)?.resume(true) { _, _, _ -> }
                     }
                     @Deprecated("Deprecated in Java")
                     override fun onError(utteranceId: String) {
                         _isPlaying.value = false
-                        continuations.remove(utteranceId)?.resume(false, null)
+                        continuations.remove(utteranceId)?.resume(false) { _, _, _ -> }
                     }
                 })
             }
@@ -50,7 +50,7 @@ class AudioPlayer(context: Context) : TextToSpeech.OnInitListener {
 
     suspend fun playAndWait(text: String): Boolean = suspendCancellableCoroutine { cont ->
         if (!isInitialized) {
-            cont.resume(false, null)
+            cont.resume(false) { _, _, _ -> }
             return@suspendCancellableCoroutine
         }
         
@@ -60,7 +60,7 @@ class AudioPlayer(context: Context) : TextToSpeech.OnInitListener {
         val status = tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, id)
         if (status != TextToSpeech.SUCCESS) {
             continuations.remove(id)
-            cont.resume(false, null)
+            cont.resume(false) { _, _, _ -> }
         }
         
         cont.invokeOnCancellation {
@@ -74,7 +74,7 @@ class AudioPlayer(context: Context) : TextToSpeech.OnInitListener {
         if (isInitialized) {
             tts?.stop()
             _isPlaying.value = false
-            continuations.values.forEach { if (it.isActive) it.resume(false, null) }
+            continuations.values.forEach { if (it.isActive) it.resume(false) { _, _, _ -> } }
             continuations.clear()
         }
     }
