@@ -38,7 +38,7 @@ fun HomeScreen(viewModel: AppViewModel, onNavigateToAzkar: (String) -> Unit) {
     val todayProgress by viewModel.todayProgress.collectAsState()
     val categorySize = if (lastReadCategory == "sabah") AzkarData.morningAzkar.size else AzkarData.eveningAzkar.size
     val isWirdActive = lastReadCategory.isNotEmpty() && lastReadIndex < categorySize
-    val date = SimpleDateFormat("EEEE، d MMMM", Locale("ar")).format(Date())
+    val date = SimpleDateFormat("EEEE، d MMMM", Locale.forLanguageTag("ar")).format(Date())
     val completedToday = (todayProgress?.completedSabah == true) || (todayProgress?.completedMasaa == true)
 
     Column(

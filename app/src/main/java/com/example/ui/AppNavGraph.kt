@@ -2,11 +2,11 @@ package com.example.ui
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.automirrored.outlined.Chat
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.outlined.Chat
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -32,9 +32,9 @@ import com.example.ui.screens.AiServicesScreen
 import com.example.ui.screens.FeedbackScreen
 
 sealed class Screen(val route: String, val title: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
-    object Home : Screen("home", "الأذكار", Icons.Default.List)
-    object AiServices : Screen("ai_services", "المساعد", Icons.Outlined.Chat)
-    object Feedback : Screen("feedback", "تواصل معنا", Icons.Outlined.Chat)
+    object Home : Screen("home", "الأذكار", Icons.AutoMirrored.Filled.List)
+    object AiServices : Screen("ai_services", "المساعد", Icons.AutoMirrored.Outlined.Chat)
+    object Feedback : Screen("feedback", "تواصل معنا", Icons.AutoMirrored.Outlined.Chat)
     object Stats : Screen("stats", "الإحصائيات", Icons.Default.Star)
     object Settings : Screen("settings", "الإعدادات", Icons.Default.Settings)
 }

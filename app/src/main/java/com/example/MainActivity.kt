@@ -93,7 +93,7 @@ class MainActivity : ComponentActivity() {
         val authRepository = AuthRepository(applicationContext)
         val firestoreRepository = FirestoreRepository()
 
-        FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
+        FirebaseMessaging.getInstance().getToken().addOnSuccessListener { token ->
             val user = FirebaseAuth.getInstance().currentUser ?: return@addOnSuccessListener
             FirebaseFirestore.getInstance().collection("users").document(user.uid).set(
                 mapOf("fcmTokens" to FieldValue.arrayUnion(token), "notificationsEnabled" to true, "updatedAt" to FieldValue.serverTimestamp()),

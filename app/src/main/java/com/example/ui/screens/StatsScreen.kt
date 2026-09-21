@@ -102,7 +102,7 @@ fun StatsScreen(
                     verticalAlignment = Alignment.Bottom
                 ) {
                     val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-                    val dayFormat = SimpleDateFormat("EE", Locale("ar"))
+                    val dayFormat = SimpleDateFormat("EE", Locale.forLanguageTag("ar"))
                     
                     // Find max tasbeeh to scale the bars
                     var maxTasbeeh = 1

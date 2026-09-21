@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.testTag
 import com.example.ui.AppViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -238,7 +239,9 @@ fun SettingsScreen(
                         Spacer(modifier = Modifier.height(16.dp))
                         Button(
                             onClick = { viewModel.signIn() },
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("google-sign-in-button"),
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Text("تسجيل الدخول باستخدام Google")
