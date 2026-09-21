@@ -60,8 +60,13 @@ class AppViewModel(
     val lastReadRemaining: StateFlow<Int> = settingsRepository.lastReadRemainingFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
+    // AI response is only for actual AI replies
     private val _aiResponse = MutableStateFlow<String>("")
     val aiResponse: StateFlow<String> = _aiResponse.asStateFlow()
+    
+    // Separate channel for status / toast-like messages (sync, login, errors)
+    private val _statusMessage = MutableStateFlow<String>("")
+    val statusMessage: StateFlow<String> = _statusMessage.asStateFlow()
     
     private val _isLoadingAi = MutableStateFlow(false)
     val isLoadingAi: StateFlow<Boolean> = _isLoadingAi.asStateFlow()
@@ -175,14 +180,22 @@ class AppViewModel(
         }
     }
     
+    fun clearAiResponse() {
+        _aiResponse.value = ""
+    }
+    
+    fun clearStatusMessage() {
+        _statusMessage.value = ""
+    }
+    
     fun signIn() {
         viewModelScope.launch {
             val success = authRepository.signInWithGoogle()
             if (success) {
                 _userSignedIn.value = true
-                _aiResponse.value = "تم تسجيل الدخول بنجاح!"
+                _statusMessage.value = "تم تسجيل الدخول بنجاح!"
             } else {
-                _aiResponse.value = "فشل تسجيل الدخول. تأكد من إعدادات Firebase."
+                _statusMessage.value = "فشل تسجيل الدخول. تأكد من إعدادات Firebase."
             }
         }
     }
@@ -190,22 +203,19 @@ class AppViewModel(
     fun signOut() {
         authRepository.signOut()
         _userSignedIn.value = false
-        _aiResponse.value = "تم تسجيل الخروج."
+        _statusMessage.value = "تم تسجيل الخروج."
     }
     
     fun syncData() {
         viewModelScope.launch {
-            _aiResponse.value = "جاري المزامنة مع السحابة..."
+            _statusMessage.value = "جاري المزامنة مع السحابة..."
             try {
-                // 1. Fetch remote progress
                 val remoteProgress = firestoreRepository.fetchProgress()
-                // 2. Merge remote with local
                 progressRepository.syncProgress(remoteProgress)
-                // 3. Push the (now merged) local progress back to remote
                 firestoreRepository.backupProgress(recentProgress.value)
-                _aiResponse.value = "تمت مزامنة البستان بنجاح! 🌴"
+                _statusMessage.value = "تمت مزامنة البستان بنجاح! 🌴"
             } catch (e: Exception) {
-                _aiResponse.value = "تعذرت المزامنة، تأكد من اتصالك بالإنترنت 🌐"
+                _statusMessage.value = "تعذرت المزامنة، تأكد من اتصالك بالإنترنت 🌐"
             }
         }
     }
