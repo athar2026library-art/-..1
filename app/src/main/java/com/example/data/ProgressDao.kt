@@ -20,6 +20,10 @@ interface ProgressDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertProgress(progress: UserProgress)
 
+    /** Insert only if no row exists for this date. Used by initTodayProgress to avoid wiping existing progress. */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertProgressIfNotExists(progress: UserProgress)
+
     @Query("UPDATE user_progress SET completedSabah = :completed WHERE date = :date")
     suspend fun updateSabah(date: String, completed: Boolean)
 
