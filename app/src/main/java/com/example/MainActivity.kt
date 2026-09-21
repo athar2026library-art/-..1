@@ -40,7 +40,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.data.ProgressRepository
 import com.example.data.SettingsRepository
@@ -93,10 +92,15 @@ class MainActivity : ComponentActivity() {
         val authRepository = AuthRepository(applicationContext)
         val firestoreRepository = FirestoreRepository()
 
-        FirebaseMessaging.getInstance().getToken().addOnSuccessListener { token ->
+        // Only update the token. Do NOT force notificationsEnabled = true
+        // so the user's choice in settings is respected.
+        FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
             val user = FirebaseAuth.getInstance().currentUser ?: return@addOnSuccessListener
             FirebaseFirestore.getInstance().collection("users").document(user.uid).set(
-                mapOf("fcmTokens" to FieldValue.arrayUnion(token), "notificationsEnabled" to true, "updatedAt" to FieldValue.serverTimestamp()),
+                mapOf(
+                    "fcmTokens" to FieldValue.arrayUnion(token),
+                    "updatedAt" to FieldValue.serverTimestamp()
+                ),
                 com.google.firebase.firestore.SetOptions.merge()
             )
         }
