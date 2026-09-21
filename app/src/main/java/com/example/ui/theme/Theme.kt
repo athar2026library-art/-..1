@@ -8,14 +8,17 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 
 private val DarkColorScheme = darkColorScheme(
     primary = PrimaryDark,
+    onPrimary = OnPrimaryDark, // High contrast dark text on light primary
+    secondary = SecondaryDark,
     background = BackgroundDark,
     surface = SurfaceDark,
-    onPrimary = Color.White,
     onBackground = OnBackgroundDark,
     onSurface = OnSurfaceDark,
     outline = OutlineDark,
@@ -25,9 +28,10 @@ private val DarkColorScheme = darkColorScheme(
 
 private val LightColorScheme = lightColorScheme(
     primary = PrimaryLight,
+    onPrimary = OnPrimaryLight,
+    secondary = SecondaryLight,
     background = BackgroundLight,
     surface = SurfaceLight,
-    onPrimary = Color.White,
     onBackground = OnBackgroundLight,
     onSurface = OnSurfaceLight,
     outline = OutlineLight,
@@ -47,13 +51,17 @@ fun MyApplicationTheme(
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
-        darkTheme || isFajrMode -> DarkColorScheme // simplifying theme logic
+        darkTheme || isFajrMode -> DarkColorScheme
         else -> LightColorScheme
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        content = content
-    )
+    // Force RTL for the entire app so arrows, chat bubbles, and layout stay correct
+    // regardless of the device language setting.
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = Typography,
+            content = content
+        )
+    }
 }
