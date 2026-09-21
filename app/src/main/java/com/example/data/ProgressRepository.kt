@@ -18,7 +18,8 @@ class ProgressRepository(private val progressDao: ProgressDao) {
 
     suspend fun initTodayProgress() {
         val date = getTodayDateStr()
-        progressDao.insertProgress(UserProgress(date = date))
+        // IGNORE so we never overwrite existing progress for the day
+        progressDao.insertProgressIfNotExists(UserProgress(date = date))
     }
 
     suspend fun completeSabah() {
