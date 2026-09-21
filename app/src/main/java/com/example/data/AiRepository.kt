@@ -82,12 +82,27 @@ object RetrofitClient {
 
 class AiRepository {
 
+    private val apiKey: String
+        get() = BuildConfig.GEMINI_API_KEY
+
+    private val isKeyConfigured: Boolean
+        get() = apiKey.isNotBlank() &&
+                apiKey != "MY_GEMINI_API_KEY" &&
+                !apiKey.startsWith("YOUR_") &&
+                apiKey.length > 20
+
     suspend fun explainZekr(zekr: String): String = withContext(Dispatchers.IO) {
+        if (!isKeyConfigured) {
+            return@withContext "الميزة الذكية غير مفعّلة حالياً. يرجى إعداد مفتاح Gemini بشكل آمن (Cloud Function أو Firebase AI)."
+        }
         val prompt = "قم بشرح وتدبر هذا الذكر بأسلوب إيماني، ميسر ومختصر جداً: \n\n\"$zekr\""
         callGemini(prompt)
     }
 
     suspend fun suggestZekrForFeeling(feeling: String): String = withContext(Dispatchers.IO) {
+        if (!isKeyConfigured) {
+            return@withContext "الميزة الذكية غير مفعّلة حالياً. يرجى إعداد مفتاح Gemini بشكل آمن (Cloud Function أو Firebase AI)."
+        }
         val prompt = "أشعر بـ ($feeling) أو أحتاج إلى دعاء بهذا الخصوص. اقترح لي ذكراً أو دعاءً من الأحاديث الصحيحة وحصن المسلم يناسب حالتي.\nنرجو الرد بالتنسيق التالي حصراً:\nالذكر: [النص]\nفضله: [شرح مبسط ومختصر لفضله]\nالمصدر والتخريج: [الكتاب الراوي واسم المرجع كحصن المسلم]"
         callGemini(prompt)
     }
@@ -99,13 +114,13 @@ class AiRepository {
             generationConfig = GenerationConfig(temperature = 0.4f)
         )
         return try {
-            val response = RetrofitClient.service.generateContent("gemini-2.5-flash", BuildConfig.GEMINI_API_KEY, request)
+            val response = RetrofitClient.service.generateContent("gemini-2.5-flash", apiKey, request)
             response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text ?: "عذراً، لم أتمكن من استخراج الإجابة."
         } catch (e: Exception) {
             if (e is java.net.UnknownHostException || e is java.net.SocketTimeoutException) {
                 "عذراً، لا يوجد اتصال بالإنترنت. يرجى التحقق من الشبكة والمحاولة مرة أخرى 🌐"
             } else {
-                "حدث خطأ غير متوقع أثناء الاتصال. حاول مرة أخرى لاحقاً. ⚠️\nالخطأ: ${e.message}"
+                "حدث خطأ غير متوقع أثناء الاتصال. حاول مرة أخرى لاحقاً. ⚠️"
             }
         }
     }
