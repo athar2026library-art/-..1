@@ -1,0 +1,54 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // Prefer custom claims in production. Email check is a temporary fallback.
+    function isAdmin() {
+      return signedIn() && (
+        request.auth.token.admin == true ||
+        (request.auth.token.email_verified == true &&
+         request.auth.token.email in [
+           'mgedh.9ali@gmail.com'
+         ])
+      );
+    }
+
+    // Users can read/write their own progress
+    match /users/{userId} {
+      allow read, write: if signedIn() && request.auth.uid == userId;
+      allow read: if isAdmin();
+    }
+
+    // Content (azkar) – public read of published, admin full access
+    match /content/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Feedback – users can create and update only limited fields on their own docs
+    match /feedback/{feedbackId} {
+      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
+
+      allow read: if isAdmin() ||
+        (signedIn() && resource.data.userId == request.auth.uid);
+
+      // Critical fix: regular users may only touch a safe subset of fields
+      allow update: if isAdmin() ||
+        (signedIn() &&
+         resource.data.userId == request.auth.uid &&
+         request.resource.data.diff(resource.data).affectedKeys()
+           .hasOnly(['replyUnread', 'updatedAt']));
+
+      allow delete: if isAdmin();
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
