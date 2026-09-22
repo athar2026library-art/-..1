@@ -32,7 +32,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,16 +42,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import android.net.Uri
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.FeedbackDraft
 import com.example.ui.AppViewModel
 
 @androidx.compose.material3.ExperimentalMaterial3Api
 @Composable
 fun FeedbackScreen(viewModel: AppViewModel) {
-    val response by viewModel.aiResponse.collectAsState()
-    val signedIn by viewModel.userSignedIn.collectAsState()
-    val history by viewModel.myFeedback.collectAsState()
-    val unreadCount by viewModel.unreadFeedbackCount.collectAsState()
+    val response by viewModel.aiResponse.collectAsStateWithLifecycle()
+    val signedIn by viewModel.userSignedIn.collectAsStateWithLifecycle()
+    val history by viewModel.myFeedback.collectAsStateWithLifecycle()
+    val unreadCount by viewModel.unreadFeedbackCount.collectAsStateWithLifecycle()
     var type by remember { mutableStateOf("suggestion") }
     var message by remember { mutableStateOf("") }
     var attachmentUri by remember { mutableStateOf<Uri?>(null) }
@@ -60,22 +60,41 @@ fun FeedbackScreen(viewModel: AppViewModel) {
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri -> attachmentUri = uri }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("الشكاوى والاقتراحات", fontWeight = FontWeight.Bold) }, colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)) }
+        topBar = {
+            TopAppBar(
+                title = { Text("الشكاوى والاقتراحات", fontWeight = FontWeight.Bold) },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
+            )
+        }
     ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp),
-            contentPadding = PaddingValues(vertical = 18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)
+            contentPadding = PaddingValues(vertical = 18.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             item {
-                Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary)) {
+                Card(
+                    shape = RoundedCornerShape(22.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary)
+                ) {
                     Column(Modifier.padding(19.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.SupportAgent, null, tint = MaterialTheme.colorScheme.onPrimary)
                             Spacer(Modifier.padding(5.dp))
-                            Text("المساعد يسمعك", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                            Text(
+                                "نسعد بتواصلك",
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp
+                            )
                         }
                         Spacer(Modifier.height(8.dp))
-                        Text("اكتب ما تريد بحرية، وسنقترح تصنيفاً وملخصاً قبل الإرسال.", color = MaterialTheme.colorScheme.onPrimary.copy(alpha = .82f), fontSize = 13.sp, lineHeight = 21.sp)
+                        Text(
+                            "اكتب اقتراحك أو ملاحظتك بحرية، وسيصل فريق الباقيات ويرد عليك عند الحاجة.",
+                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = .82f),
+                            fontSize = 13.sp,
+                            lineHeight = 21.sp
+                        )
                     }
                 }
             }
@@ -87,43 +106,157 @@ fun FeedbackScreen(viewModel: AppViewModel) {
                 }
             }
             item {
-                OutlinedTextField(value = message, onValueChange = { message = it }, modifier = Modifier.fillMaxWidth(), minLines = 6, label = { Text("اكتب رسالتك") }, placeholder = { Text("مثلاً: أقترح إضافة...") }, shape = RoundedCornerShape(16.dp))
+                OutlinedTextField(
+                    value = message,
+                    onValueChange = { message = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 6,
+                    label = { Text("اكتب رسالتك") },
+                    placeholder = { Text("مثلاً: أقترح إضافة...") },
+                    shape = RoundedCornerShape(16.dp)
+                )
             }
             item {
-                OutlinedButton(onClick = { imagePicker.launch("image/*") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
+                OutlinedButton(
+                    onClick = { imagePicker.launch("image/*") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
                     Text(if (attachmentUri == null) "إرفاق صورة للمشكلة" else "تم اختيار صورة ✓")
                 }
             }
             item {
-                Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                ) {
                     Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.Lock, null, tint = MaterialTheme.colorScheme.primary)
                         Spacer(Modifier.padding(5.dp))
-                        Text(if (signedIn) "أنت مسجل الدخول، وستستطيع متابعة الرد." else "سيُطلب تسجيل الدخول عند الإرسال لمتابعة الطلب والرد." , fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            if (signedIn) {
+                                "أنت مسجّل الدخول، وستستطيع متابعة الرد."
+                            } else {
+                                "سيُطلب تسجيل الدخول عند الإرسال لمتابعة الطلب والرد."
+                            },
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }
             item {
-                Button(onClick = { if (message.isNotBlank()) showConfirmation = true }, enabled = message.isNotBlank(), modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
+                Button(
+                    onClick = { if (message.isNotBlank()) showConfirmation = true },
+                    enabled = message.isNotBlank(),
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
                     Icon(Icons.AutoMirrored.Filled.Send, null)
                     Spacer(Modifier.padding(4.dp))
                     Text("مراجعة وإرسال")
                 }
-                if (response.isNotBlank()) { Spacer(Modifier.height(9.dp)); Text(response, color = MaterialTheme.colorScheme.primary, fontSize = 12.sp) }
+                if (response.isNotBlank()) {
+                    Spacer(Modifier.height(9.dp))
+                    Text(response, color = MaterialTheme.colorScheme.primary, fontSize = 12.sp)
+                }
             }
             if (history.isNotEmpty()) {
-                item { Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) { Text("طلباتي السابقة", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); if (unreadCount > 0) { Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer), shape = RoundedCornerShape(20.dp)) { Text("$unreadCount تحديث غير مقروء", modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp), color = MaterialTheme.colorScheme.onErrorContainer, fontSize = 11.sp, fontWeight = FontWeight.Bold) } } } }
+                item {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text("طلباتي السابقة", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        if (unreadCount > 0) {
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                                shape = RoundedCornerShape(20.dp)
+                            ) {
+                                Text(
+                                    "$unreadCount تحديث غير مقروء",
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                    color = MaterialTheme.colorScheme.onErrorContainer,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                }
                 items(history) { item ->
-                    Card(onClick = { if (item.replyUnread) viewModel.markFeedbackReplyRead(item.id) }, shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = if (item.replyUnread) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface)) {
-                        Column(Modifier.padding(15.dp)) { Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) { Text(item.title.ifBlank { item.message.take(52) }, fontWeight = FontWeight.Bold); if (item.replyUnread) Text("جديد", color = MaterialTheme.colorScheme.error, fontSize = 10.sp, fontWeight = FontWeight.Bold) }; Spacer(Modifier.height(5.dp)); Text(statusLabel(item.status), color = MaterialTheme.colorScheme.primary, fontSize = 11.sp); if (item.adminReply.isNotBlank()) { Spacer(Modifier.height(7.dp)); Text("رد المالك: ${item.adminReply}", fontSize = 12.sp) } }
+                    Card(
+                        onClick = { if (item.replyUnread) viewModel.markFeedbackReplyRead(item.id) },
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (item.replyUnread) {
+                                MaterialTheme.colorScheme.secondaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.surface
+                            }
+                        )
+                    ) {
+                        Column(Modifier.padding(15.dp)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(item.title.ifBlank { item.message.take(52) }, fontWeight = FontWeight.Bold)
+                                if (item.replyUnread) {
+                                    Text("جديد", color = MaterialTheme.colorScheme.error, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                            Spacer(Modifier.height(5.dp))
+                            Text(statusLabel(item.status), color = MaterialTheme.colorScheme.primary, fontSize = 11.sp)
+                            if (item.adminReply.isNotBlank()) {
+                                Spacer(Modifier.height(7.dp))
+                                Text("رد الفريق: ${item.adminReply}", fontSize = 12.sp)
+                            }
+                        }
                     }
                 }
             }
         }
     }
     if (showConfirmation) {
-        androidx.compose.material3.AlertDialog(onDismissRequest = { showConfirmation = false }, title = { Text("تأكيد الإرسال") }, text = { Text("سيتم إرسال رسالتك إلى فريق أذكار، ويمكنك متابعة حالتها بعد تسجيل الدخول.") }, confirmButton = { Button(onClick = { showConfirmation = false; viewModel.submitFeedback(FeedbackDraft(type = type, title = if (type == "suggestion") "اقتراح مستخدم" else "طلب من المستخدم", message = message, aiSummary = message.take(140), aiCategory = type, attachmentUri = attachmentUri)) }) { Icon(Icons.Default.CheckCircle, null); Spacer(Modifier.padding(3.dp)); Text("تأكيد") } }, dismissButton = { Button(onClick = { showConfirmation = false }) { Text("تعديل") } })
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showConfirmation = false },
+            title = { Text("تأكيد الإرسال") },
+            text = {
+                Text("سيتم إرسال رسالتك إلى فريق الباقيات، ويمكنك متابعة حالتها بعد تسجيل الدخول.")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showConfirmation = false
+                        viewModel.submitFeedback(
+                            FeedbackDraft(
+                                type = type,
+                                title = if (type == "suggestion") "اقتراح مستخدم" else "طلب من المستخدم",
+                                message = message,
+                                aiSummary = message.take(140),
+                                aiCategory = type,
+                                attachmentUri = attachmentUri
+                            )
+                        )
+                    }
+                ) {
+                    Icon(Icons.Default.CheckCircle, null)
+                    Spacer(Modifier.padding(3.dp))
+                    Text("تأكيد")
+                }
+            },
+            dismissButton = {
+                Button(onClick = { showConfirmation = false }) { Text("تعديل") }
+            }
+        )
     }
 }
 
-private fun statusLabel(status: String): String = when (status) { "new" -> "جديد"; "in_progress" -> "قيد المعالجة"; "resolved" -> "تم الحل"; "completed" -> "مكتملة"; else -> "مغلق" }
+private fun statusLabel(status: String): String = when (status) {
+    "new" -> "جديد"
+    "in_progress" -> "قيد المعالجة"
+    "resolved" -> "تم الحل"
+    "completed" -> "مكتملة"
+    else -> "مغلق"
+}

@@ -12,10 +12,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.AppViewModel
 
 data class ChatMessage(val text: String, val isUser: Boolean, val isLoading: Boolean = false)
@@ -25,15 +25,22 @@ data class ChatMessage(val text: String, val isUser: Boolean, val isLoading: Boo
 fun AiServicesScreen(
     viewModel: AppViewModel
 ) {
-    val aiResponse by viewModel.aiResponse.collectAsState()
-    val isLoadingAi by viewModel.isLoadingAi.collectAsState()
-    
-    var inputText by remember { mutableStateOf("") }
-    
-    // We maintain the chat history locally in this session for the minimalist feel
-    var messages by remember { mutableStateOf(listOf(ChatMessage("السلام عليكم، كيف يمكنني مساعدتك اليوم؟ (أذكار، أدعية، فضل ذكر معين...)", isUser = false))) }
+    val aiResponse by viewModel.aiResponse.collectAsStateWithLifecycle()
+    val isLoadingAi by viewModel.isLoadingAi.collectAsStateWithLifecycle()
 
-    // Update messages when AI responds
+    var inputText by remember { mutableStateOf("") }
+
+    var messages by remember {
+        mutableStateOf(
+            listOf(
+                ChatMessage(
+                    "السلام عليكم، كيف يمكنني مساعدتك اليوم؟ (أذكار، أدعية، فضل ذكر معيّن...)",
+                    isUser = false
+                )
+            )
+        )
+    }
+
     LaunchedEffect(aiResponse, isLoadingAi) {
         if (isLoadingAi) {
             if (messages.lastOrNull()?.isLoading != true) {
@@ -71,7 +78,7 @@ fun AiServicesScreen(
                         value = inputText,
                         onValueChange = { inputText = it },
                         modifier = Modifier.weight(1f),
-                        placeholder = { Text("بماذا تشعر؟ أو ادخل ذكراً لتدبره...") },
+                        placeholder = { Text("بماذا تشعر؟ أو أدخل ذكراً لتدبّره...") },
                         shape = RoundedCornerShape(24.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
@@ -85,7 +92,7 @@ fun AiServicesScreen(
                                 val userMessage = inputText
                                 inputText = ""
                                 messages = messages + ChatMessage(userMessage, isUser = true)
-                                viewModel.suggestZekr(userMessage) // Using the suggestZekr as it acts as a generic AI call
+                                viewModel.suggestZekr(userMessage)
                             }
                         },
                         modifier = Modifier
@@ -93,7 +100,11 @@ fun AiServicesScreen(
                             .padding(4.dp),
                         enabled = inputText.isNotBlank() && !isLoadingAi
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", tint = MaterialTheme.colorScheme.onPrimary)
+                        Icon(
+                            Icons.AutoMirrored.Filled.Send,
+                            contentDescription = "إرسال",
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
                     }
                 }
             }
@@ -116,7 +127,7 @@ fun AiServicesScreen(
 
 @Composable
 fun ChatBubble(message: ChatMessage) {
-    val alignment = if (message.isUser) Alignment.CenterStart else Alignment.CenterEnd // RTL mapping (Start is right, End is left)
+    val alignment = if (message.isUser) Alignment.CenterStart else Alignment.CenterEnd
     val bubbleColor = if (message.isUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
     val textColor = if (message.isUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
     val shape = if (message.isUser) {
