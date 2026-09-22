@@ -109,6 +109,9 @@ dependencies {
   implementation(libs.okhttp)
   implementation(libs.retrofit)
   implementation("androidx.work:work-runtime-ktx:2.9.0")
+  // Glance widget
+  implementation("androidx.glance:glance-appwidget:1.1.1")
+  implementation("androidx.glance:glance-material3:1.1.1")
   testImplementation(libs.androidx.compose.ui.test.junit4)
   testImplementation(libs.androidx.core)
   testImplementation(libs.androidx.junit)

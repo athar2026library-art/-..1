@@ -16,9 +16,12 @@ class ProgressRepository(private val progressDao: ProgressDao) {
     fun getTodayProgress(): Flow<UserProgress?> = progressDao.getProgressByDate(getTodayDateStr())
     fun getRecentProgress(): Flow<List<UserProgress>> = progressDao.getRecentProgress()
 
+    /** Blocking-friendly read for widget / workers. */
+    suspend fun getTodayProgressSync(date: String = getTodayDateStr()): UserProgress? =
+        progressDao.getProgressByDateSync(date)
+
     suspend fun initTodayProgress() {
         val date = getTodayDateStr()
-        // IGNORE so we never overwrite existing progress for the day
         progressDao.insertProgressIfNotExists(UserProgress(date = date))
     }
 
