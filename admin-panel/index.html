@@ -44,6 +44,7 @@
       <header class="topbar">
         <h1 id="page-title">نظرة عامة</h1>
         <div class="top-actions">
+          <button class="ghost" id="export-json" type="button">تصدير JSON</button>
           <button class="ghost" id="refresh-btn" type="button">تحديث</button>
           <button class="ghost" id="preview-btn" type="button">معاينة التطبيق</button>
         </div>
@@ -64,7 +65,7 @@
           <button class="primary" id="add-zekr" type="button">+ ذكر جديد</button>
         </div>
         <div class="toolbar">
-          <input id="search" type="search" placeholder="بحث..." />
+          <input id="search" type="search" placeholder="بحث في النص/المصدر/الفضل..." />
           <select id="filter">
             <option value="all">الكل</option>
             <option value="sabah">صباح</option>
@@ -76,6 +77,10 @@
             <option value="all">كل الحالات</option>
             <option value="published">منشور</option>
             <option value="draft">مسودة</option>
+          </select>
+          <select id="show-archived">
+            <option value="hide">إخفاء المؤرشف</option>
+            <option value="show">إظهار المؤرشف</option>
           </select>
         </div>
         <div class="table-wrap">
@@ -110,7 +115,7 @@
           <label>العنوان<input id="broadcast-title" type="text" /></label>
           <label>النص<textarea id="broadcast-body" rows="3"></textarea></label>
           <button type="button" class="primary" id="send-broadcast">تسجيل طلب الإرسال</button>
-          <p class="empty-hint">يُكتب في admin_jobs — يحتاج Cloud Function لـ FCM</p>
+          <p class="empty-hint">يُكتب في admin_jobs — انظر functions-fcm.example.js</p>
         </div>
       </section>
 
@@ -123,7 +128,7 @@
         <div class="security-card">
           <div>
             <strong>أمان و FCM</strong>
-            <p>اربط Cloud Function على مجموعة admin_jobs لإرسال الإشعارات فعلياً.</p>
+            <p>انشر قواعد firestore.rules وحدّث Cloud Function من functions-fcm.example.js. مجموعة admin_jobs للمشرفين فقط.</p>
           </div>
         </div>
       </section>
