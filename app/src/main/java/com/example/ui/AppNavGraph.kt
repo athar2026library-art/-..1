@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.outlined.Chat
-import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Icon
@@ -30,6 +29,7 @@ import com.example.ui.screens.StatsScreen
 import com.example.ui.screens.SettingsScreen
 import com.example.ui.screens.AiServicesScreen
 import com.example.ui.screens.FeedbackScreen
+import com.example.ui.screens.FreeSebhaScreen
 
 sealed class Screen(val route: String, val title: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
     object Home : Screen("home", "الأذكار", Icons.AutoMirrored.Filled.List)
@@ -58,7 +58,6 @@ fun AppNavGraph(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
 
-    // Show BottomBar only on top-level routes
     val showBottomBar = currentDestination?.route in bottomNavItems.map { it.route }
 
     Scaffold(
@@ -100,10 +99,13 @@ fun AppNavGraph(
                     viewModel = viewModel,
                     onNavigateToAzkar = { category ->
                         navController.navigate("azkar/$category")
+                    },
+                    onNavigateToSebha = {
+                        navController.navigate("sebha")
                     }
                 )
             }
-            
+
             composable("azkar/{category}") { backStackEntry ->
                 val category = backStackEntry.arguments?.getString("category") ?: "sabah"
                 AzkarScreen(
@@ -112,7 +114,14 @@ fun AppNavGraph(
                     onNavigateBack = { navController.popBackStack() }
                 )
             }
-            
+
+            composable("sebha") {
+                FreeSebhaScreen(
+                    viewModel = viewModel,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
             composable("feedback") { FeedbackScreen(viewModel = viewModel) }
 
             composable("stats") {
@@ -121,17 +130,13 @@ fun AppNavGraph(
                     onNavigateBack = { navController.popBackStack() }
                 )
             }
-            
+
             composable("settings") {
-                SettingsScreen(
-                    viewModel = viewModel
-                )
+                SettingsScreen(viewModel = viewModel)
             }
-            
+
             composable("ai_services") {
-                AiServicesScreen(
-                    viewModel = viewModel
-                )
+                AiServicesScreen(viewModel = viewModel)
             }
         }
     }
