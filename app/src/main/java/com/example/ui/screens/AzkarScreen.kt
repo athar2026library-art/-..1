@@ -2,7 +2,6 @@ package com.example.ui.screens
 
 import android.app.NotificationManager
 import android.content.Context
-import android.content.Intent
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -39,6 +38,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.AzkarData
 import com.example.ui.AppViewModel
 import com.example.ui.AudioPlayer
+import com.example.ui.ShareHelper
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -74,10 +74,7 @@ fun AzkarScreen(
     val context = LocalContext.current
     val view = LocalView.current
 
-    // TTS player – created once per composition tree
-    val audioPlayer = remember {
-        AudioPlayer(context.applicationContext)
-    }
+    val audioPlayer = remember { AudioPlayer(context.applicationContext) }
     val isPlaying by audioPlayer.isPlaying.collectAsStateWithLifecycle()
     DisposableEffect(Unit) {
         onDispose {
@@ -191,15 +188,9 @@ fun AzkarScreen(
                         }
                     },
                     actions = {
-                        // TTS play / stop
                         IconButton(onClick = {
-                            if (isPlaying) {
-                                audioPlayer.stop()
-                            } else {
-                                coroutineScope.launch {
-                                    audioPlayer.playAndWait(currentZekr.text)
-                                }
-                            }
+                            if (isPlaying) audioPlayer.stop()
+                            else coroutineScope.launch { audioPlayer.playAndWait(currentZekr.text) }
                         }) {
                             Icon(
                                 if (isPlaying) Icons.Default.Stop else Icons.Default.VolumeUp,
@@ -387,13 +378,24 @@ fun AzkarScreen(
                             Text("نسخ")
                         }
                         Button(
-                            onClick = { shareText(context, currentZekr.text); showBottomSheet = false },
+                            onClick = {
+                                try {
+                                    ShareHelper.shareZekrAsImage(
+                                        context,
+                                        currentZekr.text,
+                                        currentZekr.source
+                                    )
+                                } catch (_: Exception) {
+                                    // ignore
+                                }
+                                showBottomSheet = false
+                            },
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(14.dp)
                         ) {
                             Icon(Icons.Default.Share, null, Modifier.size(18.dp))
                             Spacer(Modifier.width(7.dp))
-                            Text("مشاركة")
+                            Text("مشاركة صورة")
                         }
                     }
                 }
@@ -435,12 +437,4 @@ private fun vibrateCompletion(context: Context) {
 private fun copyText(context: Context, text: String) {
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
     clipboard.setPrimaryClip(android.content.ClipData.newPlainText("zekr", text))
-}
-
-private fun shareText(context: Context, text: String) {
-    val intent = Intent(Intent.ACTION_SEND).apply {
-        type = "text/plain"
-        putExtra(Intent.EXTRA_TEXT, text)
-    }
-    context.startActivity(Intent.createChooser(intent, "مشاركة الذكر"))
 }
