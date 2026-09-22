@@ -6,7 +6,6 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Prefer custom claims in production. Email check is a temporary fallback.
     function isAdmin() {
       return signedIn() && (
         request.auth.token.admin == true ||
@@ -17,26 +16,27 @@ service cloud.firestore {
       );
     }
 
-    // Users can read/write their own progress
     match /users/{userId} {
       allow read, write: if signedIn() && request.auth.uid == userId;
       allow read: if isAdmin();
+
+      match /{sub=**} {
+        allow read, write: if signedIn() && request.auth.uid == userId;
+        allow read: if isAdmin();
+      }
     }
 
-    // Content (azkar) – public read of published, admin full access
     match /content/{document=**} {
-      allow read: if true; // or restrict to published if you prefer
+      allow read: if true;
       allow write: if isAdmin();
     }
 
-    // Feedback – users can create and update only limited fields on their own docs
     match /feedback/{feedbackId} {
       allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
 
       allow read: if isAdmin() ||
         (signedIn() && resource.data.userId == request.auth.uid);
 
-      // Critical fix: regular users may only touch a safe subset of fields
       allow update: if isAdmin() ||
         (signedIn() &&
          resource.data.userId == request.auth.uid &&
@@ -46,7 +46,11 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // Default deny
+    // Admin-only job queue for Cloud Functions (FCM)
+    match /admin_jobs/{jobId} {
+      allow read, write: if isAdmin();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
