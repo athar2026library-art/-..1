@@ -36,13 +36,13 @@ class AppViewModel(
 
     val recentProgress: StateFlow<List<UserProgress>> = progressRepository.getRecentProgress()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-        
+
     val fontSize: StateFlow<Float> = settingsRepository.fontSizeFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 24f)
-        
+
     val isDarkMode: StateFlow<Boolean> = settingsRepository.darkModeFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
-        
+
     val isVibrationEnabled: StateFlow<Boolean> = settingsRepository.vibrationFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
@@ -58,23 +58,24 @@ class AppViewModel(
     val hideSources: StateFlow<Boolean> = settingsRepository.hideSourcesFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
+    val notificationsEnabled: StateFlow<Boolean> = settingsRepository.notificationsEnabledFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
     val lastReadCategory: StateFlow<String> = settingsRepository.lastReadCategoryFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
-        
+
     val lastReadIndex: StateFlow<Int> = settingsRepository.lastReadIndexFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
-        
+
     val lastReadRemaining: StateFlow<Int> = settingsRepository.lastReadRemainingFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
-    // AI-only responses
     private val _aiResponse = MutableStateFlow("")
     val aiResponse: StateFlow<String> = _aiResponse.asStateFlow()
 
-    // Status / toast-like messages (sync, login, etc.)
     private val _statusMessage = MutableStateFlow("")
     val statusMessage: StateFlow<String> = _statusMessage.asStateFlow()
-    
+
     private val _isLoadingAi = MutableStateFlow(false)
     val isLoadingAi: StateFlow<Boolean> = _isLoadingAi.asStateFlow()
 
@@ -88,7 +89,6 @@ class AppViewModel(
         .let { flow -> kotlinx.coroutines.flow.flow { flow.collect { emit(it.count { item -> item.replyUnread }) } } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
-    // ---- Debounced tasbeeh ----
     private val pendingTasbeeh = AtomicInteger(0)
     private var flushJob: Job? = null
 
@@ -98,10 +98,6 @@ class AppViewModel(
         }
     }
 
-    /**
-     * Batches rapid taps. Flushes to Room at most every ~1.5 seconds
-     * or when [flushPendingTasbeeh] is called (e.g. on screen leave).
-     */
     fun addTasbeeh(count: Int = 1) {
         pendingTasbeeh.addAndGet(count)
         if (flushJob?.isActive != true) {
@@ -130,18 +126,14 @@ class AppViewModel(
 
     fun completeSabah() {
         flushPendingTasbeeh()
-        viewModelScope.launch {
-            progressRepository.completeSabah()
-        }
+        viewModelScope.launch { progressRepository.completeSabah() }
     }
 
     fun completeMasaa() {
         flushPendingTasbeeh()
-        viewModelScope.launch {
-            progressRepository.completeMasaa()
-        }
+        viewModelScope.launch { progressRepository.completeMasaa() }
     }
-    
+
     fun saveLastReadState(category: String, index: Int, remaining: Int) {
         viewModelScope.launch {
             settingsRepository.saveLastReadState(category, index, remaining)
@@ -149,53 +141,41 @@ class AppViewModel(
     }
 
     fun clearLastReadState() {
-        viewModelScope.launch {
-            settingsRepository.clearLastReadState()
-        }
+        viewModelScope.launch { settingsRepository.clearLastReadState() }
     }
-    
+
     fun setFontSize(size: Float) {
-        viewModelScope.launch {
-            settingsRepository.setFontSize(size)
-        }
+        viewModelScope.launch { settingsRepository.setFontSize(size) }
     }
-    
+
     fun setDarkMode(isDark: Boolean) {
-        viewModelScope.launch {
-            settingsRepository.setDarkMode(isDark)
-        }
+        viewModelScope.launch { settingsRepository.setDarkMode(isDark) }
     }
-    
+
     fun setVibration(enabled: Boolean) {
-        viewModelScope.launch {
-            settingsRepository.setVibration(enabled)
-        }
+        viewModelScope.launch { settingsRepository.setVibration(enabled) }
     }
-    
+
     fun setKeepScreenOn(enabled: Boolean) {
-        viewModelScope.launch {
-            settingsRepository.setKeepScreenOn(enabled)
-        }
+        viewModelScope.launch { settingsRepository.setKeepScreenOn(enabled) }
     }
 
     fun setAutoDnd(enabled: Boolean) {
-        viewModelScope.launch {
-            settingsRepository.setAutoDnd(enabled)
-        }
+        viewModelScope.launch { settingsRepository.setAutoDnd(enabled) }
     }
 
     fun setHideVirtues(hide: Boolean) {
-        viewModelScope.launch {
-            settingsRepository.setHideVirtues(hide)
-        }
+        viewModelScope.launch { settingsRepository.setHideVirtues(hide) }
     }
 
     fun setHideSources(hide: Boolean) {
-        viewModelScope.launch {
-            settingsRepository.setHideSources(hide)
-        }
+        viewModelScope.launch { settingsRepository.setHideSources(hide) }
     }
-    
+
+    fun setNotificationsEnabled(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setNotificationsEnabled(enabled) }
+    }
+
     fun explainZekr(zekr: String) {
         viewModelScope.launch {
             _isLoadingAi.value = true
@@ -226,7 +206,7 @@ class AppViewModel(
 
     fun clearAiResponse() { _aiResponse.value = "" }
     fun clearStatusMessage() { _statusMessage.value = "" }
-    
+
     fun signIn() {
         viewModelScope.launch {
             val success = authRepository.signInWithGoogle()
@@ -238,7 +218,7 @@ class AppViewModel(
             }
         }
     }
-    
+
     fun signOut() {
         authRepository.signOut()
         _userSignedIn.value = false
@@ -254,13 +234,20 @@ class AppViewModel(
             if (authRepository.getCurrentUser() == null) {
                 val signedIn = authRepository.signInWithGoogle()
                 _userSignedIn.value = signedIn
-                if (!signedIn) { _statusMessage.value = "يجب تسجيل الدخول لإرسال الطلب."; return@launch }
+                if (!signedIn) {
+                    _statusMessage.value = "يجب تسجيل الدخول لإرسال الطلب."
+                    return@launch
+                }
             }
             val result = firestoreRepository.submitFeedback(draft, draft.attachmentUri)
-            _statusMessage.value = if (result.isSuccess) "تم إرسال طلبك بنجاح، ويمكنك متابعة حالته من هنا." else "تعذر إرسال الطلب. حاول مرة أخرى."
+            _statusMessage.value = if (result.isSuccess) {
+                "تم إرسال طلبك بنجاح، ويمكنك متابعة حالته من هنا."
+            } else {
+                "تعذر إرسال الطلب. حاول مرة أخرى."
+            }
         }
     }
-    
+
     fun syncData() {
         viewModelScope.launch {
             _statusMessage.value = "جاري المزامنة مع السحابة..."
@@ -292,7 +279,13 @@ class AppViewModelFactory(
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(AppViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return AppViewModel(progressRepository, settingsRepository, aiRepository, authRepository, firestoreRepository) as T
+            return AppViewModel(
+                progressRepository,
+                settingsRepository,
+                aiRepository,
+                authRepository,
+                firestoreRepository
+            ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
