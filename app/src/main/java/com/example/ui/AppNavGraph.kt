@@ -29,7 +29,6 @@ import com.example.ui.screens.StatsScreen
 import com.example.ui.screens.SettingsScreen
 import com.example.ui.screens.AiServicesScreen
 import com.example.ui.screens.FeedbackScreen
-import com.example.ui.screens.FreeSebhaScreen
 
 sealed class Screen(val route: String, val title: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
     object Home : Screen("home", "الأذكار", Icons.AutoMirrored.Filled.List)
@@ -99,9 +98,6 @@ fun AppNavGraph(
                     viewModel = viewModel,
                     onNavigateToAzkar = { category ->
                         navController.navigate("azkar/$category")
-                    },
-                    onNavigateToSebha = {
-                        navController.navigate("sebha")
                     }
                 )
             }
@@ -110,13 +106,6 @@ fun AppNavGraph(
                 val category = backStackEntry.arguments?.getString("category") ?: "sabah"
                 AzkarScreen(
                     category = category,
-                    viewModel = viewModel,
-                    onNavigateBack = { navController.popBackStack() }
-                )
-            }
-
-            composable("sebha") {
-                FreeSebhaScreen(
                     viewModel = viewModel,
                     onNavigateBack = { navController.popBackStack() }
                 )
