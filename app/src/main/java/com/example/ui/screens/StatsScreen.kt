@@ -44,7 +44,7 @@ fun StatsScreen(
                 title = { Text("تقدمي 🌿", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "رجوع")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -67,7 +67,7 @@ fun StatsScreen(
             val completedDays = recentProgress.count { it.completedSabah || it.completedMasaa }
 
             Text(
-                text = "🔥 $streak يومًا",
+                text = "🔥 $streak يوماً",
                 fontSize = 40.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
@@ -88,12 +88,10 @@ fun StatsScreen(
 
             Spacer(modifier = Modifier.height(28.dp))
 
-            // Monthly calendar
             MonthlyCalendar(recentProgress)
 
             Spacer(modifier = Modifier.height(28.dp))
 
-            // Weekly chart
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -118,7 +116,7 @@ fun StatsScreen(
                     verticalAlignment = Alignment.Bottom
                 ) {
                     val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-                    val dayFormat = SimpleDateFormat("EE", Locale.forLanguageTag("ar"))
+                    val dayLabels = listOf("أحد", "إثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة", "سبت")
 
                     var maxTasbeeh = 1
                     val weekData = mutableListOf<Pair<String, Int>>()
@@ -129,7 +127,9 @@ fun StatsScreen(
                         val progress = recentProgress.find { it.date == dateStr }
                         val tasbeeh = progress?.totalTasbeeh ?: 0
                         if (tasbeeh > maxTasbeeh) maxTasbeeh = tasbeeh
-                        weekData.add(Pair(dayFormat.format(calDay.time), tasbeeh))
+                        // Calendar.SUNDAY=1 … SATURDAY=7 → index 0..6
+                        val label = dayLabels[calDay.get(Calendar.DAY_OF_WEEK) - 1]
+                        weekData.add(Pair(label, tasbeeh))
                     }
 
                     for ((dayName, tasbeehCount) in weekData) {
@@ -154,7 +154,7 @@ fun StatsScreen(
                                     )
                             )
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text(text = dayName, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(text = dayName, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
@@ -215,24 +215,30 @@ fun StatsScreen(
     }
 }
 
+/**
+ * رزنامة الشهر الحالي.
+ * يبدأ الأسبوع بالسبت (شائع في التقويم العربي).
+ * الأعمدة من اليمين لليسار في واجهة RTL تظهر بترتيب القائمة.
+ */
 @Composable
 private fun MonthlyCalendar(progress: List<UserProgress>) {
-    val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-    val monthTitleFmt = SimpleDateFormat("MMMM yyyy", Locale.forLanguageTag("ar"))
     val cal = Calendar.getInstance()
     val year = cal.get(Calendar.YEAR)
     val month = cal.get(Calendar.MONTH)
     val today = cal.get(Calendar.DAY_OF_MONTH)
-
     val daysInMonth = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
+
+    // أول يوم في الشهر → إزاحة عند بداية الأسبوع يوم السبت
+    // Calendar: SUNDAY=1 … SATURDAY=7
+    // السبت أولاً: offset = dayOfWeek % 7  → سبت=0، أحد=1، … جمعة=6
     cal.set(Calendar.DAY_OF_MONTH, 1)
-    // Calendar.SUNDAY=1 … Saturday=7 — shift so week starts Saturday for AR feel optional; use Sunday=0 grid
-    val firstWeekday = (cal.get(Calendar.DAY_OF_WEEK) + 5) % 7 // Mon=0 … Sun=6 simplified: use SUNDAY based
-    // Standard: first cell offset = dayOfWeek - 1 (Sunday first)
-    cal.set(Calendar.DAY_OF_MONTH, 1)
-    val offset = cal.get(Calendar.DAY_OF_WEEK) - 1
+    val offset = cal.get(Calendar.DAY_OF_WEEK) % 7
 
     val byDate = progress.associateBy { it.date }
+    val monthTitleFmt = SimpleDateFormat("MMMM yyyy", Locale.forLanguageTag("ar"))
+
+    // سبت، أحد، إثنين، ثلاثاء، أربعاء، خميس، جمعة
+    val dayNames = listOf("سبت", "أحد", "إثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة")
 
     Column(
         modifier = Modifier
@@ -251,15 +257,15 @@ private fun MonthlyCalendar(progress: List<UserProgress>) {
         )
         Spacer(modifier = Modifier.height(12.dp))
 
-        val dayNames = listOf("ح", "ن", "ث", "ر", "خ", "ج", "س")
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+        Row(Modifier.fillMaxWidth()) {
             dayNames.forEach { d ->
                 Text(
                     d,
                     fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f),
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    maxLines = 1
                 )
             }
         }
@@ -272,8 +278,7 @@ private fun MonthlyCalendar(progress: List<UserProgress>) {
 
         cells.chunked(7).forEach { week ->
             Row(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)
             ) {
                 week.forEach { day ->
                     Box(
@@ -323,7 +328,7 @@ private fun MonthlyCalendar(progress: List<UserProgress>) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
         ) {
-            LegendDot(MaterialTheme.colorScheme.primary, "صباح+مساء")
+            LegendDot(MaterialTheme.colorScheme.primary, "صباح ومساء")
             LegendDot(MaterialTheme.colorScheme.primary.copy(alpha = 0.35f), "نشاط")
         }
     }

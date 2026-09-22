@@ -13,7 +13,7 @@
       <span class="brand-mark">ب</span>
       <p class="eyebrow">منطقة محمية</p>
       <h1>دخول المشرف</h1>
-      <p>حساب Google مصرح به فقط.</p>
+      <p>حساب Google مصرّح به فقط.</p>
       <button class="primary" id="login-btn" type="button">تسجيل الدخول باستخدام Google</button>
       <small id="auth-message">جاري التهيئة...</small>
     </div>
@@ -52,7 +52,7 @@
 
       <section id="overview" class="view active-view">
         <div class="stats-grid">
-          <article class="stat"><span>إجمالي</span><strong id="stat-total">0</strong></article>
+          <article class="stat"><span>الإجمالي</span><strong id="stat-total">0</strong></article>
           <article class="stat"><span>منشور</span><strong id="stat-published">0</strong></article>
           <article class="stat"><span>مسودات</span><strong id="stat-drafts">0</strong></article>
           <article class="stat accent"><span>شكاوى جديدة</span><strong id="stat-feedback-new">0</strong></article>
@@ -65,13 +65,13 @@
           <button class="primary" id="add-zekr" type="button">+ ذكر جديد</button>
         </div>
         <div class="toolbar">
-          <input id="search" type="search" placeholder="بحث في النص/المصدر/الفضل..." />
+          <input id="search" type="search" placeholder="بحث في النص أو المصدر أو الفضل..." />
           <select id="filter">
-            <option value="all">الكل</option>
-            <option value="sabah">صباح</option>
-            <option value="masaa">مساء</option>
-            <option value="sleep">نوم</option>
-            <option value="travel">سفر</option>
+            <option value="all">كل التصنيفات</option>
+            <option value="sabah">الصباح</option>
+            <option value="masaa">المساء</option>
+            <option value="sleep">النوم</option>
+            <option value="travel">السفر</option>
           </select>
           <select id="status-filter">
             <option value="all">كل الحالات</option>
@@ -86,7 +86,16 @@
         <div class="table-wrap">
           <table>
             <thead>
-              <tr><th></th><th>ترتيب</th><th>الذكر</th><th>تصنيف</th><th>تكرار</th><th>حالة</th><th>مصدر</th><th></th></tr>
+              <tr>
+                <th aria-label="سحب"></th>
+                <th>الترتيب</th>
+                <th>نص الذكر</th>
+                <th>التصنيف</th>
+                <th>التكرار</th>
+                <th>الحالة</th>
+                <th>المصدر</th>
+                <th>إجراءات</th>
+              </tr>
             </thead>
             <tbody id="azkar-table"></tbody>
           </table>
@@ -145,10 +154,10 @@
       <div class="form-grid">
         <label>التصنيف
           <select id="field-category">
-            <option value="sabah">صباح</option>
-            <option value="masaa">مساء</option>
-            <option value="sleep">نوم</option>
-            <option value="travel">سفر</option>
+            <option value="sabah">الصباح</option>
+            <option value="masaa">المساء</option>
+            <option value="sleep">النوم</option>
+            <option value="travel">السفر</option>
           </select>
         </label>
         <label>التكرار<input id="field-repeat" type="number" min="1" value="1" /></label>
