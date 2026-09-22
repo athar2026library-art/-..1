@@ -1,7 +1,6 @@
 package com.example.data
 
 import android.content.Context
-import androidx.room.Room
 import kotlinx.coroutines.flow.Flow
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -16,7 +15,6 @@ class ProgressRepository(private val progressDao: ProgressDao) {
     fun getTodayProgress(): Flow<UserProgress?> = progressDao.getProgressByDate(getTodayDateStr())
     fun getRecentProgress(): Flow<List<UserProgress>> = progressDao.getRecentProgress()
 
-    /** Blocking-friendly read for widget / workers. */
     suspend fun getTodayProgressSync(date: String = getTodayDateStr()): UserProgress? =
         progressDao.getProgressByDateSync(date)
 
@@ -59,17 +57,10 @@ class ProgressRepository(private val progressDao: ProgressDao) {
 
         fun getInstance(context: Context): ProgressRepository {
             return instance ?: synchronized(this) {
-                instance ?: buildRepository(context).also { instance = it }
+                instance ?: ProgressRepository(
+                    AppDatabase.getDatabase(context).progressDao()
+                ).also { instance = it }
             }
-        }
-
-        private fun buildRepository(context: Context): ProgressRepository {
-            val db = Room.databaseBuilder(
-                context.applicationContext,
-                AppDatabase::class.java,
-                "azkar_db"
-            ).build()
-            return ProgressRepository(db.progressDao())
         }
     }
 }
