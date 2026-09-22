@@ -2,10 +2,13 @@ package com.example
 
 import android.app.Application
 import android.os.StrictMode
+import android.util.Log
 import com.google.firebase.Firebase
 import com.google.firebase.appcheck.appCheck
 import com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory
 import com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreSettings
 import com.google.firebase.initialize
 
 class AzkarApplication : Application() {
@@ -31,6 +34,16 @@ class AzkarApplication : Application() {
         }
 
         Firebase.initialize(this)
+
+        // Offline cache for Firestore – content available after first successful sync
+        try {
+            val settings = FirebaseFirestoreSettings.Builder()
+                .setPersistenceEnabled(true)
+                .build()
+            FirebaseFirestore.getInstance().firestoreSettings = settings
+        } catch (e: Exception) {
+            Log.w("AzkarApplication", "Firestore settings already applied or unavailable", e)
+        }
 
         val appCheck = Firebase.appCheck
         appCheck.installAppCheckProviderFactory(

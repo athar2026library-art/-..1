@@ -9,6 +9,7 @@ import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 class FirestoreRepository {
     private val firestore by lazy {
@@ -33,7 +34,7 @@ class FirestoreRepository {
             Log.e("FirestoreRepository", "Backup failed", e)
         }
     }
-    
+
     suspend fun fetchProgress(): List<UserProgress> {
         val user = auth?.currentUser ?: return emptyList()
         val db = firestore ?: return emptyList()
@@ -105,7 +106,8 @@ class FirestoreRepository {
                 trySend(items)
             }
         awaitClose { registration.remove() }
-    }
+    }.distinctUntilChanged()
+
     suspend fun submitFeedback(draft: FeedbackDraft, attachmentUri: Uri? = null): Result<String> {
         val user = auth?.currentUser ?: return Result.failure(IllegalStateException("AUTH_REQUIRED"))
         val db = firestore ?: return Result.failure(IllegalStateException("FIRESTORE_UNAVAILABLE"))
@@ -166,7 +168,7 @@ class FirestoreRepository {
                 trySend(items)
             }
         awaitClose { registration.remove() }
-    }
+    }.distinctUntilChanged()
 
     suspend fun markFeedbackReplyRead(feedbackId: String) {
         val user = auth?.currentUser ?: return
@@ -176,5 +178,4 @@ class FirestoreRepository {
             db.collection("users").document(user.uid).collection("feedback").document(feedbackId).update("replyUnread", false).await()
         } catch (e: Exception) { Log.e("FirestoreRepository", "Mark reply read failed", e) }
     }
-
 }
