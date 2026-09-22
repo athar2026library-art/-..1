@@ -12,6 +12,8 @@ import com.example.data.FirestoreRepository
 import com.example.data.FeedbackDraft
 import com.example.data.FeedbackItem
 import com.example.data.Zekr
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -19,6 +21,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicInteger
 
 class AppViewModel(
     private val progressRepository: ProgressRepository,
@@ -64,8 +67,13 @@ class AppViewModel(
     val lastReadRemaining: StateFlow<Int> = settingsRepository.lastReadRemainingFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
-    private val _aiResponse = MutableStateFlow<String>("")
+    // AI-only responses
+    private val _aiResponse = MutableStateFlow("")
     val aiResponse: StateFlow<String> = _aiResponse.asStateFlow()
+
+    // Status / toast-like messages (sync, login, etc.)
+    private val _statusMessage = MutableStateFlow("")
+    val statusMessage: StateFlow<String> = _statusMessage.asStateFlow()
     
     private val _isLoadingAi = MutableStateFlow(false)
     val isLoadingAi: StateFlow<Boolean> = _isLoadingAi.asStateFlow()
@@ -80,27 +88,57 @@ class AppViewModel(
         .let { flow -> kotlinx.coroutines.flow.flow { flow.collect { emit(it.count { item -> item.replyUnread }) } } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
+    // ---- Debounced tasbeeh ----
+    private val pendingTasbeeh = AtomicInteger(0)
+    private var flushJob: Job? = null
+
     init {
         viewModelScope.launch {
             progressRepository.initTodayProgress()
         }
     }
 
+    /**
+     * Batches rapid taps. Flushes to Room at most every ~1.5 seconds
+     * or when [flushPendingTasbeeh] is called (e.g. on screen leave).
+     */
+    fun addTasbeeh(count: Int = 1) {
+        pendingTasbeeh.addAndGet(count)
+        if (flushJob?.isActive != true) {
+            flushJob = viewModelScope.launch {
+                delay(1500)
+                flushPendingTasbeeh()
+            }
+        }
+    }
+
+    fun flushPendingTasbeeh() {
+        val toWrite = pendingTasbeeh.getAndSet(0)
+        if (toWrite > 0) {
+            viewModelScope.launch {
+                progressRepository.addTasbeeh(toWrite)
+            }
+        }
+        flushJob?.cancel()
+        flushJob = null
+    }
+
+    override fun onCleared() {
+        flushPendingTasbeeh()
+        super.onCleared()
+    }
+
     fun completeSabah() {
+        flushPendingTasbeeh()
         viewModelScope.launch {
             progressRepository.completeSabah()
         }
     }
 
     fun completeMasaa() {
+        flushPendingTasbeeh()
         viewModelScope.launch {
             progressRepository.completeMasaa()
-        }
-    }
-    
-    fun addTasbeeh(count: Int) {
-        viewModelScope.launch {
-            progressRepository.addTasbeeh(count)
         }
     }
     
@@ -185,15 +223,18 @@ class AppViewModel(
             }
         }
     }
+
+    fun clearAiResponse() { _aiResponse.value = "" }
+    fun clearStatusMessage() { _statusMessage.value = "" }
     
     fun signIn() {
         viewModelScope.launch {
             val success = authRepository.signInWithGoogle()
             if (success) {
                 _userSignedIn.value = true
-                _aiResponse.value = "تم تسجيل الدخول بنجاح!"
+                _statusMessage.value = "تم تسجيل الدخول بنجاح!"
             } else {
-                _aiResponse.value = "فشل تسجيل الدخول. تأكد من إعدادات Firebase."
+                _statusMessage.value = "فشل تسجيل الدخول. تأكد من إعدادات Firebase."
             }
         }
     }
@@ -201,7 +242,7 @@ class AppViewModel(
     fun signOut() {
         authRepository.signOut()
         _userSignedIn.value = false
-        _aiResponse.value = "تم تسجيل الخروج."
+        _statusMessage.value = "تم تسجيل الخروج."
     }
 
     fun markFeedbackReplyRead(feedbackId: String) {
@@ -213,26 +254,23 @@ class AppViewModel(
             if (authRepository.getCurrentUser() == null) {
                 val signedIn = authRepository.signInWithGoogle()
                 _userSignedIn.value = signedIn
-                if (!signedIn) { _aiResponse.value = "يجب تسجيل الدخول لإرسال الطلب."; return@launch }
+                if (!signedIn) { _statusMessage.value = "يجب تسجيل الدخول لإرسال الطلب."; return@launch }
             }
             val result = firestoreRepository.submitFeedback(draft, draft.attachmentUri)
-            _aiResponse.value = if (result.isSuccess) "تم إرسال طلبك بنجاح، ويمكنك متابعة حالته من هنا." else "تعذر إرسال الطلب. حاول مرة أخرى."
+            _statusMessage.value = if (result.isSuccess) "تم إرسال طلبك بنجاح، ويمكنك متابعة حالته من هنا." else "تعذر إرسال الطلب. حاول مرة أخرى."
         }
     }
     
     fun syncData() {
         viewModelScope.launch {
-            _aiResponse.value = "جاري المزامنة مع السحابة..."
+            _statusMessage.value = "جاري المزامنة مع السحابة..."
             try {
-                // 1. Fetch remote progress
                 val remoteProgress = firestoreRepository.fetchProgress()
-                // 2. Merge remote with local
                 progressRepository.syncProgress(remoteProgress)
-                // 3. Push the (now merged) local progress back to remote
                 firestoreRepository.backupProgress(recentProgress.value)
-                _aiResponse.value = "تمت مزامنة البستان بنجاح! 🌴"
+                _statusMessage.value = "تمت مزامنة البستان بنجاح! 🌴"
             } catch (e: Exception) {
-                _aiResponse.value = "تعذرت المزامنة، تأكد من اتصالك بالإنترنت 🌐"
+                _statusMessage.value = "تعذرت المزامنة، تأكد من اتصالك بالإنترنت 🌐"
             }
         }
     }
