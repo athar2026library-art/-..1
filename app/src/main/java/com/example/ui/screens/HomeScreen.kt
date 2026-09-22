@@ -12,7 +12,6 @@ import androidx.compose.material.icons.filled.AirlineSeatFlat
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.NightsStay
-import androidx.compose.material.icons.filled.RadioButtonChecked
 import androidx.compose.material.icons.filled.SelfImprovement
 import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.*
@@ -35,8 +34,7 @@ import java.util.Locale
 @Composable
 fun HomeScreen(
     viewModel: AppViewModel,
-    onNavigateToAzkar: (String) -> Unit,
-    onNavigateToSebha: () -> Unit = {}
+    onNavigateToAzkar: (String) -> Unit
 ) {
     val lastReadCategory by viewModel.lastReadCategory.collectAsStateWithLifecycle()
     val lastReadIndex by viewModel.lastReadIndex.collectAsStateWithLifecycle()
@@ -66,7 +64,7 @@ fun HomeScreen(
                     Text("وَاذْكُرْ رَبَّكَ إِذَا نَسِيتَ", color = MaterialTheme.colorScheme.onPrimary.copy(alpha = .9f), fontSize = 14.sp)
                     Spacer(modifier.height(10.dp))
                     Text("اجعل لليوم نصيباً من الذكر", color = MaterialTheme.colorScheme.onPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold, lineHeight = 30.sp)
-                    Spacer(modifier.height(6.dp))
+                    Spacer(Modifier.height(6.dp))
                     Text("دقائق قليلة تصنع فرقاً كبيراً في قلبك.", color = MaterialTheme.colorScheme.onPrimary.copy(alpha = .8f), fontSize = 14.sp)
                 }
                 Icon(Icons.Default.SelfImprovement, null, Modifier.align(Alignment.TopEnd).size(58.dp), tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = .25f))
@@ -84,23 +82,6 @@ fun HomeScreen(
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             WirdCard(Modifier.weight(1f), "النوم", "طمأنينة قبل النوم", Icons.Default.AirlineSeatFlat) { onNavigateToAzkar("sleep") }
             WirdCard(Modifier.weight(1f), "السفر", "حفظ وأمان", Icons.Default.DirectionsCar) { onNavigateToAzkar("travel") }
-        }
-
-        Spacer(Modifier.height(12.dp))
-        Card(
-            modifier = Modifier.fillMaxWidth().clickable(onClick = onNavigateToSebha),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = .25f))
-        ) {
-            Row(modifier = Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.RadioButtonChecked, null, Modifier.size(28.dp), tint = MaterialTheme.colorScheme.primary)
-                Spacer(Modifier.width(14.dp))
-                Column {
-                    Text("مسبحة حرة", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    Text("سبّح في أي وقت · هدف 33 أو 100 أو حر", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
         }
 
         if (isWirdActive) {
@@ -129,7 +110,7 @@ fun HomeScreen(
 
         Spacer(Modifier.height(26.dp))
         Text("لمحة عن إنجازك", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(12.dp))
+        Spacer(modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             StatCard(Modifier.weight(1f), "${recentProgress.sumOf { it.totalTasbeeh }}", "تسبيحة", Icons.Default.AutoAwesome)
             StatCard(Modifier.weight(1f), if (completedToday) "مكتمل" else "ابدأ الآن", "ورد اليوم", Icons.Default.SelfImprovement)
