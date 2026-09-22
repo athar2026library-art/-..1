@@ -10,6 +10,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.NightsStay
+import androidx.compose.material.icons.filled.RadioButtonChecked
 import androidx.compose.material.icons.filled.SelfImprovement
 import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.*
@@ -30,7 +31,11 @@ import java.util.Date
 import java.util.Locale
 
 @Composable
-fun HomeScreen(viewModel: AppViewModel, onNavigateToAzkar: (String) -> Unit) {
+fun HomeScreen(
+    viewModel: AppViewModel,
+    onNavigateToAzkar: (String) -> Unit,
+    onNavigateToSebha: () -> Unit = {}
+) {
     val lastReadCategory by viewModel.lastReadCategory.collectAsStateWithLifecycle()
     val lastReadIndex by viewModel.lastReadIndex.collectAsStateWithLifecycle()
     val recentProgress by viewModel.recentProgress.collectAsStateWithLifecycle()
@@ -44,22 +49,22 @@ fun HomeScreen(viewModel: AppViewModel, onNavigateToAzkar: (String) -> Unit) {
         modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState()).padding(horizontal = 20.dp),
     ) {
-        Spacer(Modifier.height(28.dp))
+        Spacer(modifier.height(28.dp))
         Text("السلام عليكم ورحمة الله", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(4.dp))
+        Spacer(modifier.height(4.dp))
         Text(date, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(Modifier.height(22.dp))
+        Spacer(modifier.height(22.dp))
 
         Card(
             modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(28.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
         ) {
             Box(Modifier.fillMaxWidth().padding(22.dp)) {
-                Column(Modifier.fillMaxWidth(0.78f)) {
+                Column(modifier.fillMaxWidth(0.78f)) {
                     Text("وَاذْكُرْ رَبَّكَ إِذَا نَسِيتَ", color = MaterialTheme.colorScheme.onPrimary.copy(alpha = .9f), fontSize = 14.sp)
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(modifier.height(10.dp))
                     Text("اجعل لليوم نصيباً من الذكر", color = MaterialTheme.colorScheme.onPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold, lineHeight = 30.sp)
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(modifier.height(6.dp))
                     Text("دقائق قليلة تصنع فرقاً كبيراً في قلبك.", color = MaterialTheme.colorScheme.onPrimary.copy(alpha = .8f), fontSize = 14.sp)
                 }
                 Icon(Icons.Default.SelfImprovement, null, Modifier.align(Alignment.TopEnd).size(58.dp), tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = .25f))
@@ -74,8 +79,28 @@ fun HomeScreen(viewModel: AppViewModel, onNavigateToAzkar: (String) -> Unit) {
             WirdCard(Modifier.weight(1f), "المساء", "اختم يومك بسكينة", Icons.Default.NightsStay) { onNavigateToAzkar("masaa") }
         }
 
+        Spacer(modifier.height(12.dp))
+        Card(
+            modifier = Modifier.fillMaxWidth().clickable(onClick = onNavigateToSebha),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = .25f))
+        ) {
+            Row(
+                modifier = Modifier.padding(18.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.RadioButtonChecked, null, Modifier.size(28.dp), tint = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.width(14.dp))
+                Column {
+                    Text("مسبحة حرة", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Text("سبّح في أي وقت · هدف 33 أو 100 أو حر", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+
         if (isWirdActive) {
-            Spacer(Modifier.height(18.dp))
+            Spacer(modifier.height(18.dp))
             Card(
                 modifier = Modifier.fillMaxWidth().clickable { onNavigateToAzkar(lastReadCategory) },
                 shape = RoundedCornerShape(20.dp),
@@ -87,7 +112,7 @@ fun HomeScreen(viewModel: AppViewModel, onNavigateToAzkar: (String) -> Unit) {
                         Text("متابعة من حيث توقفت", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                         Text("${lastReadIndex + 1} / $categorySize", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                     }
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(modifier.height(12.dp))
                     LinearProgressIndicator(
                         progress = { (lastReadIndex.toFloat() / categorySize).coerceIn(0f, 1f) },
                         Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(8.dp)),
@@ -105,7 +130,7 @@ fun HomeScreen(viewModel: AppViewModel, onNavigateToAzkar: (String) -> Unit) {
             StatCard(Modifier.weight(1f), "${recentProgress.sumOf { it.totalTasbeeh }}", "تسبيحة", Icons.Default.AutoAwesome)
             StatCard(Modifier.weight(1f), if (completedToday) "مكتمل" else "ابدأ الآن", "ورد اليوم", Icons.Default.SelfImprovement)
         }
-        Spacer(Modifier.height(32.dp))
+        Spacer(modifier.height(32.dp))
     }
 }
 
