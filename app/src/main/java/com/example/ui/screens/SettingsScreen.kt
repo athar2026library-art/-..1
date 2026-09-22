@@ -37,7 +37,8 @@ fun SettingsScreen(
     val autoDnd by viewModel.autoDnd.collectAsStateWithLifecycle()
     val hideVirtues by viewModel.hideVirtues.collectAsStateWithLifecycle()
     val hideSources by viewModel.hideSources.collectAsStateWithLifecycle()
-    
+    val notificationsEnabled by viewModel.notificationsEnabled.collectAsStateWithLifecycle()
+
     val userSignedIn by viewModel.userSignedIn.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
@@ -63,7 +64,7 @@ fun SettingsScreen(
 
             Text("المظهر", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             Card(
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -82,11 +83,11 @@ fun SettingsScreen(
                             onCheckedChange = { viewModel.setDarkMode(it) }
                         )
                     }
-                    
+
                     Spacer(modifier = Modifier.height(16.dp))
                     HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
                     Spacer(modifier = Modifier.height(16.dp))
-                    
+
                     Text("حجم الخط (${fontSize.toInt()})", fontSize = 16.sp)
                     var localFontSize by remember(fontSize) { mutableFloatStateOf(fontSize) }
                     Slider(
@@ -100,10 +101,39 @@ fun SettingsScreen(
             }
 
             Spacer(modifier = Modifier.height(32.dp))
-            
+
+            Text("التذكيرات", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Card(
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(0.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("تذكيرات الأذكار", fontSize = 16.sp)
+                            Text("صباح ومساء — يمكن إيقافها بالكامل", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Switch(
+                            checked = notificationsEnabled,
+                            onCheckedChange = { viewModel.setNotificationsEnabled(it) }
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
             Text("القراءة والتفاعل", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             Card(
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -122,11 +152,11 @@ fun SettingsScreen(
                             onCheckedChange = { viewModel.setVibration(it) }
                         )
                     }
-                    
+
                     Spacer(modifier = Modifier.height(16.dp))
                     HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
                     Spacer(modifier = Modifier.height(16.dp))
-                    
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -141,11 +171,11 @@ fun SettingsScreen(
                             onCheckedChange = { viewModel.setKeepScreenOn(it) }
                         )
                     }
-                    
+
                     Spacer(modifier = Modifier.height(16.dp))
                     HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
                     Spacer(modifier = Modifier.height(16.dp))
-                    
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -206,12 +236,12 @@ fun SettingsScreen(
                     }
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(32.dp))
-            
+
             Text("المزامنة السحابية", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             Card(
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -256,24 +286,42 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(28.dp))
             Text("عن التطبيق", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
             Spacer(modifier = Modifier.height(16.dp))
-            Card(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))) {
+            Card(
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+            ) {
                 Column(modifier = Modifier.padding(22.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Image(painter = painterResource(com.example.R.drawable.logo_baqiyat), contentDescription = "شعار الباقيات", modifier = Modifier.size(112.dp).clip(RoundedCornerShape(20.dp)))
+                    Image(
+                        painter = painterResource(com.example.R.drawable.logo_baqiyat),
+                        contentDescription = "شعار الباقيات",
+                        modifier = Modifier.size(112.dp).clip(RoundedCornerShape(20.dp))
+                    )
                     Spacer(modifier = Modifier.height(12.dp))
                     Text("الباقيات", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("تطبيق هادئ يساعدك على المحافظة على الأذكار والورد اليومي، مع تجربة قراءة واضحة، متابعة للتقدم، ومحتوى موثوق يصل إليك في وقته.", fontSize = 13.sp, lineHeight = 22.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Text("محتوى موثوق · تجربة هادئة", fontSize = 11.sp, color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold)
+                    Text(
+                        "تطبيق هادئ يساعدك على المحافظة على الأذكار والورد اليومي.",
+                        fontSize = 13.sp,
+                        lineHeight = 22.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     Spacer(modifier = Modifier.height(16.dp))
-                    Button(onClick = {
-                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                            type = "text/plain"
-                            putExtra(Intent.EXTRA_SUBJECT, "جرّب تطبيق الباقيات")
-                            putExtra(Intent.EXTRA_TEXT, "جرّب تطبيق الباقيات للمحافظة على الأذكار والورد اليومي. تطبيق هادئ ومحتوى موثوق.")
-                        }
-                        context.startActivity(Intent.createChooser(shareIntent, "مشاركة الباقيات"))
-                    }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
+                    Button(
+                        onClick = {
+                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_SUBJECT, "جرّب تطبيق الباقيات")
+                                putExtra(
+                                    Intent.EXTRA_TEXT,
+                                    "جرّب تطبيق الباقيات للمحافظة على الأذكار والورد اليومي."
+                                )
+                            }
+                            context.startActivity(Intent.createChooser(shareIntent, "مشاركة الباقيات"))
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
                         Icon(Icons.Default.Share, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("مشاركة التطبيق")
