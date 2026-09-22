@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(entities = [UserProgress::class], version = 2, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
@@ -11,6 +13,24 @@ abstract class AppDatabase : RoomDatabase() {
 
     companion object {
         const val DB_NAME = "azkar_db"
+
+        /**
+         * v1 -> v2: add helpful indices without wiping user progress.
+         * date is already PRIMARY KEY; extra indices help filtered stats queries.
+         */
+        private val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_user_progress_date ON user_progress(date)"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_user_progress_completedSabah ON user_progress(completedSabah)"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_user_progress_completedMasaa ON user_progress(completedMasaa)"
+                )
+            }
+        }
 
         @Volatile
         private var INSTANCE: AppDatabase? = null
@@ -22,8 +42,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     DB_NAME
                 )
-                    // Dev-friendly: schema changed (indices). Replace with real Migration in production if needed.
-                    .fallbackToDestructiveMigration()
+                    .addMigrations(MIGRATION_1_2)
                     .build()
                     .also { INSTANCE = it }
             }
