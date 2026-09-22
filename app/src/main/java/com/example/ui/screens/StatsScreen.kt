@@ -3,6 +3,7 @@ package com.example.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -15,7 +16,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -83,7 +86,12 @@ fun StatsScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(28.dp))
+
+            // Monthly calendar
+            MonthlyCalendar(recentProgress)
+
+            Spacer(modifier = Modifier.height(28.dp))
 
             // Weekly chart
             Column(
@@ -172,7 +180,6 @@ fun StatsScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Simple achievements
             Text(
                 text = "الإنجازات",
                 fontSize = 18.sp,
@@ -209,6 +216,134 @@ fun StatsScreen(
 }
 
 @Composable
+private fun MonthlyCalendar(progress: List<UserProgress>) {
+    val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+    val monthTitleFmt = SimpleDateFormat("MMMM yyyy", Locale.forLanguageTag("ar"))
+    val cal = Calendar.getInstance()
+    val year = cal.get(Calendar.YEAR)
+    val month = cal.get(Calendar.MONTH)
+    val today = cal.get(Calendar.DAY_OF_MONTH)
+
+    val daysInMonth = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
+    cal.set(Calendar.DAY_OF_MONTH, 1)
+    // Calendar.SUNDAY=1 … Saturday=7 — shift so week starts Saturday for AR feel optional; use Sunday=0 grid
+    val firstWeekday = (cal.get(Calendar.DAY_OF_WEEK) + 5) % 7 // Mon=0 … Sun=6 simplified: use SUNDAY based
+    // Standard: first cell offset = dayOfWeek - 1 (Sunday first)
+    cal.set(Calendar.DAY_OF_MONTH, 1)
+    val offset = cal.get(Calendar.DAY_OF_WEEK) - 1
+
+    val byDate = progress.associateBy { it.date }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(16.dp)
+    ) {
+        Text(
+            text = monthTitleFmt.format(Calendar.getInstance().time),
+            fontWeight = FontWeight.Bold,
+            fontSize = 16.sp,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+
+        val dayNames = listOf("ح", "ن", "ث", "ر", "خ", "ج", "س")
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+            dayNames.forEach { d ->
+                Text(
+                    d,
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f),
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+
+        val cells = mutableListOf<Int?>()
+        repeat(offset) { cells.add(null) }
+        for (day in 1..daysInMonth) cells.add(day)
+        while (cells.size % 7 != 0) cells.add(null)
+
+        cells.chunked(7).forEach { week ->
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                week.forEach { day ->
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .aspectRatio(1f)
+                            .padding(2.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (day != null) {
+                            val dateStr = String.format(Locale.US, "%04d-%02d-%02d", year, month + 1, day)
+                            val p = byDate[dateStr]
+                            val both = p?.completedSabah == true && p.completedMasaa == true
+                            val one = p != null && (p.completedSabah || p.completedMasaa || p.totalTasbeeh > 0)
+                            val bg = when {
+                                both -> MaterialTheme.colorScheme.primary
+                                one -> MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)
+                                day == today -> MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)
+                                else -> Color.Transparent
+                            }
+                            val fg = when {
+                                both -> MaterialTheme.colorScheme.onPrimary
+                                else -> MaterialTheme.colorScheme.onSurface
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape)
+                                    .background(bg),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    "$day",
+                                    fontSize = 12.sp,
+                                    color = fg,
+                                    fontWeight = if (day == today) FontWeight.Bold else FontWeight.Normal
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
+        ) {
+            LegendDot(MaterialTheme.colorScheme.primary, "صباح+مساء")
+            LegendDot(MaterialTheme.colorScheme.primary.copy(alpha = 0.35f), "نشاط")
+        }
+    }
+}
+
+@Composable
+private fun LegendDot(color: Color, label: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            Modifier
+                .size(10.dp)
+                .clip(CircleShape)
+                .background(color)
+        )
+        Spacer(Modifier.width(6.dp))
+        Text(label, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
 private fun AchievementRow(
     title: String,
     subtitle: String,
@@ -233,7 +368,7 @@ private fun AchievementRow(
                 icon,
                 contentDescription = null,
                 tint = if (unlocked) MaterialTheme.colorScheme.primary
-                       else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f),
+                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f),
                 modifier = Modifier.size(28.dp)
             )
             Spacer(modifier = Modifier.width(14.dp))
@@ -242,19 +377,12 @@ private fun AchievementRow(
                     title,
                     fontWeight = FontWeight.Bold,
                     color = if (unlocked) MaterialTheme.colorScheme.onSurface
-                            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f)
+                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f)
                 )
-                Text(
-                    subtitle,
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Text(subtitle, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Spacer(modifier = Modifier.weight(1f))
-            Text(
-                if (unlocked) "✓" else "🔒",
-                fontSize = 18.sp
-            )
+            Text(if (unlocked) "✓" else "🔒", fontSize = 18.sp)
         }
     }
 }
@@ -264,30 +392,21 @@ fun calculateStreak(progress: List<UserProgress>): Int {
     val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
     val cal = Calendar.getInstance()
     var streak = 0
-
     val sorted = progress.sortedByDescending { it.date }
-
     val todayStr = sdf.format(cal.time)
     cal.add(Calendar.DAY_OF_YEAR, -1)
     val yesterdayStr = sdf.format(cal.time)
-
     val latest = sorted.first()
-    if (latest.date != todayStr && latest.date != yesterdayStr) {
-        return 0
-    }
-
+    if (latest.date != todayStr && latest.date != yesterdayStr) return 0
     var expectedDateStr = latest.date
     val expectedCal = Calendar.getInstance()
     expectedCal.time = sdf.parse(expectedDateStr) ?: Date()
-
     for (p in sorted) {
         if (p.date == expectedDateStr && (p.completedSabah || p.completedMasaa || p.totalTasbeeh > 0)) {
             streak++
             expectedCal.add(Calendar.DAY_OF_YEAR, -1)
             expectedDateStr = sdf.format(expectedCal.time)
-        } else {
-            break
-        }
+        } else break
     }
     return streak
 }
@@ -299,7 +418,6 @@ fun calculateLongestStreak(progress: List<UserProgress>): Int {
     var maxStreak = 0
     var current = 0
     var prevDate: Calendar? = null
-
     for (p in sorted) {
         val active = p.completedSabah || p.completedMasaa || p.totalTasbeeh > 0
         if (!active) {
@@ -309,10 +427,8 @@ fun calculateLongestStreak(progress: List<UserProgress>): Int {
         }
         val cal = Calendar.getInstance()
         cal.time = sdf.parse(p.date) ?: continue
-
-        if (prevDate == null) {
-            current = 1
-        } else {
+        if (prevDate == null) current = 1
+        else {
             val expected = prevDate.clone() as Calendar
             expected.add(Calendar.DAY_OF_YEAR, 1)
             current = if (cal.get(Calendar.YEAR) == expected.get(Calendar.YEAR) &&
