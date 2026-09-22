@@ -14,16 +14,15 @@ import androidx.compose.material.icons.filled.SelfImprovement
 import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.AzkarData
 import com.example.ui.AppViewModel
 import java.text.SimpleDateFormat
@@ -32,10 +31,10 @@ import java.util.Locale
 
 @Composable
 fun HomeScreen(viewModel: AppViewModel, onNavigateToAzkar: (String) -> Unit) {
-    val lastReadCategory by viewModel.lastReadCategory.collectAsState()
-    val lastReadIndex by viewModel.lastReadIndex.collectAsState()
-    val recentProgress by viewModel.recentProgress.collectAsState()
-    val todayProgress by viewModel.todayProgress.collectAsState()
+    val lastReadCategory by viewModel.lastReadCategory.collectAsStateWithLifecycle()
+    val lastReadIndex by viewModel.lastReadIndex.collectAsStateWithLifecycle()
+    val recentProgress by viewModel.recentProgress.collectAsStateWithLifecycle()
+    val todayProgress by viewModel.todayProgress.collectAsStateWithLifecycle()
     val categorySize = if (lastReadCategory == "sabah") AzkarData.morningAzkar.size else AzkarData.eveningAzkar.size
     val isWirdActive = lastReadCategory.isNotEmpty() && lastReadIndex < categorySize
     val date = SimpleDateFormat("EEEE، d MMMM", Locale.forLanguageTag("ar")).format(Date())

@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.testTag
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.AppViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -29,15 +30,15 @@ import com.example.ui.AppViewModel
 fun SettingsScreen(
     viewModel: AppViewModel
 ) {
-    val fontSize by viewModel.fontSize.collectAsState()
-    val isDarkMode by viewModel.isDarkMode.collectAsState()
-    val isVibrationEnabled by viewModel.isVibrationEnabled.collectAsState()
-    val keepScreenOn by viewModel.keepScreenOn.collectAsState()
-    val autoDnd by viewModel.autoDnd.collectAsState()
-    val hideVirtues by viewModel.hideVirtues.collectAsState()
-    val hideSources by viewModel.hideSources.collectAsState()
+    val fontSize by viewModel.fontSize.collectAsStateWithLifecycle()
+    val isDarkMode by viewModel.isDarkMode.collectAsStateWithLifecycle()
+    val isVibrationEnabled by viewModel.isVibrationEnabled.collectAsStateWithLifecycle()
+    val keepScreenOn by viewModel.keepScreenOn.collectAsStateWithLifecycle()
+    val autoDnd by viewModel.autoDnd.collectAsStateWithLifecycle()
+    val hideVirtues by viewModel.hideVirtues.collectAsStateWithLifecycle()
+    val hideSources by viewModel.hideSources.collectAsStateWithLifecycle()
     
-    val userSignedIn by viewModel.userSignedIn.collectAsState()
+    val userSignedIn by viewModel.userSignedIn.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     Scaffold(
@@ -87,9 +88,11 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     Text("حجم الخط (${fontSize.toInt()})", fontSize = 16.sp)
+                    var localFontSize by remember(fontSize) { mutableFloatStateOf(fontSize) }
                     Slider(
-                        value = fontSize,
-                        onValueChange = { viewModel.setFontSize(it) },
+                        value = localFontSize,
+                        onValueChange = { localFontSize = it },
+                        onValueChangeFinished = { viewModel.setFontSize(localFontSize) },
                         valueRange = 16f..48f,
                         steps = 8
                     )
