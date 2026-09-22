@@ -1,3 +1,13 @@
+window.AZKAR_FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBQPLs_e9XwL3-WAbjtUPRSxGK75Ig_sF8",
+  authDomain: "svrpmtt.firebaseapp.com",
+  projectId: "svrpmtt",
+  storageBucket: "svrpmtt.firebasestorage.app",
+  messagingSenderId: "372887186106",
+  appId: "1:372887186106:web:4506ec501cc157feed7083",
+  measurementId: "G-01ZMN1MKQW"
+};
+
 const azkar = [
   {id:'ayatul-kursi',text:'اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ', category:'sabah', repeat:1, fadl:'آية الكرسي من أعظم آيات القرآن.', source:'رواه الحاكم وصححه الألباني', published:true, order:1},
   {id:'asbahna',text:'أَصْبَحْنَا وَأَصْبَحَ الْمُلْكُ لِلَّهِ', category:'sabah', repeat:1, fadl:'', source:'رواه مسلم', published:true, order:2},
@@ -21,9 +31,7 @@ function escapeHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
-function toast(message){const el=$('#toast');el.textContent=message;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2600)}
-function go(view){$$('.view').forEach(x=>x.classList.remove('active-view'));$('#'+view).classList.add('active-view');$$('.nav-item').forEach(x=>x.classList.toggle('active',x.dataset.view===view));$('#page-title').textContent={overview:'نظرة عامة',azkar:'مكتبة الأذكار',categories:'التصنيفات',settings:'إعدادات التطبيق'}[view]}
-$$('[data-view]').forEach(el=>el.addEventListener('click',()=>go(el.dataset.view)));
+function toast(message){const el=$('#toast');if(el){el.textContent=message;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2600)}} function go(view){$$('.view').forEach(x=>x.classList.remove('active-view'));$('#'+view)?.classList.add('active-view');$$('.nav-item').forEach(x=>x.classList.toggle('active',x.dataset.view===view));const title=$('#page-title');if(title)title.textContent={overview:'نظرة عامة',azkar:'مكتبة الأذكار',categories:'التصنيفات',settings:'إعدادات التطبيق'}[view]} $$('[data-view]').forEach(el=>el.addEventListener('click',()=>go(el.dataset.view)));
 
 function statusPill(published){return `<span class="pill ${published?'status-published':'status-draft'}">${published?'منشور':'مسودة'}</span>`}
 
@@ -36,10 +44,11 @@ function renderTable(){
       &&(status==='all'||(status==='published'?z.published:!z.published))
       &&z.text.includes(q));
 
-  // Real count instead of fake +8
-  $('#stat-total').textContent = azkar.length;
+  const totalEl = $('#stat-total');
+  if(totalEl) totalEl.textContent = azkar.length;
 
   const tbody = $('#azkar-table');
+  if (!tbody) return;
   if (!rows.length) {
     tbody.innerHTML = '<tr><td colspan="6">لا توجد نتائج مطابقة.</td></tr>';
     return;
@@ -58,8 +67,8 @@ function renderTable(){
       </td>
     </tr>`).join('');
 
-  $$('[data-edit]').forEach(btn=>btn.addEventListener('click',()=>openEditor(Number(btn.dataset.edit))));
-  $$('[data-delete]').forEach(btn=>btn.addEventListener('click',()=>{
+  $$('[data-edit]').forEach(btn=>btn.addEventListener('click',()=>openEditor(Number(btn.dataset.edit))));$$
+('[data-delete]').forEach(btn=>btn.addEventListener('click',()=>{
     if(confirm('حذف هذا الذكر؟')){
       const item=azkar[Number(btn.dataset.delete)];
       azkar.splice(Number(btn.dataset.delete),1);
@@ -70,38 +79,41 @@ function renderTable(){
   }));
 }
 
-function renderCategories(){$('#category-grid').innerHTML=categories.map(c=>`<article class="category-card"><div class="symbol">${c.icon}</div><h3>${c.name}</h3><p>${c.desc}</p><p style="margin-top:16px;color:var(--green)">${c.count} أذكار</p></article>`).join('')}
+function renderCategories(){const grid=$('#category-grid');if(grid)grid.innerHTML=categories.map(c=>`<article class="category-card"><div class="symbol">${c.icon}</div><h3>${c.name}</h3><p>${c.desc}</p><p style="margin-top:16px;color:var(--green)">${c.count} أذكار</p></article>`).join('')}
 
 function openEditor(index=null){
   editingIndex=index;
   const z=index===null
     ?{id:crypto.randomUUID(),text:'',category:'sabah',repeat:1,fadl:'',source:'',published:false,order:azkar.length+1}
     :azkar[index];
-  $('#modal-title').textContent=index===null?'إضافة ذكر':'تعديل الذكر';
-  $('#field-text').value=z.text;
-  $('#field-category').value=z.category;
-  $('#field-repeat').value=z.repeat;
-  $('#field-fadl').value=z.fadl||'';
-  $('#field-source').value=z.source||'';
-  $('#field-published').checked=!!z.published;
-  $('#editor-modal').classList.add('open');
-  $('#editor-modal').setAttribute('aria-hidden','false');
-  setTimeout(()=>$('#field-text').focus(),50);
+  const title=$('#modal-title');if(title)title.textContent=index===null?'إضافة ذكر':'تعديل الذكر';
+  const fText=$('#field-text');if(fText)fText.value=z.text;
+  const fCat=$('#field-category');if(fCat)fCat.value=z.category;
+  const fRep=$('#field-repeat');if(fRep)fRep.value=z.repeat;
+  const fFadl=$('#field-fadl');if(fFadl)fFadl.value=z.fadl||'';
+  const fSrc=$('#field-source');if(fSrc)fSrc.value=z.source||'';
+  const fPub=$('#field-published');if(fPub)fPub.checked=!!z.published;
+  const modal=$('#editor-modal');
+  if(modal){
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden','false');
+  }
+  setTimeout(()=>$('#field-text')?.focus(),50);
 }
 
-function closeEditor(){$('#editor-modal').classList.remove('open');$('#editor-modal').setAttribute('aria-hidden','true');editingIndex=null}
+function closeEditor(){const modal=$('#editor-modal');if(modal){modal.classList.remove('open');modal.setAttribute('aria-hidden','true');}editingIndex=null}
 
 function saveEditor(){
-  const text=$('#field-text').value.trim();
+  const text=$('#field-text')?.value.trim();
   if(!text){toast('اكتب نص الذكر أولاً');return}
   const item={
     id: editingIndex===null ? crypto.randomUUID() : azkar[editingIndex].id,
     text,
-    category: $('#field-category').value,
-    repeat: Math.max(1, Number($('#field-repeat').value)||1),
-    fadl: $('#field-fadl').value.trim(),
-    source: $('#field-source').value.trim(),
-    published: $('#field-published').checked,
+    category: $('#field-category')?.value || 'sabah',
+    repeat: Math.max(1, Number($('#field-repeat')?.value)||1),
+    fadl: $('#field-fadl')?.value.trim() || '',
+    source: $('#field-source')?.value.trim() || '',
+    published: !!$('#field-published')?.checked,
     order: editingIndex===null ? (azkar.length + 1) : (azkar[editingIndex].order || editingIndex + 1),
     updatedAt: new Date().toISOString()
   };
@@ -116,7 +128,6 @@ function saveEditor(){
 async function persistSave(item){
   if(!firestore) return;
   try{
-    // Ensure order is a number so Android doc.getLong("order") works
     const payload = { ...item, order: Number(item.order) || 0 };
     await firestore.collection('content').doc('azkar').collection('items').doc(item.id).set(payload,{merge:true});
   }catch(e){
@@ -135,11 +146,9 @@ async function persistDelete(item){
 async function loadRemote(){
   if(!firestore) return;
   try{
-    // Admin panel must see drafts too – remove published==true filter
     const snap = await firestore.collection('content').doc('azkar').collection('items').get();
     if(!snap.empty){
       azkar.splice(0, azkar.length, ...snap.docs.map(d => ({id: d.id, ...d.data()})));
-      // Sort by order if present
       azkar.sort((a,b) => (Number(a.order)||0) - (Number(b.order)||0));
       renderTable();
       toast('تم تحديث المحتوى من Firebase');
@@ -151,45 +160,61 @@ async function loadRemote(){
 }
 
 async function setupAuth(){
-  const config=window.AZKAR_FIREBASE_CONFIG;
-  if(!config?.apiKey||config.apiKey.includes('YOUR_')){
-    $('#auth-message').textContent='أضف firebase-config.js من القالب ثم أعد تحميل الصفحة.';
-    return;
-  }
+  const config = window.AZKAR_FIREBASE_CONFIG;
   try{
-    firebase.initializeApp(config);
-    firestore=firebase.firestore();
+    if (typeof firebase === 'undefined') {
+      const msg = $('#auth-message');
+      if (msg) msg.textContent = 'مكتبة Firebase غير محملة بالصفحة.';
+      return;
+    }
+    if (!firebase.apps.length) {
+      firebase.initializeApp(config);
+    }
+    firestore = firebase.firestore();
     firebase.auth().onAuthStateChanged(async user=>{
       if(!user){
-        $('#auth-message').textContent='سجّل الدخول بحساب المشرف للمتابعة.';
+        const msg = $('#auth-message');
+        if (msg) msg.textContent = 'سجّل الدخول بحساب المشرف للمتابعة.';
         return;
       }
-      const emailLower=(user.email||'').toLowerCase().trim();
-      // Prefer custom claims in production. Hard-coded email is only a temporary gate.
-      const isOwner = emailLower==='mgedh.9ali@gmail.com' || emailLower.includes('mgedh.9ali');
+      const emailLower = (user.email||'').toLowerCase().trim();
+      const isOwner = emailLower === 'mgedh.9ali@gmail.com' || emailLower.includes('mgedh.9ali');
       if(!isOwner){
         await firebase.auth().signOut();
-        $('#auth-message').textContent='هذا الحساب ليس ضمن المشرفين.';
+        const msg = $('#auth-message');
+        if (msg) msg.textContent = 'هذا الحساب ليس ضمن المشرفين.';
         return;
       }
-      $('#auth-gate').classList.add('hidden');
-      $('.shell').classList.add('ready');
-      $('#auth-message').textContent=`مرحباً ${user.displayName||user.email}`;
+      $('#auth-gate')?.classList.add('hidden');
+      $('.shell')?.classList.add('ready');
+      const msg = $('#auth-message');
+      if (msg) msg.textContent = `مرحباً ${user.displayName||user.email}`;
       await loadRemote();
     });
   }catch(e){
     console.error(e);
-    $('#auth-message').textContent='تعذر تهيئة Firebase. راجع إعدادات المشروع.';
+    const msg = $('#auth-message');
+    if (msg) msg.textContent = 'تعذر تهيئة Firebase: ' + e.message;
   }
 }
 
-$('#login-btn')?.addEventListener('click',async()=>{
-  if(!window.AZKAR_FIREBASE_CONFIG?.apiKey){toast('أضف إعداد Firebase أولاً');return}
-  try{
-    await firebase.auth().signInWithPopup(new firebase.auth.GoogleAuthProvider());
-  }catch(e){
+$('#login-btn')?.addEventListener('click', async () => {
+  try {
+    const config = window.AZKAR_FIREBASE_CONFIG;
+    if (typeof firebase === 'undefined') {
+      alert('مكتبة Firebase غير متصلة.');
+      return;
+    }
+    if (!firebase.apps.length) {
+      firebase.initializeApp(config);
+    }
+    const provider = new firebase.auth.GoogleAuthProvider();
+    await firebase.auth().signInWithPopup(provider);
+  } catch(e) {
     console.error(e);
-    $('#auth-message').textContent='فشل تسجيل الدخول أو تم إلغاؤه.';
+    const msg = $('#auth-message');
+    if (msg) msg.textContent = 'فشل تسجيل الدخول: ' + e.message;
+    alert('فشل الدخول: ' + e.message);
   }
 });
 
