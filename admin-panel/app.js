@@ -3,6 +3,7 @@ let feedbackItems = [];
 let selectedFeedbackId = null;
 let editingIndex = null;
 let firestore = null;
+let dragFromIndex = null;
 
 const CAT_LABEL = {
   sabah: 'الصباح',
@@ -41,7 +42,8 @@ function go(view) {
     azkar: 'مكتبة الأذكار',
     feedback: 'الشكاوى',
     categories: 'التصنيفات',
-    settings: 'الإعدادات'
+    settings: 'الإعدادات',
+    notify: 'الإشعارات'
   };
   const title = $('#page-title');
   if (title) title.textContent = titles[view] || view;
@@ -92,6 +94,21 @@ function updateStats() {
   }
 }
 
+/** Queue a job for Cloud Function → FCM (does not send by itself). */
+async function enqueueAdminJob(type, payload) {
+  if (!firestore) return;
+  try {
+    await firestore.collection('admin_jobs').add({
+      type,
+      payload,
+      status: 'pending',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  } catch (e) {
+    console.warn('admin_jobs write failed (rules or offline)', e);
+  }
+}
+
 function renderTable() {
   const q = ($('#search')?.value || '').trim();
   const filter = $('#filter')?.value || 'all';
@@ -114,14 +131,15 @@ function renderTable() {
   if (!tbody) return;
   if (!rows.length) {
     tbody.innerHTML =
-      '<tr><td colspan="7">لا توجد نتائج مطابقة.</td></tr>';
+      '<tr><td colspan="8">لا توجد نتائج مطابقة.</td></tr>';
     return;
   }
 
   tbody.innerHTML = rows
     .map(
       (z) => `
-    <tr>
+    <tr draggable="true" data-row-index="${z.index}" class="draggable-row">
+      <td class="drag-handle" title="اسحب لإعادة الترتيب">⋮⋮</td>
       <td class="order-cell">
         <button type="button" class="icon-btn" data-up="${z.index}" title="أعلى">↑</button>
         <button type="button" class="icon-btn" data-down="${z.index}" title="أسفل">↓</button>
@@ -133,6 +151,7 @@ function renderTable() {
       <td>${statusPill(!!z.published)}</td>
       <td>${escapeHtml(z.source) || '—'}</td>
       <td>
+        <button type="button" class="icon-btn" data-preview="${z.index}">معاينة</button> ·
         <button type="button" class="icon-btn" data-edit="${z.index}">تعديل</button> ·
         <button type="button" class="icon-btn" data-delete="${z.index}">حذف</button>
       </td>
@@ -142,6 +161,9 @@ function renderTable() {
 
   $$('[data-edit]').forEach((btn) =>
     btn.addEventListener('click', () => openEditor(Number(btn.dataset.edit)))
+  );
+  $$('[data-preview]').forEach((btn) =>
+    btn.addEventListener('click', () => openPreview(Number(btn.dataset.preview)))
   );
   $$('[data-delete]').forEach((btn) =>
     btn.addEventListener('click', () => {
@@ -160,6 +182,61 @@ function renderTable() {
   $$('[data-down]').forEach((btn) =>
     btn.addEventListener('click', () => moveOrder(Number(btn.dataset.down), 1))
   );
+
+  // Drag & drop
+  $$('.draggable-row').forEach((row) => {
+    row.addEventListener('dragstart', (e) => {
+      dragFromIndex = Number(row.dataset.rowIndex);
+      row.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    row.addEventListener('dragend', () => {
+      row.classList.remove('dragging');
+      dragFromIndex = null;
+      $$('.draggable-row').forEach((r) => r.classList.remove('drag-over'));
+    });
+    row.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      row.classList.add('drag-over');
+    });
+    row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
+    row.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      row.classList.remove('drag-over');
+      const toIndex = Number(row.dataset.rowIndex);
+      if (dragFromIndex == null || dragFromIndex === toIndex) return;
+      await reorderByDrag(dragFromIndex, toIndex);
+    });
+  });
+}
+
+async function reorderByDrag(fromIndex, toIndex) {
+  const sorted = [...azkar].sort(
+    (a, b) => (Number(a.order) || 0) - (Number(b.order) || 0)
+  );
+  const fromItem = azkar[fromIndex];
+  const toItem = azkar[toIndex];
+  if (!fromItem || !toItem) return;
+
+  const fromPos = sorted.findIndex((z) => z.id === fromItem.id);
+  const toPos = sorted.findIndex((z) => z.id === toItem.id);
+  if (fromPos < 0 || toPos < 0) return;
+
+  const [moved] = sorted.splice(fromPos, 1);
+  sorted.splice(toPos, 0, moved);
+
+  // Reassign sequential order and persist changed rows
+  const writes = [];
+  sorted.forEach((z, i) => {
+    const newOrder = i + 1;
+    if (Number(z.order) !== newOrder) {
+      z.order = newOrder;
+      writes.push(persistSave(z));
+    }
+  });
+  await Promise.all(writes);
+  renderTable();
+  toast('تم تحديث الترتيب');
 }
 
 async function moveOrder(index, direction) {
@@ -182,6 +259,28 @@ async function moveOrder(index, direction) {
   await persistSave(other);
   renderTable();
   toast('تم تحديث الترتيب');
+}
+
+function openPreview(index) {
+  const z = azkar[index];
+  if (!z) return;
+  const modal = $('#preview-modal');
+  if (!modal) return;
+  $('#preview-cat').textContent = categoryLabel(z.category);
+  $('#preview-text').textContent = z.text || '';
+  $('#preview-repeat').textContent = `${Number(z.repeat) || 1}×`;
+  $('#preview-fadl').textContent = z.fadl || '—';
+  $('#preview-source').textContent = z.source || '—';
+  $('#preview-status').textContent = z.published ? 'منشور' : 'مسودة';
+  modal.classList.add('open');
+  modal.setAttribute('aria-hidden', 'false');
+}
+
+function closePreview() {
+  const modal = $('#preview-modal');
+  if (!modal) return;
+  modal.classList.remove('open');
+  modal.setAttribute('aria-hidden', 'true');
 }
 
 function renderCategories() {
@@ -252,29 +351,44 @@ function closeEditor() {
   editingIndex = null;
 }
 
-function saveEditor() {
+async function saveEditor() {
   const text = $('#field-text')?.value.trim();
   if (!text) {
     toast('اكتب نص الذكر أولاً');
     return;
   }
+  const wasNew = editingIndex === null;
+  const prevPublished =
+    editingIndex === null ? false : !!azkar[editingIndex].published;
+
   const item = {
-    id: editingIndex === null ? crypto.randomUUID() : azkar[editingIndex].id,
+    id: wasNew ? crypto.randomUUID() : azkar[editingIndex].id,
     text,
     category: $('#field-category')?.value || 'sabah',
     repeat: Math.max(1, Number($('#field-repeat')?.value) || 1),
     fadl: $('#field-fadl')?.value.trim() || '',
     source: $('#field-source')?.value.trim() || '',
     published: !!$('#field-published')?.checked,
-    order:
-      editingIndex === null
-        ? azkar.length + 1
-        : azkar[editingIndex].order || editingIndex + 1,
+    order: wasNew
+      ? azkar.length + 1
+      : azkar[editingIndex].order || editingIndex + 1,
     updatedAt: new Date().toISOString()
   };
-  if (editingIndex === null) azkar.unshift(item);
+  if (wasNew) azkar.unshift(item);
   else azkar[editingIndex] = item;
-  persistSave(item);
+
+  await persistSave(item);
+
+  // If newly published → queue broadcast job for Cloud Function
+  if (item.published && !prevPublished) {
+    await enqueueAdminJob('content_published', {
+      zekrId: item.id,
+      category: item.category,
+      title: 'تحديث في الباقيات',
+      body: 'تمت إضافة أو نشر ذكر جديد. افتح التطبيق للاطلاع.'
+    });
+  }
+
   renderTable();
   renderCategories();
   closeEditor();
@@ -337,7 +451,7 @@ function renderFeedbackList() {
       <button type="button" class="feedback-item${active}" data-fid="${escapeHtml(f.id)}">
         <strong>${escapeHtml(f.title || f.type || 'بدون عنوان')}</strong>
         <small>${escapeHtml((f.message || '').slice(0, 80))}${(f.message || '').length > 80 ? '…' : ''}</small>
-        <span class="pill status-${st === 'new' ? 'draft' : st === 'resolved' ? 'published' : 'draft'}">${statusLabel(st)}</span>
+        <span class="pill status-${st === 'resolved' ? 'published' : 'draft'}">${statusLabel(st)}</span>
       </button>`;
     })
     .join('');
@@ -385,6 +499,10 @@ function renderFeedbackDetail() {
         <option value="resolved" ${f.status === 'resolved' ? 'selected' : ''}>مغلق</option>
       </select>
     </label>
+    <label class="publish-toggle" style="margin-top:8px">
+      <span><strong>طلب إشعار للمستخدم</strong><small>يُسجَّل في admin_jobs لـ Cloud Function</small></span>
+      <input id="reply-notify" type="checkbox" checked />
+    </label>
     <div class="modal-actions" style="margin-top:12px">
       <button type="button" class="primary" id="send-reply">حفظ الرد</button>
     </div>`;
@@ -399,6 +517,9 @@ async function submitReply(feedbackId) {
   }
   const reply = $('#reply-text')?.value.trim() || '';
   const status = $('#reply-status')?.value || 'in_progress';
+  const wantNotify = !!$('#reply-notify')?.checked;
+  const f = feedbackItems.find((x) => x.id === feedbackId);
+
   try {
     const payload = {
       adminReply: reply,
@@ -408,9 +529,23 @@ async function submitReply(feedbackId) {
     };
     await firestore.collection('feedback').doc(feedbackId).set(payload, { merge: true });
 
+    if (wantNotify && f) {
+      await enqueueAdminJob('feedback_reply', {
+        feedbackId,
+        userId: f.userId || null,
+        title: 'رد على رسالتك',
+        body: reply ? reply.slice(0, 120) : 'يوجد رد جديد من فريق الباقيات'
+      });
+    }
+
     const idx = feedbackItems.findIndex((x) => x.id === feedbackId);
     if (idx >= 0) {
-      feedbackItems[idx] = { ...feedbackItems[idx], ...payload, adminReply: reply, status };
+      feedbackItems[idx] = {
+        ...feedbackItems[idx],
+        adminReply: reply,
+        status,
+        replyUnread: true
+      };
     }
     updateStats();
     renderFeedbackList();
@@ -425,7 +560,11 @@ async function submitReply(feedbackId) {
 async function loadFeedback() {
   if (!firestore) return;
   try {
-    const snap = await firestore.collection('feedback').orderBy('createdAt', 'desc').limit(100).get();
+    const snap = await firestore
+      .collection('feedback')
+      .orderBy('createdAt', 'desc')
+      .limit(100)
+      .get();
     feedbackItems = snap.docs.map((d) => {
       const data = d.data();
       return {
@@ -441,7 +580,6 @@ async function loadFeedback() {
     }
   } catch (e) {
     console.error(e);
-    // Fallback without orderBy if index missing
     try {
       const snap = await firestore.collection('feedback').limit(100).get();
       feedbackItems = snap.docs.map((d) => {
@@ -457,6 +595,19 @@ async function loadFeedback() {
       console.error(e2);
     }
   }
+}
+
+async function sendBroadcastFromForm() {
+  const title = $('#broadcast-title')?.value.trim();
+  const body = $('#broadcast-body')?.value.trim();
+  if (!title || !body) {
+    toast('اكتب عنواناً ونصاً للإشعار');
+    return;
+  }
+  await enqueueAdminJob('broadcast', { title, body });
+  toast('تم تسجيل طلب الإشعار — يحتاج Cloud Function للإرسال');
+  if ($('#broadcast-title')) $('#broadcast-title').value = '';
+  if ($('#broadcast-body')) $('#broadcast-body').value = '';
 }
 
 async function loadRemote() {
@@ -560,16 +711,21 @@ $('#filter')?.addEventListener('change', renderTable);
 $('#status-filter')?.addEventListener('change', renderTable);
 $('#feedback-status-filter')?.addEventListener('change', renderFeedbackList);
 $('#add-zekr')?.addEventListener('click', () => openEditor());
-$('#save-zekr')?.addEventListener('click', saveEditor);
+$('#save-zekr')?.addEventListener('click', () => saveEditor());
 $('#close-modal')?.addEventListener('click', closeEditor);
 $('#cancel-modal')?.addEventListener('click', closeEditor);
 $('#editor-modal')?.addEventListener('click', (e) => {
   if (e.target.id === 'editor-modal') closeEditor();
 });
+$('#close-preview')?.addEventListener('click', closePreview);
+$('#preview-modal')?.addEventListener('click', (e) => {
+  if (e.target.id === 'preview-modal') closePreview();
+});
 $('#refresh-btn')?.addEventListener('click', () => loadRemote());
 $('#preview-btn')?.addEventListener('click', () =>
   toast('افتح التطبيق على الجهاز لمعاينة المحتوى المنشور')
 );
+$('#send-broadcast')?.addEventListener('click', () => sendBroadcastFromForm());
 
 renderTable();
 renderCategories();
