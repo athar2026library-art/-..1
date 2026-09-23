@@ -15,10 +15,10 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 class AudioPlayer(context: Context) : TextToSpeech.OnInitListener {
     private var tts: TextToSpeech? = null
     private var isInitialized = false
-    
+
     private val _isPlaying = MutableStateFlow(false)
     val isPlaying: StateFlow<Boolean> = _isPlaying.asStateFlow()
-    
+
     private val continuations = ConcurrentHashMap<String, CancellableContinuation<Boolean>>()
 
     init {
@@ -53,21 +53,31 @@ class AudioPlayer(context: Context) : TextToSpeech.OnInitListener {
             cont.resume(false) { _, _, _ -> }
             return@suspendCancellableCoroutine
         }
-        
+
         val id = UUID.randomUUID().toString()
         continuations[id] = cont
-        
+
         val status = tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, id)
         if (status != TextToSpeech.SUCCESS) {
             continuations.remove(id)
             cont.resume(false) { _, _, _ -> }
         }
-        
+
         cont.invokeOnCancellation {
             tts?.stop()
             continuations.remove(id)
             _isPlaying.value = false
         }
+    }
+
+    /** Repeat the same zekr several times (QUEUE_ADD). */
+    fun playLoop(text: String, times: Int) {
+        if (!isInitialized || times < 1) return
+        tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, UUID.randomUUID().toString())
+        repeat(times - 1) {
+            tts?.speak(text, TextToSpeech.QUEUE_ADD, null, UUID.randomUUID().toString())
+        }
+        _isPlaying.value = true
     }
 
     fun stop() {

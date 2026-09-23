@@ -1,5 +1,9 @@
 package com.example.ui
 
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
@@ -29,6 +33,7 @@ import com.example.ui.screens.StatsScreen
 import com.example.ui.screens.SettingsScreen
 import com.example.ui.screens.AiServicesScreen
 import com.example.ui.screens.FeedbackScreen
+import com.example.ui.screens.SearchScreen
 
 sealed class Screen(val route: String, val title: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
     object Home : Screen("home", "الأذكار", Icons.AutoMirrored.Filled.List)
@@ -91,12 +96,26 @@ fun AppNavGraph(
         NavHost(
             navController = navController,
             startDestination = startDestination,
-            modifier = modifier.padding(innerPadding)
+            modifier = modifier.padding(innerPadding),
+            enterTransition = { fadeIn() + slideInHorizontally { it / 8 } },
+            exitTransition = { fadeOut() + slideOutHorizontally { -it / 8 } },
+            popEnterTransition = { fadeIn() },
+            popExitTransition = { fadeOut() }
         ) {
             composable("home") {
                 HomeScreen(
                     viewModel = viewModel,
                     onNavigateToAzkar = { category ->
+                        navController.navigate("azkar/$category")
+                    },
+                    onNavigateToSearch = { navController.navigate("search") }
+                )
+            }
+
+            composable("search") {
+                SearchScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onOpenCategory = { category ->
                         navController.navigate("azkar/$category")
                     }
                 )

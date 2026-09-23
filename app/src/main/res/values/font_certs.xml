@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Placeholder; Play Services font provider certs are typically generated via compose-ui-text-google-fonts samples.
+         If runtime font fetch fails, Compose falls back to default. -->
+    <array name="com_google_android_gms_fonts_certs" />
+</resources>
