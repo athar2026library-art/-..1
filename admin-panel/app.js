@@ -1,8 +1,6 @@
-// بيانات الدخول الثابتة البسيطة (يمكنك تغييرها كما ترغب)
 const ADMIN_USER = "admin";
 const ADMIN_PASS = "123456";
 
-// جلب الأذكار المحفوظة أو البدء بالقائمة الافتراضية
 const defaultAzkar = [
   {id:'1', text:'اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ', category:'sabah', repeat:1, fadl:'آية الكرسي من أعظم آيات القرآن.', source:'الحاكم', published:true},
   {id:'2', text:'أَصْبَحْنَا وَأَصْبَحَ الْمُلْكُ لِلَّهِ', category:'sabah', repeat:1, fadl:'', source:'مسلم', published:true},
@@ -143,7 +141,6 @@ function saveEditor() {
   toast('تم حفظ الذكر بنجاح');
 }
 
-// إدارة جلسة تسجيل الدخول المحلية
 function checkSession() {
   const isLoggedIn = sessionStorage.getItem('admin_logged_in') === 'true';
   const gate = $('#auth-gate');
@@ -158,10 +155,8 @@ function checkSession() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  // فحص حالة الجلسة
   checkSession();
 
-  // معالجة نموذج تسجيل الدخول البسيط
   $('#simple-login-form')?.addEventListener('submit', (e) => {
     e.preventDefault();
     const u = $('#login-username')?.value.trim();
@@ -178,8 +173,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // تسجيل الخروج
-  $('#logout-btn')?.addEventListener('click', () => {     sessionStorage.removeItem('admin_logged_in');     checkSession();     toast('تم تسجيل الخروج');   });    // التنقل والتحكم   $$('[data-view]').forEach(el => el.addEventListener('click', () => go(el.dataset.view)));$('#search')?.addEventListener('input', renderTable);
+  $('#logout-btn')?.addEventListener('click', () => {     sessionStorage.removeItem('admin_logged_in');     checkSession();     toast('تم تسجيل الخروج');   });    $$('[data-view]').forEach(el => el.addEventListener('click', () => go(el.dataset.view)));$('#search')?.addEventListener('input', renderTable);
   $('#filter')?.addEventListener('change', renderTable);
   $('#status-filter')?.addEventListener('change', renderTable);
   $('#add-zekr')?.addEventListener('click', () => openEditor());
