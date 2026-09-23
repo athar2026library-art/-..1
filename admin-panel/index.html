@@ -1,30 +1,45 @@
 <!doctype html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>إدارة الأذكار — لوحة المالك</title>
-  <link rel="stylesheet" href="styles.css">
-  
-  <!-- مكتبات الاتصال السحابي الأساسية -->
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet" />
+  <meta name="googlebot" content="noindex, nofollow" />
+  <meta name="description" content="لوحة الإدارة الخاصة بتطبيق أذكار" />
+  <title>إدارة أذكار — خاصة</title>
+  <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-
-  <!-- بوابة تسجيل الدخول المعتمدة -->
-  <div id="auth-gate" class="auth-gate">
+  <section class="auth-gate" id="auth-gate" aria-live="polite">
     <div class="auth-card">
-      <div class="orb">✦</div>
-      <h2>دخول المشرف</h2>
-      <p id="auth-message">سجّل الدخول بحساب المالك المعتمد للمتابعة.</p>
-      <button id="login-btn" type="button" class="primary">تسجيل الدخول باستخدام Google</button>
+      <span class="brand-mark">ذ</span>
+      <p class="eyebrow">منطقة محمية</p>
+      <h1>دخول المشرف</h1>
+      <p>هذه اللوحة خاصة بفريق إدارة أذكار. يلزم حساب Google مصرح له بصلاحية المشرف.</p>
+      <button class="primary" id="login-btn" type="button">تسجيل الدخول باستخدام Google</button>
+      <small id="auth-message">يتم التحقق من إعداد Firebase عند التحميل.</small>
     </div>
-  </div>
+  </section>
 
-  <!-- الواجهة الرئيسية -->
   <div class="shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark">ذ</span>
+        <div><strong>أذكار</strong><small>لوحة الإدارة</small></div>
+      </div>
+      <div class="private-badge">خاصة · غير مفهرسة</div>
+      <nav aria-label="التنقل الرئيسي">
+        <button class="nav-item active" data-view="overview">نظرة عامة <span>⌂</span></button>
+        <button class="nav-item" data-view="azkar">مكتبة الأذكار <span>☷</span></button>
+        <button class="nav-item" data-view="categories">التصنيفات <span>◈</span></button>
+        <button class="nav-item" data-view="settings">إعدادات التطبيق <span>⚙</span></button>
+      </nav>
+      <div class="sidebar-foot">
+        <span class="status-dot"></span> وضع الإدارة السحابي<br>
+        <small>متصل بقاعدة البيانات</small>
+      </div>
+    </aside>
+
     <main class="main">
       <header class="topbar">
         <div>
@@ -47,34 +62,15 @@
           <div class="orb">✦</div>
         </div>
         <div class="stats-grid">
-          <article class="stat">
-            <span>إجمالي الأذكار</span>
-            <strong id="stat-total">8</strong>
-            <small>في المكتبة الحالية</small>
-          </article>
-          <article class="stat">
-            <span>أذكار الصباح</span>
-            <strong>5</strong>
-            <small>جاهزة للقراءة</small>
-          </article>
-          <article class="stat">
-            <span>أذكار المساء</span>
-            <strong>3</strong>
-            <small>جاهزة للقراءة</small>
-          </article>
-          <article class="stat accent">
-            <span>آخر تحديث</span>
-            <strong>اليوم</strong>
-            <small>المحتوى سحابي</small>
-          </article>
+          <article class="stat"><span>إجمالي الأذكار</span><strong id="stat-total">8</strong><small>في المكتبة الحالية</small></article>
+          <article class="stat"><span>أذكار الصباح</span><strong>5</strong><small>جاهزة للقراءة</small></article>
+          <article class="stat"><span>أذكار المساء</span><strong>3</strong><small>جاهزة للقراءة</small></article>
+          <article class="stat accent"><span>آخر تحديث</span><strong>اليوم</strong><small>المحتوى سحابي</small></article>
         </div>
         <div class="content-grid">
           <article class="panel">
             <div class="panel-head">
-              <div>
-                <p class="eyebrow">مركز العمل</p>
-                <h3>ابدأ من هنا</h3>
-              </div>
+              <div><p class="eyebrow">مركز العمل</p><h3>ابدأ من هنا</h3></div>
             </div>
             <div class="quick-actions">
               <button data-view="azkar"><b>＋</b><span><strong>أضف ذكراً جديداً</strong><small>إلى مكتبة التطبيق</small></span><i>←</i></button>
@@ -140,27 +136,30 @@
           <div>
             <p class="eyebrow">التحكم</p>
             <h2>إعدادات التطبيق</h2>
-            <p>هذه الإعدادات نموذجية وستتصل بقاعدة البيانات عند تفعيلها.</p>
+            <p>هذه الإعدادات نموذجية وستتصل بالسيرفر عند تفعيلها.</p>
           </div>
         </div>
         <div class="settings-list">
           <label><span><strong>السماح بالوضع الليلي</strong><small>يظهر للمستخدم خيار القراءة ليلاً</small></span><input type="checkbox" checked /></label>
           <label><span><strong>الاهتزاز عند العد</strong><small>تجربة لمس واضحة أثناء التسبيح</small></span><input type="checkbox" checked /></label>
           <label><span><strong>إظهار الفضائل والمصادر</strong><small>شفافية أعلى في تجربة القراءة</small></span><input type="checkbox" checked /></label>
-          <label><span><strong>النشر التلقائي</strong><small>مزامنة سحابية مباشرة</small></span><input type="checkbox" checked /></label>
+          <label><span><strong>النشر التلقائي</strong><small>مزامنة سحابية فورية</small></span><input type="checkbox" checked /></label>
+        </div>
+        <div class="security-card">
+          <span class="lock">⌑</span>
+          <div>
+            <strong>تنبيه الخصوصية</strong>
+            <p>الواجهة محمية بنظام مصادقة سحابي للمالك فقط.</p>
+          </div>
         </div>
       </section>
     </main>
   </div>
 
-  <!-- نافذة المحرر -->
   <div class="modal" id="editor-modal" aria-hidden="true">
     <div class="modal-card">
       <div class="modal-head">
-        <div>
-          <p class="eyebrow">محرر المحتوى</p>
-          <h2 id="modal-title">إضافة ذكر</h2>
-        </div>
+        <div><p class="eyebrow">محرر المحتوى</p><h2 id="modal-title">إضافة ذكر</h2></div>
         <button class="close" id="close-modal">×</button>
       </div>
       <label>نص الذكر<textarea id="field-text" rows="4" placeholder="اكتب النص مضبوطاً..." required></textarea></label>
@@ -181,14 +180,19 @@
       </label>
       <div class="modal-actions">
         <button class="ghost" id="cancel-modal">إلغاء</button>
-        <button class="primary" id="save-zekr">حفظ</button>
+        <button class="primary" id="save-zekr">حفظ الذكر</button>
       </div>
     </div>
   </div>
 
-  <div id="toast" class="toast"></div>
+  <div class="toast" id="toast" role="status"></div>
 
-  <!-- استدعاء ملف البرمجة والتشغيل النهائي -->
-  <script src="app.js"></script>
+  <!-- مكتبات الاتصال السحابي الأساسية -->
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+
+  <!-- ملف الأوامر والتشغيل المباشر -->
+  <script src="./app.js"></script>
 </body>
 </html>
