@@ -1,3 +1,4 @@
+// تعريف إعدادات الاتصال السحابي مباشرة لمنع وصول المفتاح فارغاً أو غير صالح
 window.AZKAR_FIREBASE_CONFIG = {
   apiKey: "AIzaSyBQPLs_e9XwL3-WAbjtUPRSxGK75Ig_sF8",
   authDomain: "svrpmtt.firebaseapp.com",
@@ -18,8 +19,16 @@ const azkar = [
   {id:'allahumma-bika',text:'اللَّهُمَّ بِكَ أَمْسَيْنَا، وَبِكَ أَصْبَحْنَا', category:'masaa', repeat:1, fadl:'', source:'رواه الترمذي', published:true, order:7},
   {id:'raditu',text:'رَضِيتُ بِاللَّهِ رَبًّا وَبِالإِسْلَامِ دِينًا', category:'masaa', repeat:3, fadl:'', source:'رواه أبو داود والترمذي', published:false, order:8}
 ];
-const categories = [{icon:'☀',name:'أذكار الصباح',desc:'ورد بداية اليوم',count:8},{icon:'☾',name:'أذكار المساء',desc:'ورد نهاية اليوم',count:8},{icon:'✦',name:'أذكار مختارة',desc:'مجموعة مخصصة',count:0}];
-const $=s=>document.querySelector(s); const$$=s=>document.querySelectorAll(s); let editingIndex=null; let firestore=null;
+
+const categories = [
+  {icon:'☀',name:'أذكار الصباح',desc:'ورد بداية اليوم',count:8},
+  {icon:'☾',name:'أذكار المساء',desc:'ورد نهاية اليوم',count:8},
+  {icon:'✦',name:'أذكار مختارة',desc:'مجموعة مخصصة',count:0}
+];
+
+const $ = s => document.querySelector(s); const $$ = s => document.querySelectorAll(s);
+let editingIndex = null;
+let firestore = null;
 
 function escapeHtml(str) {
   if (str == null) return '';
@@ -31,21 +40,26 @@ function escapeHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
-function toast(message){const el=$('#toast');if(el){el.textContent=message;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2600)}} function go(view){$$('.view').forEach(x=>x.classList.remove('active-view'));$('#'+view)?.classList.add('active-view');$$('.nav-item').forEach(x=>x.classList.toggle('active',x.dataset.view===view));const title=$('#page-title');if(title)title.textContent={overview:'نظرة عامة',azkar:'مكتبة الأذكار',categories:'التصنيفات',settings:'إعدادات التطبيق'}[view]} $$('[data-view]').forEach(el=>el.addEventListener('click',()=>go(el.dataset.view)));
+function toast(message) {
+  const el = $('#toast');   if (el) {     el.textContent = message;     el.classList.add('show');     setTimeout(() => el.classList.remove('show'), 2600);   } }  function go(view) {   $$('.view').forEach(x => x.classList.remove('active-view'));
+  $('#' + view)?.classList.add('active-view');   $$('.nav-item').forEach(x => x.classList.toggle('active', x.dataset.view === view));
+  const title = $('#page-title');   if (title) {     title.textContent = {       overview: 'نظرة عامة',       azkar: 'مكتبة الأذكار',       categories: 'التصنيفات',       settings: 'إعدادات التطبيق'     }[view] \vert{}\vert{} 'لوحة التحكم';   } }  $$('[data-view]').forEach(el => el.addEventListener('click', () => go(el.dataset.view)));
 
-function statusPill(published){return `<span class="pill ${published?'status-published':'status-draft'}">${published?'منشور':'مسودة'}</span>`}
+function statusPill(published) {
+  return `<span class="pill ${published ? 'status-published' : 'status-draft'}">${published ? 'منشور' : 'مسودة'}</span>`;
+}
 
-function renderTable(){
-  const q=($('#search')?.value||'').trim();
-  const filter=$('#filter')?.value||'all';
-  const status=$('#status-filter')?.value||'all';
-  const rows=azkar.map((z,index)=>({...z,index}))
-    .filter(z=>(filter==='all'||z.category===filter)
-      &&(status==='all'||(status==='published'?z.published:!z.published))
-      &&z.text.includes(q));
+function renderTable() {
+  const q = ($('#search')?.value || '').trim();
+  const filter = $('#filter')?.value || 'all';
+  const status = $('#status-filter')?.value || 'all';
+  const rows = azkar.map((z, index) => ({ ...z, index }))
+    .filter(z => (filter === 'all' || z.category === filter)
+      && (status === 'all' || (status === 'published' ? z.published : !z.published))
+      && z.text.includes(q));
 
   const totalEl = $('#stat-total');
-  if(totalEl) totalEl.textContent = azkar.length;
+  if (totalEl) totalEl.textContent = azkar.length;
 
   const tbody = $('#azkar-table');
   if (!tbody) return;
@@ -57,21 +71,21 @@ function renderTable(){
   tbody.innerHTML = rows.map(z => `
     <tr>
       <td>${escapeHtml(z.text)}</td>
-      <td><span class="pill">${z.category==='sabah'?'الصباح':'المساء'}</span></td>
-      <td>${Number(z.repeat)||1}×</td>
+      <td><span class="pill">${z.category === 'sabah' ? 'الصباح' : 'المساء'}</span></td>
+      <td>${Number(z.repeat) || 1}×</td>
       <td>${statusPill(!!z.published)}</td>
-      <td>${escapeHtml(z.source)||'—'}</td>
+      <td>${escapeHtml(z.source) || '—'}</td>
       <td>
         <button class="icon-btn" data-edit="${z.index}">تعديل</button> ·
         <button class="icon-btn" data-delete="${z.index}">حذف</button>
       </td>
     </tr>`).join('');
 
-  $$('[data-edit]').forEach(btn=>btn.addEventListener('click',()=>openEditor(Number(btn.dataset.edit))));$$
-('[data-delete]').forEach(btn=>btn.addEventListener('click',()=>{
-    if(confirm('حذف هذا الذكر؟')){
-      const item=azkar[Number(btn.dataset.delete)];
-      azkar.splice(Number(btn.dataset.delete),1);
+  $$('[data-edit]').forEach(btn => btn.addEventListener('click', () => openEditor(Number(btn.dataset.edit))));$$
+('[data-delete]').forEach(btn => btn.addEventListener('click', () => {
+    if (confirm('حذف هذا الذكر؟')) {
+      const item = azkar[Number(btn.dataset.delete)];
+      azkar.splice(Number(btn.dataset.delete), 1);
       persistDelete(item);
       renderTable();
       toast('تم حذف الذكر');
@@ -79,92 +93,116 @@ function renderTable(){
   }));
 }
 
-function renderCategories(){const grid=$('#category-grid');if(grid)grid.innerHTML=categories.map(c=>`<article class="category-card"><div class="symbol">${c.icon}</div><h3>${c.name}</h3><p>${c.desc}</p><p style="margin-top:16px;color:var(--green)">${c.count} أذكار</p></article>`).join('')}
-
-function openEditor(index=null){
-  editingIndex=index;
-  const z=index===null
-    ?{id:crypto.randomUUID(),text:'',category:'sabah',repeat:1,fadl:'',source:'',published:false,order:azkar.length+1}
-    :azkar[index];
-  const title=$('#modal-title');if(title)title.textContent=index===null?'إضافة ذكر':'تعديل الذكر';
-  const fText=$('#field-text');if(fText)fText.value=z.text;
-  const fCat=$('#field-category');if(fCat)fCat.value=z.category;
-  const fRep=$('#field-repeat');if(fRep)fRep.value=z.repeat;
-  const fFadl=$('#field-fadl');if(fFadl)fFadl.value=z.fadl||'';
-  const fSrc=$('#field-source');if(fSrc)fSrc.value=z.source||'';
-  const fPub=$('#field-published');if(fPub)fPub.checked=!!z.published;
-  const modal=$('#editor-modal');
-  if(modal){
-    modal.classList.add('open');
-    modal.setAttribute('aria-hidden','false');
+function renderCategories() {
+  const grid = $('#category-grid');
+  if (grid) {
+    grid.innerHTML = categories.map(c => `
+      <article class="category-card">
+        <div class="symbol">${c.icon}</div>
+        <h3>${c.name}</h3>
+        <p>${c.desc}</p>
+        <p style="margin-top:16px;color:var(--green)">${c.count} أذكار</p>
+      </article>`).join('');
   }
-  setTimeout(()=>$('#field-text')?.focus(),50);
 }
 
-function closeEditor(){const modal=$('#editor-modal');if(modal){modal.classList.remove('open');modal.setAttribute('aria-hidden','true');}editingIndex=null}
+function openEditor(index = null) {
+  editingIndex = index;
+  const z = index === null
+    ? { id: crypto.randomUUID(), text: '', category: 'sabah', repeat: 1, fadl: '', source: '', published: false, order: azkar.length + 1 }
+    : azkar[index];
 
-function saveEditor(){
-  const text=$('#field-text')?.value.trim();
-  if(!text){toast('اكتب نص الذكر أولاً');return}
-  const item={
-    id: editingIndex===null ? crypto.randomUUID() : azkar[editingIndex].id,
+  const title = $('#modal-title'); if (title) title.textContent = index === null ? 'إضافة ذكر' : 'تعديل الذكر';
+  const fText = $('#field-text'); if (fText) fText.value = z.text;
+  const fCat = $('#field-category'); if (fCat) fCat.value = z.category;
+  const fRep = $('#field-repeat'); if (fRep) fRep.value = z.repeat;
+  const fFadl = $('#field-fadl'); if (fFadl) fFadl.value = z.fadl || '';
+  const fSrc = $('#field-source'); if (fSrc) fSrc.value = z.source || '';
+  const fPub = $('#field-published'); if (fPub) fPub.checked = !!z.published;
+
+  const modal = $('#editor-modal');
+  if (modal) {
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+  }
+  setTimeout(() => $('#field-text')?.focus(), 50);
+}
+
+function closeEditor() {
+  const modal = $('#editor-modal');
+  if (modal) {
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+  editingIndex = null;
+}
+
+function saveEditor() {
+  const text = $('#field-text')?.value.trim();
+  if (!text) { toast('اكتب نص الذكر أولاً'); return; }
+  const item = {
+    id: editingIndex === null ? crypto.randomUUID() : azkar[editingIndex].id,
     text,
     category: $('#field-category')?.value || 'sabah',
-    repeat: Math.max(1, Number($('#field-repeat')?.value)||1),
+    repeat: Math.max(1, Number($('#field-repeat')?.value) || 1),
     fadl: $('#field-fadl')?.value.trim() || '',
     source: $('#field-source')?.value.trim() || '',
     published: !!$('#field-published')?.checked,
-    order: editingIndex===null ? (azkar.length + 1) : (azkar[editingIndex].order || editingIndex + 1),
+    order: editingIndex === null ? (azkar.length + 1) : (azkar[editingIndex].order || editingIndex + 1),
     updatedAt: new Date().toISOString()
   };
-  if(editingIndex===null) azkar.unshift(item);
-  else azkar[editingIndex]=item;
+
+  if (editingIndex === null) azkar.unshift(item);
+  else azkar[editingIndex] = item;
+
   persistSave(item);
   renderTable();
   closeEditor();
-  toast(item.published?'تم حفظ الذكر ونشره':'تم حفظ الذكر كمسودة');
+  toast(item.published ? 'تم حفظ الذكر ونشره' : 'تم حفظ الذكر كمسودة');
 }
 
-async function persistSave(item){
-  if(!firestore) return;
-  try{
+async function persistSave(item) {
+  if (!firestore) return;
+  try {
     const payload = { ...item, order: Number(item.order) || 0 };
-    await firestore.collection('content').doc('azkar').collection('items').doc(item.id).set(payload,{merge:true});
-  }catch(e){
+    await firestore.collection('content').doc('azkar').collection('items').doc(item.id).set(payload, { merge: true });
+  } catch (e) {
     console.error(e);
     toast('تم الحفظ محلياً، تعذّر الحفظ السحابي');
   }
 }
 
-async function persistDelete(item){
-  if(!firestore||!item?.id) return;
-  try{
+async function persistDelete(item) {
+  if (!firestore || !item?.id) return;
+  try {
     await firestore.collection('content').doc('azkar').collection('items').doc(item.id).delete();
-  }catch(e){console.error(e)}
+  } catch (e) {
+    console.error(e);
+  }
 }
 
-async function loadRemote(){
-  if(!firestore) return;
-  try{
+async function loadRemote() {
+  if (!firestore) return;
+  try {
     const snap = await firestore.collection('content').doc('azkar').collection('items').get();
-    if(!snap.empty){
-      azkar.splice(0, azkar.length, ...snap.docs.map(d => ({id: d.id, ...d.data()})));
-      azkar.sort((a,b) => (Number(a.order)||0) - (Number(b.order)||0));
+    if (!snap.empty) {
+      azkar.splice(0, azkar.length, ...snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      azkar.sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
       renderTable();
       toast('تم تحديث المحتوى من السحابة');
     }
-  }catch(e){
+  } catch (e) {
     console.error(e);
     toast('تعذر تحميل المحتوى السحابي');
   }
 }
 
-async function setupAuth(){
+async function setupAuth() {
   const config = window.AZKAR_FIREBASE_CONFIG;
-  try{
+  try {
     if (typeof firebase === 'undefined') {
       const msg = $('#auth-message');
-      if (msg) msg.textContent = 'مكتبة الخدمات السحابية غير محملة بالصفحة.';
+      if (msg) msg.textContent = 'مكتبات السحابة غير محملة.';
       return;
     }
     if (!firebase.apps.length) {
@@ -172,22 +210,15 @@ async function setupAuth(){
     }
     firestore = firebase.firestore();
 
-    // استقبال نتيجة إعادة التوجيه إن وجدت
-    await firebase.auth().getRedirectResult().catch(err => {
-      console.error(err);
-      const msg = $('#auth-message');
-      if (msg) msg.textContent = 'خطأ أثناء المصادقة: ' + err.message;
-    });
-
     firebase.auth().onAuthStateChanged(async user => {
-      if(!user){
+      if (!user) {
         const msg = $('#auth-message');
         if (msg) msg.textContent = 'سجّل الدخول بحساب المشرف للمتابعة.';
         return;
       }
-      const emailLower = (user.email||'').toLowerCase().trim();
+      const emailLower = (user.email || '').toLowerCase().trim();
       const isOwner = emailLower === 'mgedh.9ali@gmail.com' || emailLower.includes('mgedh.9ali');
-      if(!isOwner){
+      if (!isOwner) {
         await firebase.auth().signOut();
         const msg = $('#auth-message');
         if (msg) msg.textContent = 'هذا الحساب ليس ضمن المشرفين.';
@@ -196,10 +227,10 @@ async function setupAuth(){
       $('#auth-gate')?.classList.add('hidden');
       $('.shell')?.classList.add('ready');
       const msg = $('#auth-message');
-      if (msg) msg.textContent = `مرحباً ${user.displayName||user.email}`;
+      if (msg) msg.textContent = `مرحباً ${user.displayName || user.email}`;
       await loadRemote();
     });
-  }catch(e){
+  } catch (e) {
     console.error(e);
     const msg = $('#auth-message');
     if (msg) msg.textContent = 'تعذر التهيئة: ' + e.message;
@@ -214,19 +245,15 @@ document.addEventListener('DOMContentLoaded', () => {
       try {
         const config = window.AZKAR_FIREBASE_CONFIG;
         if (typeof firebase === 'undefined') {
-          alert('مكتبة الخدمات السحابية غير متصلة.');
+          alert('مكتبات السحابة غير متصلة.');
           return;
         }
         if (!firebase.apps.length) {
           firebase.initializeApp(config);
         }
-        const msg = document.querySelector('#auth-message');
-        if (msg) msg.textContent = 'جارٍ تحويلك لتسجيل الدخول بأمان...';
-        
         const provider = new firebase.auth.GoogleAuthProvider();
-        // استخدام إعادة التوجيه لتجاوز مشاكل حظر النوافذ المنبثقة
-        await firebase.auth().signInWithRedirect(provider);
-      } catch(e) {
+        await firebase.auth().signInWithPopup(provider);
+      } catch (e) {
         console.error(e);
         const msg = document.querySelector('#auth-message');
         if (msg) msg.textContent = 'فشل تسجيل الدخول: ' + e.message;
@@ -235,16 +262,23 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  $('#search')?.addEventListener('input',renderTable);
-  $('#filter')?.addEventListener('change',renderTable);
-  $('#status-filter')?.addEventListener('change',renderTable);
-  $('#add-zekr')?.addEventListener('click',()=>openEditor());
-  $('#save-zekr')?.addEventListener('click',saveEditor);
-  $('#close-modal')?.addEventListener('click',closeEditor);
-  $('#cancel-modal')?.addEventListener('click',closeEditor);
-  $('#editor-modal')?.addEventListener('click',e=>{if(e.target.id==='editor-modal')closeEditor()});
-  $('#add-category')?.addEventListener('click',()=>{const name=prompt('اسم التصنيف الجديد:');if(name?.trim()){categories.push({icon:'✦',name:name.trim(),desc:'تصنيف جديد',count:0});renderCategories();toast('تمت إضافة التصنيف')}});
-  $('#preview-btn')?.addEventListener('click',()=>toast('المعاينة ستتصل بتطبيق الهاتف بعد اكتمال المزامنة'));
+  $('#search')?.addEventListener('input', renderTable);
+  $('#filter')?.addEventListener('change', renderTable);
+  $('#status-filter')?.addEventListener('change', renderTable);
+  $('#add-zekr')?.addEventListener('click', () => openEditor());
+  $('#save-zekr')?.addEventListener('click', saveEditor);
+  $('#close-modal')?.addEventListener('click', closeEditor);
+  $('#cancel-modal')?.addEventListener('click', closeEditor);
+  $('#editor-modal')?.addEventListener('click', e => { if (e.target.id === 'editor-modal') closeEditor(); });
+  $('#add-category')?.addEventListener('click', () => {
+    const name = prompt('اسم التصنيف الجديد:');
+    if (name?.trim()) {
+      categories.push({ icon: '✦', name: name.trim(), desc: 'تصنيف جديد', count: 0 });
+      renderCategories();
+      toast('تمت إضافة التصنيف');
+    }
+  });
+  $('#preview-btn')?.addEventListener('click', () => toast('المعاينة ستتصل بالتطبيق بعد اكتمال المزامنة'));
 
   renderTable();
   renderCategories();
