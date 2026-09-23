@@ -1,4 +1,3 @@
-// تعريف إعدادات الاتصال السحابي مباشرة لمنع وصول المفتاح فارغاً أو غير صالح
 window.AZKAR_FIREBASE_CONFIG = {
   apiKey: "AIzaSyBQPLs_e9XwL3-WAbjtUPRSxGK75Ig_sF8",
   authDomain: "svrpmtt.firebaseapp.com",
