@@ -49,6 +49,8 @@ object AzkarData {
         Zekr(43, "آئِبُونَ تَائِبُونَ عَابِدُونَ لِرَبِّنَا حَامِدُونَ.", "رواه البخاري ومسلم", "عند الرجوع من السفر.", 1, "travel")
     )
 
+    fun all(): List<Zekr> = morningAzkar + eveningAzkar + sleepAzkar + travelAzkar
+
     fun forCategory(category: String): List<Zekr> = when (category) {
         "sabah" -> morningAzkar
         "masaa" -> eveningAzkar
@@ -63,5 +65,16 @@ object AzkarData {
         "sleep" -> "أذكار النوم"
         "travel" -> "أذكار السفر"
         else -> "الأذكار"
+    }
+
+    fun search(query: String): List<Zekr> {
+        val q = query.trim()
+        if (q.isEmpty()) return emptyList()
+        return all().filter { z ->
+            z.text.contains(q, ignoreCase = true) ||
+                z.source.contains(q, ignoreCase = true) ||
+                z.fadl.contains(q, ignoreCase = true) ||
+                titleFor(z.category).contains(q, ignoreCase = true)
+        }
     }
 }

@@ -9,11 +9,14 @@ service cloud.firestore {
     function isAdmin() {
       return signedIn() && (
         request.auth.token.admin == true ||
-        (request.auth.token.email_verified == true &&
-         request.auth.token.email in [
-           'mgedh.9ali@gmail.com'
-         ])
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
       );
+    }
+
+    // RBAC: only existing admins may manage the admins collection
+    match /admins/{adminId} {
+      allow read: if isAdmin() || (signedIn() && request.auth.uid == adminId);
+      allow write: if isAdmin();
     }
 
     match /users/{userId} {
@@ -32,7 +35,9 @@ service cloud.firestore {
     }
 
     match /feedback/{feedbackId} {
-      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.keys().hasAll(['userId', 'message']);
 
       allow read: if isAdmin() ||
         (signedIn() && resource.data.userId == request.auth.uid);
@@ -46,9 +51,10 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // Admin-only job queue for Cloud Functions (FCM)
     match /admin_jobs/{jobId} {
-      allow read, write: if isAdmin();
+      allow create: if isAdmin()
+        && request.resource.data.keys().hasAll(['type', 'status']);
+      allow read, update, delete: if isAdmin();
     }
 
     match /{document=**} {

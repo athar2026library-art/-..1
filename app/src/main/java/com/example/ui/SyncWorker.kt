@@ -1,0 +1,48 @@
+package com.example.ui
+
+import android.content.Context
+import androidx.work.CoroutineWorker
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
+import androidx.work.WorkerParameters
+import com.example.data.FirestoreRepository
+import com.example.data.ProgressRepository
+import com.google.firebase.auth.FirebaseAuth
+import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.flow.first
+
+/** Offline-first background backup: merge remote then upload local. */
+class SyncWorker(
+    appContext: Context,
+    params: WorkerParameters
+) : CoroutineWorker(appContext, params) {
+
+    override suspend fun doWork(): Result {
+        if (FirebaseAuth.getInstance().currentUser == null) {
+            return Result.success()
+        }
+        return try {
+            val progress = ProgressRepository.getInstance(applicationContext)
+            val cloud = FirestoreRepository()
+            val remote = cloud.fetchProgress()
+            progress.syncProgress(remote)
+            val local = progress.getRecentProgress().first()
+            cloud.backupProgress(local)
+            Result.success()
+        } catch (_: Exception) {
+            if (runAttemptCount < 3) Result.retry() else Result.failure()
+        }
+    }
+
+    companion object {
+        fun enqueue(context: Context) {
+            val req = PeriodicWorkRequestBuilder<SyncWorker>(6, TimeUnit.HOURS).build()
+            WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+                "BaqiyatAutoSync",
+                ExistingPeriodicWorkPolicy.KEEP,
+                req
+            )
+        }
+    }
+}
