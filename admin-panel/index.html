@@ -3,31 +3,49 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet" />
-  <meta name="googlebot" content="noindex, nofollow" />
-  <meta name="description" content="لوحة الإدارة الخاصة بتطبيق أذكار" />
-  <title>إدارة أذكار — خاصة</title>
+  <title>لوحة تحكم الأذكار — دخول المشرف</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-  <section class="auth-gate" id="auth-gate" aria-live="polite">
+
+  <!-- شاشة الدخول العادية بكلمة المرور -->
+  <section class="auth-gate" id="auth-gate">
     <div class="auth-card">
       <span class="brand-mark">ذ</span>
-      <p class="eyebrow">منطقة محمية</p>
+      <p class="eyebrow">منطقة الإدارة</p>
       <h1>دخول المشرف</h1>
-      <p>هذه اللوحة خاصة بفريق إدارة أذكار. يلزم حساب Google مصرح له بصلاحية المشرف.</p>
-      <button class="primary" id="login-btn" type="button">تسجيل الدخول باستخدام Google</button>
-      <small id="auth-message">يتم التحقق من إعداد Firebase عند التحميل.</small>
+      <p>أدخل اسم المستخدم وكلمة المرور للمتابعة إلى اللوحة.</p>
+      
+      <form id="simple-login-form" style="display: flex; flex-direction: column; gap: 12px; margin-top: 15px;">
+        <input 
+          type="text" 
+          id="login-username" 
+          placeholder="اسم المستخدم" 
+          required 
+          style="padding: 10px; border-radius: 8px; border: 1px solid #ccc; font-family: inherit; font-size: 14px;" 
+        />
+        <input 
+          type="password" 
+          id="login-password" 
+          placeholder="كلمة المرور" 
+          required 
+          style="padding: 10px; border-radius: 8px; border: 1px solid #ccc; font-family: inherit; font-size: 14px;" 
+        />
+        <button class="primary" type="submit" style="padding: 10px; font-size: 15px; cursor: pointer;">تسجيل الدخول</button>
+      </form>
+      
+      <small id="auth-message" style="color: #e53e3e; display: block; margin-top: 10px; min-height: 18px;"></small>
     </div>
   </section>
 
+  <!-- جسم اللوحة الرئيسي -->
   <div class="shell">
     <aside class="sidebar">
       <div class="brand">
         <span class="brand-mark">ذ</span>
         <div><strong>أذكار</strong><small>لوحة الإدارة</small></div>
       </div>
-      <div class="private-badge">خاصة · غير مفهرسة</div>
+      <div class="private-badge">جلسة نشطة</div>
       <nav aria-label="التنقل الرئيسي">
         <button class="nav-item active" data-view="overview">نظرة عامة <span>⌂</span></button>
         <button class="nav-item" data-view="azkar">مكتبة الأذكار <span>☷</span></button>
@@ -35,8 +53,7 @@
         <button class="nav-item" data-view="settings">إعدادات التطبيق <span>⚙</span></button>
       </nav>
       <div class="sidebar-foot">
-        <span class="status-dot"></span> وضع الإدارة السحابي<br>
-        <small>متصل بقاعدة البيانات</small>
+        <button id="logout-btn" class="ghost" style="width: 100%; border: 1px solid #ddd; padding: 6px; border-radius: 6px; cursor: pointer;">تسجيل الخروج</button>
       </div>
     </aside>
 
@@ -56,33 +73,27 @@
         <div class="welcome">
           <div>
             <p class="eyebrow">صباح الخير يا معلم</p>
-            <h2>خلّي تجربة الذكر أهدأ وأجمل.</h2>
-            <p>أدر المحتوى، راجع الإحصاءات، وجهّز أفكاراً جديدة للتطبيق من مكان واحد.</p>
+            <h2>أهلاً بك في لوحة الإدارة.</h2>
+            <p>أدر الأذكار، التصنيفات، والإعدادات بكل سهولة وسرعة وبدون أي تعليق.</p>
           </div>
           <div class="orb">✦</div>
         </div>
         <div class="stats-grid">
-          <article class="stat"><span>إجمالي الأذكار</span><strong id="stat-total">8</strong><small>في المكتبة الحالية</small></article>
-          <article class="stat"><span>أذكار الصباح</span><strong>5</strong><small>جاهزة للقراءة</small></article>
-          <article class="stat"><span>أذكار المساء</span><strong>3</strong><small>جاهزة للقراءة</small></article>
-          <article class="stat accent"><span>آخر تحديث</span><strong>اليوم</strong><small>المحتوى سحابي</small></article>
+          <article class="stat"><span>إجمالي الأذكار</span><strong id="stat-total">8</strong><small>في المكتبة</small></article>
+          <article class="stat"><span>أذكار الصباح</span><strong>4</strong><small>جاهزة</small></article>
+          <article class="stat"><span>أذكار المساء</span><strong>4</strong><small>جاهزة</small></article>
+          <article class="stat accent"><span>حالة اللوحة</span><strong>نشطة</strong><small>حفظ فوري</small></article>
         </div>
         <div class="content-grid">
           <article class="panel">
             <div class="panel-head">
-              <div><p class="eyebrow">مركز العمل</p><h3>ابدأ من هنا</h3></div>
+              <div><p class="eyebrow">مركز العمل</p><h3>إجراءات سريعة</h3></div>
             </div>
             <div class="quick-actions">
-              <button data-view="azkar"><b>＋</b><span><strong>أضف ذكراً جديداً</strong><small>إلى مكتبة التطبيق</small></span><i>←</i></button>
-              <button data-view="categories"><b>◈</b><span><strong>نظّم التصنيفات</strong><small>صباح، مساء، نوم، سفر...</small></span><i>←</i></button>
-              <button data-view="settings"><b>⚙</b><span><strong>راجع الإعدادات</strong><small>النصوص وتجربة القراءة</small></span><i>←</i></button>
+              <button data-view="azkar"><b>＋</b><span><strong>أضف ذكراً جديداً</strong><small>إلى القائمة</small></span><i>←</i></button>
+              <button data-view="categories"><b>◈</b><span><strong>نظّم التصنيفات</strong><small>صباح، مساء...</small></span><i>←</i></button>
+              <button data-view="settings"><b>⚙</b><span><strong>الإعدادات العامة</strong><small>خيارات القراءة</small></span><i>←</i></button>
             </div>
-          </article>
-          <article class="panel note">
-            <p class="eyebrow">فكرة للتطوير</p>
-            <h3>وضع التركيز الهادئ</h3>
-            <p>أضف وضعاً يخفف الحركة ويعرض الذكر بخط أكبر مع خلفية أكثر هدوءاً للقراءة قبل النوم.</p>
-            <span class="tag">اقتراح UX</span>
           </article>
         </div>
       </section>
@@ -92,7 +103,7 @@
           <div>
             <p class="eyebrow">المحتوى</p>
             <h2>مكتبة الأذكار</h2>
-            <p>أدر النص، التكرار، الفضل والمصدر قبل مزامنتها مع التطبيق.</p>
+            <p>أدر النصوص، التكرار، والفضائل مباشرة.</p>
           </div>
           <button class="primary" id="add-zekr">＋ ذكر جديد</button>
         </div>
@@ -112,7 +123,7 @@
         <div class="table-wrap">
           <table>
             <thead>
-              <tr><th>الذكر</th><th>التصنيف</th><th>التكرار</th><th>الحالة</th><th>المصدر</th><th></th></tr>
+              <tr><th>الذكر</th><th>التصنيف</th><th>التكرار</th><th>الحالة</th><th>المصدر</th><th>إجراءات</th></tr>
             </thead>
             <tbody id="azkar-table"></tbody>
           </table>
@@ -124,7 +135,7 @@
           <div>
             <p class="eyebrow">تنظيم المحتوى</p>
             <h2>التصنيفات</h2>
-            <p>صمّم بنية المكتبة لتناسب حالات الاستخدام اليومية.</p>
+            <p>إدارة فئات وأقسام الأذكار.</p>
           </div>
           <button class="primary" id="add-category">＋ تصنيف جديد</button>
         </div>
@@ -136,33 +147,25 @@
           <div>
             <p class="eyebrow">التحكم</p>
             <h2>إعدادات التطبيق</h2>
-            <p>هذه الإعدادات نموذجية وستتصل بالسيرفر عند تفعيلها.</p>
           </div>
         </div>
         <div class="settings-list">
-          <label><span><strong>السماح بالوضع الليلي</strong><small>يظهر للمستخدم خيار القراءة ليلاً</small></span><input type="checkbox" checked /></label>
-          <label><span><strong>الاهتزاز عند العد</strong><small>تجربة لمس واضحة أثناء التسبيح</small></span><input type="checkbox" checked /></label>
-          <label><span><strong>إظهار الفضائل والمصادر</strong><small>شفافية أعلى في تجربة القراءة</small></span><input type="checkbox" checked /></label>
-          <label><span><strong>النشر التلقائي</strong><small>مزامنة سحابية فورية</small></span><input type="checkbox" checked /></label>
-        </div>
-        <div class="security-card">
-          <span class="lock">⌑</span>
-          <div>
-            <strong>تنبيه الخصوصية</strong>
-            <p>الواجهة محمية بنظام مصادقة سحابي للمالك فقط.</p>
-          </div>
+          <label><span><strong>الوضع الليلي التلقائي</strong></span><input type="checkbox" checked /></label>
+          <label><span><strong>الاهتزاز عند التسبيح</strong></span><input type="checkbox" checked /></label>
+          <label><span><strong>إظهار التخريج والمصادر</strong></span><input type="checkbox" checked /></label>
         </div>
       </section>
     </main>
   </div>
 
+  <!-- نافذة التعديل والإضافة -->
   <div class="modal" id="editor-modal" aria-hidden="true">
     <div class="modal-card">
       <div class="modal-head">
         <div><p class="eyebrow">محرر المحتوى</p><h2 id="modal-title">إضافة ذكر</h2></div>
         <button class="close" id="close-modal">×</button>
       </div>
-      <label>نص الذكر<textarea id="field-text" rows="4" placeholder="اكتب النص مضبوطاً..." required></textarea></label>
+      <label>نص الذكر<textarea id="field-text" rows="4" placeholder="اكتب نص الذكر..." required></textarea></label>
       <div class="form-grid">
         <label>التصنيف
           <select id="field-category">
@@ -172,27 +175,22 @@
         </label>
         <label>عدد التكرار<input id="field-repeat" type="number" min="1" value="1" /></label>
       </div>
-      <label>الفضل<textarea id="field-fadl" rows="3" placeholder="الفضل أو الشرح المختصر"></textarea></label>
-      <label>المصدر<input id="field-source" placeholder="الكتاب أو التخريج" /></label>
+      <label>الفضل<textarea id="field-fadl" rows="3" placeholder="فضل الذكر أو الأجر"></textarea></label>
+      <label>المصدر<input id="field-source" placeholder="تخريج الحديث أو الكتاب" /></label>
       <label class="publish-toggle">
-        <span><strong>نشر في التطبيق</strong><small>إذا أوقفتها تحفظ الذكر كمسودة</small></span>
+        <span><strong>نشر مباشر</strong></span>
         <input id="field-published" type="checkbox" checked />
       </label>
       <div class="modal-actions">
         <button class="ghost" id="cancel-modal">إلغاء</button>
-        <button class="primary" id="save-zekr">حفظ الذكر</button>
+        <button class="primary" id="save-zekr">حفظ</button>
       </div>
     </div>
   </div>
 
   <div class="toast" id="toast" role="status"></div>
 
-  <!-- مكتبات الاتصال السحابي الأساسية -->
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
-
-  <!-- ملف الأوامر والتشغيل المباشر -->
+  <!-- ملف البرمجة البسيط والمباشر -->
   <script src="./app.js"></script>
 </body>
 </html>
