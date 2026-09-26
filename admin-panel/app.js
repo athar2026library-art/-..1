@@ -489,12 +489,13 @@
       toast("أدخل العنوان والنص");
       return;
     }
-    await db.collection("admin_jobs").add({
-      type: "fcm_broadcast",
-      status: "pending",
+    await db.collection("notifications").add({
+      title,
+      body,
+      status: "queued",
+      audience: "all",
       createdBy: currentUser?.uid || "",
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      payload: { title, body },
     });
     lastNotifyAt = now;
     $("#notify-title").value = "";
