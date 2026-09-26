@@ -61,6 +61,9 @@ class AppViewModel(
     val notificationsEnabled: StateFlow<Boolean> = settingsRepository.notificationsEnabledFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
+    val autoPlayEnabled: StateFlow<Boolean> = settingsRepository.autoPlayFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
     val lastReadCategory: StateFlow<String> = settingsRepository.lastReadCategoryFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
 
@@ -174,6 +177,10 @@ class AppViewModel(
 
     fun setNotificationsEnabled(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setNotificationsEnabled(enabled) }
+    }
+
+    fun setAutoPlay(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setAutoPlay(enabled) }
     }
 
     fun explainZekr(zekr: String) {

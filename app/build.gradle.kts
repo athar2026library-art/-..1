@@ -83,6 +83,7 @@ dependencies {
   implementation(libs.androidx.compose.ui)
   implementation(libs.androidx.compose.ui.graphics)
   implementation(libs.androidx.compose.ui.tooling.preview)
+  implementation("androidx.compose.ui:ui-text-google-fonts:1.7.8")
   implementation(libs.androidx.core.ktx)
   implementation(libs.androidx.datastore.preferences)
   implementation(libs.androidx.lifecycle.runtime.compose)
@@ -102,6 +103,7 @@ dependencies {
   implementation(libs.googleid)
   implementation(libs.firebase.appcheck.recaptcha)
   implementation(libs.firebase.appcheck.debug)
+  implementation("com.google.firebase:firebase-appcheck-playintegrity")
   implementation(libs.kotlinx.coroutines.android)
   implementation(libs.kotlinx.coroutines.core)
   implementation(libs.logging.interceptor)
@@ -109,7 +111,6 @@ dependencies {
   implementation(libs.okhttp)
   implementation(libs.retrofit)
   implementation("androidx.work:work-runtime-ktx:2.9.0")
-  // Glance widget
   implementation("androidx.glance:glance-appwidget:1.1.1")
   implementation("androidx.glance:glance-material3:1.1.1")
   testImplementation(libs.androidx.compose.ui.test.junit4)

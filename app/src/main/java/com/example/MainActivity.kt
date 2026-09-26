@@ -58,6 +58,7 @@ import com.google.firebase.messaging.FirebaseMessaging
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.example.ui.NotificationWorker
+import com.example.ui.SyncWorker
 import java.util.concurrent.TimeUnit
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
@@ -72,28 +73,27 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                 ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
             }
         }
-        
+
         val workRequest = PeriodicWorkRequestBuilder<NotificationWorker>(2, TimeUnit.HOURS).build()
         WorkManager.getInstance(applicationContext).enqueueUniquePeriodicWork(
             "AzkarNotifications",
             androidx.work.ExistingPeriodicWorkPolicy.KEEP,
             workRequest
         )
-        
+        SyncWorker.enqueue(applicationContext)
+
         val progressRepository = ProgressRepository.getInstance(applicationContext)
         val settingsRepository = SettingsRepository(applicationContext.dataStore)
         val aiRepository = AiRepository()
         val authRepository = AuthRepository(applicationContext)
         val firestoreRepository = FirestoreRepository()
 
-        // Only update the token. Do NOT force notificationsEnabled = true
-        // so the user's choice in settings is respected.
         FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
             val user = FirebaseAuth.getInstance().currentUser ?: return@addOnSuccessListener
             FirebaseFirestore.getInstance().collection("users").document(user.uid).set(
@@ -104,7 +104,7 @@ class MainActivity : ComponentActivity() {
                 com.google.firebase.firestore.SetOptions.merge()
             )
         }
-        
+
         setContent {
             var showSplash by remember { mutableStateOf(true) }
             LaunchedEffect(Unit) { kotlinx.coroutines.delay(1400); showSplash = false }
@@ -118,14 +118,14 @@ class MainActivity : ComponentActivity() {
                     firestoreRepository
                 )
             )
-            
+
             val isDarkMode by viewModel.isDarkMode.collectAsState()
             val onboardingComplete by settingsRepository.onboardingCompleteFlow.collectAsState(initial = false)
-            
+
             val currentHour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
             val isFajrTime = currentHour in 3..6
             val finalDarkMode = isDarkMode || isFajrTime
-            
+
             MyApplicationTheme(darkTheme = finalDarkMode, isFajrMode = isFajrTime) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),

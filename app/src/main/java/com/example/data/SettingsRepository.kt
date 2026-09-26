@@ -28,6 +28,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     private val AUTO_DND = booleanPreferencesKey("auto_dnd")
     private val ONBOARDING_COMPLETE = booleanPreferencesKey("onboarding_complete")
     private val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
+    private val AUTO_PLAY = booleanPreferencesKey("auto_play")
 
     val fontSizeFlow: Flow<Float> = dataStore.data.map { it[FONT_SIZE] ?: 24f }
     val darkModeFlow: Flow<Boolean> = dataStore.data.map { it[DARK_MODE] ?: true }
@@ -38,6 +39,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     val hideSourcesFlow: Flow<Boolean> = dataStore.data.map { it[HIDE_SOURCES] ?: false }
     val onboardingCompleteFlow: Flow<Boolean> = dataStore.data.map { it[ONBOARDING_COMPLETE] ?: false }
     val notificationsEnabledFlow: Flow<Boolean> = dataStore.data.map { it[NOTIFICATIONS_ENABLED] ?: true }
+    val autoPlayFlow: Flow<Boolean> = dataStore.data.map { it[AUTO_PLAY] ?: false }
 
     val lastReadCategoryFlow: Flow<String> = dataStore.data.map { it[LAST_READ_CATEGORY] ?: "" }
     val lastReadIndexFlow: Flow<Int> = dataStore.data.map { it[LAST_READ_INDEX] ?: 0 }
@@ -70,4 +72,5 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     suspend fun setNotificationsEnabled(enabled: Boolean) {
         dataStore.edit { it[NOTIFICATIONS_ENABLED] = enabled }
     }
+    suspend fun setAutoPlay(enabled: Boolean) { dataStore.edit { it[AUTO_PLAY] = enabled } }
 }

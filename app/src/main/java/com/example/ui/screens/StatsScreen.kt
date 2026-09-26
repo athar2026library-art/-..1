@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -36,6 +37,11 @@ fun StatsScreen(
     onNavigateBack: () -> Unit
 ) {
     val recentProgress by viewModel.recentProgress.collectAsStateWithLifecycle()
+    val streak = remember(recentProgress) { calculateStreak(recentProgress) }
+    val longestStreak = remember(recentProgress) { calculateLongestStreak(recentProgress) }
+    val totalAzkar = remember(recentProgress) { recentProgress.sumOf { it.totalTasbeeh } }
+    val completedDays = remember(recentProgress) { recentProgress.count { it.completedSabah || it.completedMasaa } }
+    val weekData = remember(recentProgress) { buildWeekChart(recentProgress) }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -57,15 +63,10 @@ fun StatsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(24.dp)
+                .padding(horizontal = 24.dp, vertical = 16.dp)
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            val streak = calculateStreak(recentProgress)
-            val longestStreak = calculateLongestStreak(recentProgress)
-            val totalAzkar = recentProgress.sumOf { it.totalTasbeeh }
-            val completedDays = recentProgress.count { it.completedSabah || it.completedMasaa }
-
             Text(
                 text = "🔥 $streak يوماً",
                 fontSize = 40.sp,
@@ -87,9 +88,7 @@ fun StatsScreen(
             }
 
             Spacer(modifier = Modifier.height(28.dp))
-
             MonthlyCalendar(recentProgress)
-
             Spacer(modifier = Modifier.height(28.dp))
 
             Column(
@@ -108,6 +107,7 @@ fun StatsScreen(
                 )
                 Spacer(modifier = Modifier.height(24.dp))
 
+                val maxTasbeeh = weekData.maxOfOrNull { it.second }?.coerceAtLeast(1) ?: 1
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -115,23 +115,6 @@ fun StatsScreen(
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.Bottom
                 ) {
-                    val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-                    val dayLabels = listOf("أحد", "إثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة", "سبت")
-
-                    var maxTasbeeh = 1
-                    val weekData = mutableListOf<Pair<String, Int>>()
-                    for (i in 6 downTo 0) {
-                        val calDay = Calendar.getInstance()
-                        calDay.add(Calendar.DAY_OF_YEAR, -i)
-                        val dateStr = sdf.format(calDay.time)
-                        val progress = recentProgress.find { it.date == dateStr }
-                        val tasbeeh = progress?.totalTasbeeh ?: 0
-                        if (tasbeeh > maxTasbeeh) maxTasbeeh = tasbeeh
-                        // Calendar.SUNDAY=1 … SATURDAY=7 → index 0..6
-                        val label = dayLabels[calDay.get(Calendar.DAY_OF_WEEK) - 1]
-                        weekData.add(Pair(label, tasbeeh))
-                    }
-
                     for ((dayName, tasbeehCount) in weekData) {
                         val heightFraction = (tasbeehCount.toFloat() / maxTasbeeh.toFloat()).coerceIn(0.1f, 1f)
                         Column(
@@ -189,37 +172,36 @@ fun StatsScreen(
             )
             Spacer(modifier = Modifier.height(12.dp))
 
-            AchievementRow(
-                title = "أسبوع متواصل",
-                subtitle = "7 أيام التزام",
-                unlocked = longestStreak >= 7 || streak >= 7,
-                icon = Icons.Default.Star
-            )
+            AchievementRow("الخطوة الأولى", "أكمل أول تسبيحة", totalAzkar >= 1, Icons.Default.Star)
             Spacer(modifier = Modifier.height(10.dp))
-            AchievementRow(
-                title = "أربعون يوماً",
-                subtitle = "سلسلة 40 يوماً",
-                unlocked = longestStreak >= 40,
-                icon = Icons.Default.EmojiEvents
-            )
+            AchievementRow("أسبوع متواصل", "7 أيام التزام", longestStreak >= 7 || streak >= 7, Icons.Default.Star)
             Spacer(modifier = Modifier.height(10.dp))
-            AchievementRow(
-                title = "ألف تسبيحة",
-                subtitle = "إجمالي 1000 تسبيحة",
-                unlocked = totalAzkar >= 1000,
-                icon = Icons.Default.Star
-            )
+            AchievementRow("أربعون يوماً", "سلسلة 40 يوماً", longestStreak >= 40, Icons.Default.EmojiEvents)
+            Spacer(modifier = Modifier.height(10.dp))
+            AchievementRow("ألف تسبيحة", "إجمالي 1000 تسبيحة", totalAzkar >= 1000, Icons.Default.Star)
+            Spacer(modifier = Modifier.height(10.dp))
+            AchievementRow("سيد الذكر", "إجمالي 10000 تسبيحة", totalAzkar >= 10000, Icons.Default.EmojiEvents)
 
             Spacer(modifier = Modifier.height(32.dp))
         }
     }
 }
 
-/**
- * رزنامة الشهر الحالي.
- * يبدأ الأسبوع بالسبت (شائع في التقويم العربي).
- * الأعمدة من اليمين لليسار في واجهة RTL تظهر بترتيب القائمة.
- */
+private fun buildWeekChart(progress: List<UserProgress>): List<Pair<String, Int>> {
+    val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+    val dayLabels = listOf("أحد", "إثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة", "سبت")
+    val weekData = mutableListOf<Pair<String, Int>>()
+    for (i in 6 downTo 0) {
+        val calDay = Calendar.getInstance()
+        calDay.add(Calendar.DAY_OF_YEAR, -i)
+        val dateStr = sdf.format(calDay.time)
+        val tasbeeh = progress.find { it.date == dateStr }?.totalTasbeeh ?: 0
+        val label = dayLabels[calDay.get(Calendar.DAY_OF_WEEK) - 1]
+        weekData.add(Pair(label, tasbeeh))
+    }
+    return weekData
+}
+
 @Composable
 private fun MonthlyCalendar(progress: List<UserProgress>) {
     val cal = Calendar.getInstance()
@@ -228,16 +210,11 @@ private fun MonthlyCalendar(progress: List<UserProgress>) {
     val today = cal.get(Calendar.DAY_OF_MONTH)
     val daysInMonth = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
 
-    // أول يوم في الشهر → إزاحة عند بداية الأسبوع يوم السبت
-    // Calendar: SUNDAY=1 … SATURDAY=7
-    // السبت أولاً: offset = dayOfWeek % 7  → سبت=0، أحد=1، … جمعة=6
     cal.set(Calendar.DAY_OF_MONTH, 1)
     val offset = cal.get(Calendar.DAY_OF_WEEK) % 7
 
-    val byDate = progress.associateBy { it.date }
+    val byDate = remember(progress) { progress.associateBy { it.date } }
     val monthTitleFmt = SimpleDateFormat("MMMM yyyy", Locale.forLanguageTag("ar"))
-
-    // سبت، أحد، إثنين، ثلاثاء، أربعاء، خميس، جمعة
     val dayNames = listOf("سبت", "أحد", "إثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة")
 
     Column(

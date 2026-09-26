@@ -85,6 +85,20 @@ th{font-size:11px;color:var(--muted);background:#fbfdfb}
 .auth-card .brand-mark{margin:0 auto 18px}
 .auth-card h1{margin:0 0 10px}.auth-card p{color:var(--muted);line-height:1.9}
 .auth-card .primary{width:100%;margin:16px 0}
-.auth-card small{color:var(--muted);font-size:10px}
+.auth-card small{color:#c0392b;font-size:12px;display:block;min-height:18px}
+.eyebrow{margin:0;color:var(--muted);font-size:11px;letter-spacing:.04em}
+.welcome{background:linear-gradient(135deg,#eef6ef,#fff);border:1px solid var(--line);border-radius:22px;padding:24px;margin-bottom:8px}
+.welcome h2{margin:8px 0}
+.welcome p{color:var(--muted);margin:0}
+.content-grid{display:grid;gap:16px}
+.quick-actions{display:grid;gap:10px}
+.quick-actions button{display:flex;align-items:center;gap:12px;width:100%;border:1px solid var(--line);background:#fbfdfb;border-radius:14px;padding:14px;font:inherit;cursor:pointer;text-align:right}
+.quick-actions button:hover{border-color:var(--green);background:var(--mint)}
+.quick-actions b{width:36px;height:36px;display:grid;place-items:center;background:var(--mint);border-radius:10px;color:var(--green-dark)}
+.quick-actions span{flex:1;display:grid;gap:2px}
+.quick-actions small{color:var(--muted);font-weight:400}
+.quick-actions i{color:var(--muted);font-style:normal}
+.settings-list{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:8px 16px}
+code{background:var(--mint);padding:1px 6px;border-radius:6px;font-size:11px}
 @media(max-width:900px){.feedback-layout,.stats-grid{grid-template-columns:1fr}}
 @media(max-width:850px){.sidebar{width:72px;padding:16px 8px}.brand div,.private-badge,.sidebar-foot small,.logout-btn{display:none}.main{padding:20px 14px}}

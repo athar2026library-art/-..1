@@ -19,6 +19,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.filled.Stop
@@ -64,6 +66,7 @@ fun AzkarScreen(
     val autoDnd by viewModel.autoDnd.collectAsStateWithLifecycle()
     val hideVirtues by viewModel.hideVirtues.collectAsStateWithLifecycle()
     val hideSources by viewModel.hideSources.collectAsStateWithLifecycle()
+    val autoPlayEnabled by viewModel.autoPlayEnabled.collectAsStateWithLifecycle()
 
     var currentIndex by remember { mutableIntStateOf(0) }
     var countRemaining by remember { mutableIntStateOf(1) }
@@ -158,6 +161,10 @@ fun AzkarScreen(
         if (isInitialized) {
             countRemaining = currentZekr.repeatCount
             audioPlayer.stop()
+            if (autoPlayEnabled) {
+                delay(350)
+                audioPlayer.playAndWait(currentZekr.text)
+            }
         }
     }
 
@@ -169,7 +176,7 @@ fun AzkarScreen(
             if (countRemaining == 0) {
                 if (isVibrationEnabled) vibrateCompletion(context)
                 coroutineScope.launch {
-                    delay(300)
+                    delay(if (autoPlayEnabled) 1200 else 300)
                     currentIndex++
                 }
             }
@@ -188,16 +195,11 @@ fun AzkarScreen(
                         }
                     },
                     actions = {
-                        IconButton(onClick = {
-                            if (isPlaying) audioPlayer.stop()
-                            else coroutineScope.launch { audioPlayer.playAndWait(currentZekr.text) }
-                        }) {
-                            Icon(
-                                if (isPlaying) Icons.Default.Stop else Icons.Default.VolumeUp,
-                                contentDescription = if (isPlaying) "إيقاف" else "استماع",
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
+                        FilterChip(
+                            selected = autoPlayEnabled,
+                            onClick = { viewModel.setAutoPlay(!autoPlayEnabled) },
+                            label = { Text(if (autoPlayEnabled) "تلقائي" else "يدوي", fontSize = 12.sp) }
+                        )
                         TextButton(onClick = { viewModel.setFontSize((fontSize - 2f).coerceAtLeast(16f)) }) {
                             Text("A-", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                         }
@@ -215,46 +217,75 @@ fun AzkarScreen(
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.End
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
                         "${currentIndex + 1} / ${azkarList.size}",
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                     )
+                    if (autoPlayEnabled) {
+                        Text("قراءة مستمرة", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
+                    }
                 }
             }
         },
         bottomBar = {
             Surface(color = MaterialTheme.colorScheme.background) {
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 24.dp)
-                        .navigationBarsPadding(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(horizontal = 20.dp, vertical = 12.dp)
+                        .navigationBarsPadding()
                 ) {
-                    TextButton(onClick = { if (currentIndex > 0) currentIndex-- }, enabled = currentIndex > 0) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
-                        Spacer(Modifier.width(4.dp))
-                        Text("السابق")
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        FilledTonalIconButton(onClick = {
+                            if (isPlaying) audioPlayer.stop()
+                            else coroutineScope.launch { audioPlayer.playAndWait(currentZekr.text) }
+                        }) {
+                            Icon(
+                                if (isPlaying) Icons.Default.Stop else Icons.Default.VolumeUp,
+                                contentDescription = if (isPlaying) "إيقاف" else "استماع"
+                            )
+                        }
+                        FilledTonalIconButton(onClick = { audioPlayer.playLoop(currentZekr.text, 3) }) {
+                            Icon(Icons.Default.Repeat, contentDescription = "تكرار 3 مرات")
+                        }
+                        FilledTonalIconButton(onClick = { audioPlayer.playLoop(currentZekr.text, 5) }) {
+                            Icon(Icons.Default.RepeatOne, contentDescription = "تكرار 5 مرات")
+                        }
                     }
-                    TextButton(onClick = {
-                        countRemaining = currentZekr.repeatCount
-                        if (isVibrationEnabled) vibrateLight(context)
-                    }) {
-                        Icon(Icons.Default.Refresh, contentDescription = null)
-                        Spacer(Modifier.width(4.dp))
-                        Text("إعادة")
-                    }
-                    IconButton(onClick = { showBottomSheet = true }) {
-                        Icon(Icons.Default.Info, contentDescription = "معلومات", tint = MaterialTheme.colorScheme.primary)
-                    }
-                    TextButton(onClick = { if (currentIndex < azkarList.size - 1) currentIndex++ }) {
-                        Text("التالي")
-                        Spacer(Modifier.width(4.dp))
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TextButton(onClick = { if (currentIndex > 0) currentIndex-- }, enabled = currentIndex > 0) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
+                            Spacer(Modifier.width(4.dp))
+                            Text("السابق")
+                        }
+                        TextButton(onClick = {
+                            countRemaining = currentZekr.repeatCount
+                            if (isVibrationEnabled) vibrateLight(context)
+                        }) {
+                            Icon(Icons.Default.Refresh, contentDescription = null)
+                            Spacer(Modifier.width(4.dp))
+                            Text("إعادة")
+                        }
+                        IconButton(onClick = { showBottomSheet = true }) {
+                            Icon(Icons.Default.Info, contentDescription = "معلومات", tint = MaterialTheme.colorScheme.primary)
+                        }
+                        TextButton(onClick = { if (currentIndex < azkarList.size - 1) currentIndex++ }) {
+                            Text("التالي")
+                            Spacer(Modifier.width(4.dp))
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+                        }
                     }
                 }
             }
@@ -294,7 +325,7 @@ fun AzkarScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(48.dp))
+                Spacer(modifier = Modifier.height(36.dp))
 
                 Box(
                     modifier = Modifier
@@ -320,7 +351,7 @@ fun AzkarScreen(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(18.dp))
                 Text(
                     "اضغط على البطاقة أو الزر للمتابعة",
                     fontSize = 14.sp,

@@ -38,6 +38,7 @@ fun SettingsScreen(
     val hideVirtues by viewModel.hideVirtues.collectAsStateWithLifecycle()
     val hideSources by viewModel.hideSources.collectAsStateWithLifecycle()
     val notificationsEnabled by viewModel.notificationsEnabled.collectAsStateWithLifecycle()
+    val autoPlayEnabled by viewModel.autoPlayEnabled.collectAsStateWithLifecycle()
 
     val userSignedIn by viewModel.userSignedIn.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -163,6 +164,22 @@ fun SettingsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
+                            Text("القراءة المستمرة", fontSize = 16.sp)
+                            Text("تشغيل الصوت والانتقال للذكر التالي تلقائياً", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Switch(checked = autoPlayEnabled, onCheckedChange = { viewModel.setAutoPlay(it) })
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text("إبقاء الشاشة مضاءة", fontSize = 16.sp)
                             Text("أثناء قراءة الأذكار فقط", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
@@ -249,6 +266,13 @@ fun SettingsScreen(
                 border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
+                    Text(
+                        "المزامنة التلقائية تعمل في الخلفية كل 6 ساعات عند تسجيل الدخول، مع دمج الإنجاز المحلي والسحابي.",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        lineHeight = 20.sp
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
                     if (userSignedIn) {
                         Text("تم تسجيل الدخول", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.height(16.dp))
@@ -257,7 +281,7 @@ fun SettingsScreen(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text("مزامنة الإنجاز")
+                            Text("مزامنة الآن")
                         }
                         Spacer(modifier = Modifier.height(8.dp))
                         OutlinedButton(

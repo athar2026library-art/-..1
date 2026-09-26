@@ -13,15 +13,25 @@ service cloud.firestore {
       );
     }
 
+    function isSuperAdmin() {
+      return isAdmin() && (
+        request.auth.token.admin == true ||
+        get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'super_admin'
+      );
+    }
+
     // RBAC: only existing admins may manage the admins collection
     match /admins/{adminId} {
       allow read: if isAdmin() || (signedIn() && request.auth.uid == adminId);
-      allow write: if isAdmin();
+      allow create, update, delete: if isSuperAdmin();
     }
 
     match /users/{userId} {
-      allow read, write: if signedIn() && request.auth.uid == userId;
-      allow read: if isAdmin();
+      allow read: if (signedIn() && request.auth.uid == userId) || isAdmin();
+      allow create, update: if signedIn()
+        && request.auth.uid == userId
+        && !request.resource.data.keys().hasAny(['role', 'admin', 'isAdmin', 'permissions']);
+      allow delete: if signedIn() && request.auth.uid == userId;
 
       match /{sub=**} {
         allow read, write: if signedIn() && request.auth.uid == userId;
@@ -55,6 +65,10 @@ service cloud.firestore {
       allow create: if isAdmin()
         && request.resource.data.keys().hasAll(['type', 'status']);
       allow read, update, delete: if isAdmin();
+    }
+
+    match /system/{docId} {
+      allow read, write: if isAdmin();
     }
 
     match /{document=**} {

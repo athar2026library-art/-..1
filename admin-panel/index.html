@@ -3,86 +3,68 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>لوحة تحكم الأذكار — دخول المشرف</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <title>لوحة تحكم الباقيات — المشرف</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-
-  <!-- شاشة الدخول العادية بكلمة المرور فقط -->
   <section class="auth-gate" id="auth-gate">
     <div class="auth-card">
-      <span class="brand-mark">ذ</span>
+      <span class="brand-mark">ب</span>
       <p class="eyebrow">منطقة الإدارة</p>
       <h1>دخول المشرف</h1>
-      <p>أدخل اسم المستخدم وكلمة المرور للمتابعة.</p>
-      
-      <form id="simple-login-form" style="display: flex; flex-direction: column; gap: 12px; margin-top: 15px;">
-        <input 
-          type="text" 
-          id="login-username" 
-          placeholder="اسم المستخدم" 
-          required 
-          style="padding: 10px; border-radius: 8px; border: 1px solid #ccc; font-family: inherit; font-size: 14px;" 
-        />
-        <input 
-          type="password" 
-          id="login-password" 
-          placeholder="كلمة المرور" 
-          required 
-          style="padding: 10px; border-radius: 8px; border: 1px solid #ccc; font-family: inherit; font-size: 14px;" 
-        />
-        <button class="primary" type="submit" style="padding: 10px; font-size: 15px; cursor: pointer;">تسجيل الدخول</button>
-      </form>
-      
-      <small id="auth-message" style="color: #e53e3e; display: block; margin-top: 10px; min-height: 18px;"></small>
+      <p>سجّل الدخول بحساب Google المرتبط بمستند <code>admins/{uid}</code> في Firestore. لا توجد كلمة مرور ثابتة.</p>
+      <button class="primary" id="google-login-btn" type="button">دخول عبر Google</button>
+      <small id="auth-message"></small>
     </div>
   </section>
 
-  <!-- جسم اللوحة الرئيسي -->
-  <div class="shell">
+  <div class="shell" id="shell">
     <aside class="sidebar">
       <div class="brand">
-        <span class="brand-mark">ذ</span>
-        <div><strong>أذكار</strong><small>لوحة الإدارة</small></div>
+        <span class="brand-mark">ب</span>
+        <div><strong>الباقيات</strong><small>لوحة المالك</small></div>
       </div>
-      <div class="private-badge">جلسة نشطة</div>
+      <div class="private-badge" id="admin-role-badge">RBAC · Firestore</div>
       <nav aria-label="التنقل الرئيسي">
         <button class="nav-item active" data-view="overview">نظرة عامة <span>⌂</span></button>
         <button class="nav-item" data-view="azkar">مكتبة الأذكار <span>☷</span></button>
+        <button class="nav-item" data-view="feedback">صندوق الرسائل <span class="nav-badge hidden" id="feedback-badge">0</span></button>
+        <button class="nav-item" data-view="notify">إشعار عام <span>◎</span></button>
         <button class="nav-item" data-view="categories">التصنيفات <span>◈</span></button>
-        <button class="nav-item" data-view="settings">إعدادات التطبيق <span>⚙</span></button>
+        <button class="nav-item" data-view="settings">إعدادات وأمان <span>⚙</span></button>
       </nav>
       <div class="sidebar-foot">
-        <button id="logout-btn" class="ghost" style="width: 100%; border: 1px solid #ddd; padding: 6px; border-radius: 6px; cursor: pointer;">تسجيل الخروج</button>
+        <small id="admin-email"></small>
+        <button id="logout-btn" class="ghost logout-btn">تسجيل الخروج</button>
       </div>
     </aside>
 
     <main class="main">
       <header class="topbar">
         <div>
-          <p class="eyebrow">مساحة خاصة · أذكار</p>
+          <p class="eyebrow">مساحة خاصة · الباقيات</p>
           <h1 id="page-title">نظرة عامة</h1>
         </div>
         <div class="top-actions">
-          <button class="ghost" id="preview-btn">معاينة التطبيق ↗</button>
-          <button class="avatar">م</button>
+          <button class="ghost" id="export-json">تصدير JSON</button>
+          <button class="ghost" id="preview-btn">معاينة الذكر ↗</button>
         </div>
       </header>
 
       <section id="overview" class="view active-view">
         <div class="welcome">
           <div>
-            <p class="eyebrow">صباح الخير يا معلم</p>
-            <h2>أهلاً بك في لوحة الإدارة.</h2>
-            <p>أدر الأذكار، التصنيفات، والإعدادات بكل سهولة وسرعة.</p>
+            <p class="eyebrow">أهلاً بك</p>
+            <h2>لوحة إدارة المحتوى والإشعارات.</h2>
+            <p>الأذكار تُحفظ في Firestore وتظهر فوراً في التطبيق بعد النشر.</p>
           </div>
-          <div class="orb">✦</div>
         </div>
         <div class="stats-grid">
-          <article class="stat"><span>إجمالي الأذكار</span><strong id="stat-total">8</strong><small>في المكتبة</small></article>
-          <article class="stat"><span>أذكار الصباح</span><strong>4</strong><small>جاهزة</small></article>
-          <article class="stat"><span>أذكار المساء</span><strong>4</strong><small>جاهزة</small></article>
-          <article class="stat accent"><span>حالة اللوحة</span><strong>نشطة</strong><small>حفظ محلي فوري</small></article>
+          <article class="stat"><span>إجمالي الأذكار</span><strong id="stat-total">—</strong><small>في المكتبة</small></article>
+          <article class="stat"><span>منشور</span><strong id="stat-published">—</strong><small>ظاهر للمستخدمين</small></article>
+          <article class="stat"><span>مسودات</span><strong id="stat-draft">—</strong><small>غير ظاهرة</small></article>
+          <article class="stat accent"><span>رسائل جديدة</span><strong id="stat-feedback">—</strong><small>صندوق الوارد</small></article>
         </div>
         <div class="content-grid">
           <article class="panel">
@@ -90,9 +72,9 @@
               <div><p class="eyebrow">مركز العمل</p><h3>إجراءات سريعة</h3></div>
             </div>
             <div class="quick-actions">
-              <button data-view="azkar"><b>＋</b><span><strong>أضف ذكراً جديداً</strong><small>إلى القائمة</small></span><i>←</i></button>
-              <button data-view="categories"><b>◈</b><span><strong>نظّم التصنيفات</strong><small>صباح، مساء...</small></span><i>←</i></button>
-              <button data-view="settings"><b>⚙</b><span><strong>الإعدادات العامة</strong><small>خيارات القراءة</small></span><i>←</i></button>
+              <button data-view="azkar"><b>＋</b><span><strong>أضف ذكراً جديداً</strong><small>إلى المكتبة</small></span><i>←</i></button>
+              <button data-view="feedback"><b>✉</b><span><strong>راجع الرسائل</strong><small>ردود المستخدمين</small></span><i>←</i></button>
+              <button data-view="notify"><b>◎</b><span><strong>أرسل إشعاراً</strong><small>موضوع all</small></span><i>←</i></button>
             </div>
           </article>
         </div>
@@ -103,7 +85,7 @@
           <div>
             <p class="eyebrow">المحتوى</p>
             <h2>مكتبة الأذكار</h2>
-            <p>أدر النصوص، التكرار، والفضائل مباشرة.</p>
+            <p>اسحب الصفوف لإعادة الترتيب. التعديلات تُحفظ في Firestore.</p>
           </div>
           <button class="primary" id="add-zekr">＋ ذكر جديد</button>
         </div>
@@ -113,6 +95,8 @@
             <option value="all">كل التصنيفات</option>
             <option value="sabah">الصباح</option>
             <option value="masaa">المساء</option>
+            <option value="sleep">النوم</option>
+            <option value="travel">السفر</option>
           </select>
           <select id="status-filter">
             <option value="all">كل الحالات</option>
@@ -123,11 +107,53 @@
         <div class="table-wrap">
           <table>
             <thead>
-              <tr><th>الذكر</th><th>التصنيف</th><th>التكرار</th><th>الحالة</th><th>المصدر</th><th>إجراءات</th></tr>
+              <tr>
+                <th>الترتيب</th>
+                <th>نص الذكر</th>
+                <th>التصنيف</th>
+                <th>التكرار</th>
+                <th>الحالة</th>
+                <th>المصدر</th>
+                <th>إجراءات</th>
+              </tr>
             </thead>
             <tbody id="azkar-table"></tbody>
           </table>
         </div>
+      </section>
+
+      <section id="feedback" class="view">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">التواصل</p>
+            <h2>صندوق الرسائل</h2>
+            <p>ردود المشرف تُحفظ في Firestore ويراها المستخدم في التطبيق.</p>
+          </div>
+        </div>
+        <div class="feedback-layout">
+          <div class="feedback-list" id="feedback-list"></div>
+          <div class="feedback-detail" id="feedback-detail">
+            <p class="empty-hint">اختر رسالة من القائمة.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="notify" class="view">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">الإشعارات</p>
+            <h2>إشعار عام للتطبيق</h2>
+            <p>يُنشأ مستند في <code>admin_jobs</code> وتُرسله Cloud Function إلى موضوع FCM <code>all</code>.</p>
+          </div>
+        </div>
+        <article class="panel">
+          <label>العنوان<input id="notify-title" placeholder="عنوان الإشعار" maxlength="80" /></label>
+          <label>النص<textarea id="notify-body" rows="4" placeholder="نص الإشعار" maxlength="240"></textarea></label>
+          <div class="modal-actions">
+            <button class="primary" id="send-notify">إرسال إلى الجميع</button>
+          </div>
+          <p class="empty-hint">يُطبَّق حد زمني بسيط: لا أكثر من إشعار واحد كل دقيقة من هذه اللوحة.</p>
+        </article>
       </section>
 
       <section id="categories" class="view">
@@ -135,9 +161,8 @@
           <div>
             <p class="eyebrow">تنظيم المحتوى</p>
             <h2>التصنيفات</h2>
-            <p>إدارة فئات وأقسام الأذكار.</p>
+            <p>الفئات المعتمدة في التطبيق. لا تُنشأ فئات حرة من هنا.</p>
           </div>
-          <button class="primary" id="add-category">＋ تصنيف جديد</button>
         </div>
         <div class="category-grid" id="category-grid"></div>
       </section>
@@ -146,24 +171,32 @@
         <div class="section-head">
           <div>
             <p class="eyebrow">التحكم</p>
-            <h2>إعدادات التطبيق</h2>
+            <h2>إعدادات وأمان</h2>
           </div>
         </div>
-        <div class="settings-list">
-          <label><span><strong>الوضع الليلي التلقائي</strong></span><input type="checkbox" checked /></label>
-          <label><span><strong>الاهتزاز عند التسبيح</strong></span><input type="checkbox" checked /></label>
-          <label><span><strong>إظهار التخريج والمصادر</strong></span><input type="checkbox" checked /></label>
+        <article class="security-card">
+          <strong>الوصول بالأدوار (RBAC)</strong>
+          <p>
+            الدخول عبر Google فقط. يُسمح بالمتابعة إذا وُجد مستند
+            <code>admins/{uid}</code> (أو مطالبة مخصصة <code>admin: true</code>).
+            أنشئ أول مشرف يدوياً من Firebase Console:
+            مجموعة <code>admins</code> → مستند بمعرّف UID → حقل
+            <code>role: super_admin</code>.
+          </p>
+          <p>لا تُخزَّن كلمة مرور في هذه اللوحة، ولا تعتمد على إخفاء الرابط.</p>
+        </article>
+        <div class="settings-list" style="margin-top:16px">
+          <p class="empty-hint">صدّر نسخة احتياطية من الأذكار من زر «تصدير JSON» في الأعلى.</p>
         </div>
       </section>
     </main>
   </div>
 
-  <!-- نافذة التعديل والإضافة -->
   <div class="modal" id="editor-modal" aria-hidden="true">
     <div class="modal-card">
       <div class="modal-head">
         <div><p class="eyebrow">محرر المحتوى</p><h2 id="modal-title">إضافة ذكر</h2></div>
-        <button class="close" id="close-modal">×</button>
+        <button class="close" id="close-modal" type="button">×</button>
       </div>
       <label>نص الذكر<textarea id="field-text" rows="4" placeholder="اكتب نص الذكر..." required></textarea></label>
       <div class="form-grid">
@@ -171,6 +204,8 @@
           <select id="field-category">
             <option value="sabah">الصباح</option>
             <option value="masaa">المساء</option>
+            <option value="sleep">النوم</option>
+            <option value="travel">السفر</option>
           </select>
         </label>
         <label>عدد التكرار<input id="field-repeat" type="number" min="1" value="1" /></label>
@@ -182,14 +217,31 @@
         <input id="field-published" type="checkbox" checked />
       </label>
       <div class="modal-actions">
-        <button class="ghost" id="cancel-modal">إلغاء</button>
-        <button class="primary" id="save-zekr">حفظ</button>
+        <button class="ghost" id="cancel-modal" type="button">إلغاء</button>
+        <button class="primary" id="save-zekr" type="button">حفظ</button>
       </div>
+    </div>
+  </div>
+
+  <div class="modal" id="preview-modal" aria-hidden="true">
+    <div class="modal-card preview-card">
+      <div class="modal-head">
+        <div><p class="eyebrow">معاينة التطبيق</p><h2>كيف يظهر الذكر</h2></div>
+        <button class="close" id="close-preview" type="button">×</button>
+      </div>
+      <p class="preview-meta" id="preview-meta"></p>
+      <div class="preview-zekr" id="preview-zekr"></div>
+      <div class="preview-block"><strong>الفضل</strong><p id="preview-fadl"></p></div>
+      <div class="preview-block"><strong>المصدر</strong><p id="preview-source"></p></div>
     </div>
   </div>
 
   <div class="toast" id="toast" role="status"></div>
 
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="./firebase-config.js"></script>
   <script src="./app.js"></script>
 </body>
 </html>
