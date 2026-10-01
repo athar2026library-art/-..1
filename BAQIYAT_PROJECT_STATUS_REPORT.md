@@ -1,14 +1,14 @@
 # تقرير حالة مشروع الباقيات
 
-**تاريخ التقرير:** 21 سبتمبر 2026
+**تاريخ التقرير:** 1 أكتوبر 2026
 **الفرع:** `feature/private-admin-panel`
-**آخر commit:** `f45f403` — `fix: modernize audio player continuations`
+**آخر مرحلة:** Firebase AI Logic بلا مفتاح في الـ APK، قواعد Firestore بدون بريد مالك ثابت، و39 اختبار محاكٍ ناجح.
 
 ## الخلاصة التنفيذية
 
-أصبح مشروع **الباقيات** في حالة تطوير متقدمة مقارنة بالنسخة الأولية. يحتوي تطبيق Android الآن على تجربة قراءة حديثة للأذكار، أذكار صباح ومساء مكتملة بالمصادر والتكرارات، حفظ محسّن للتقدم، اهتزازات تفاعلية، شريط إنجاز، دعم الوضع الليلي، المساعد الذكي، تسجيل الدخول بحساب Google، نظام الشكاوى والاقتراحات، والإشعارات. كما توجد لوحة مالك عربية بتصميم RTL ومتصلة بـ Firebase لإدارة المحتوى والشكاوى والإشعارات.
+أصبح مشروع **الباقيات** في حالة تطوير متقدمة مقارنة بالنسخة الأولية. يحتوي تطبيق Android الآن على تجربة قراءة حديثة للأذكار، أذكار صباح ومساء مكتملة بالمصادر والتكرارات، حفظ محسّن للتقدم، اهتزازات تفاعلية، شريط إنجاز، دعم الوضع الليلي، المساعد الذكي عبر Firebase AI Logic، تسجيل الدخول بحساب Google، نظام الشكاوى والاقتراحات، والإشعارات. كما توجد لوحة مالك عربية بتصميم RTL ومتصلة بـ Firebase لإدارة المحتوى والشكاوى والإشعارات عبر Google Auth وRBAC (`admins/{uid}` أو custom claim `admin:true`).
 
-تم في آخر مرحلة إصلاح استخدام `CancellableContinuation.resume` القديم داخل مشغل الصوت. يستخدم `AudioPlayer` الآن overload الحديث مع `onCancellation`، كما تم تحديث إنشاء اللغة العربية إلى `Locale.forLanguageTag("ar")`. أُضيف اختبار Android lifecycle يتحقق من إنشاء مشغل النطق وإغلاقه بأمان. نجح بناء التطبيق ونجح تجميع اختبارات Android، بينما لم يُنفّذ تشغيل فعلي على جهاز Android لأن بيئة العمل لا تحتوي على جهاز أو محاكي متصل.
+لا تُولَّد أحاديث من المساعد، ولا توجد مسبحة حرة، ولا يُضمَّن مفتاح Gemini في الـ APK.
 
 ## الحالة الحالية حسب النظام
 
@@ -16,10 +16,12 @@
 |---|---|---|
 | تطبيق Android | جاهز للبناء والتثبيت | `:app:assembleDebug` نجح |
 | شاشة الأذكار | محسّنة للأداء والتفاعل | الحفظ لا يحدث مع كل نقرة، والبطاقة كاملة قابلة للنقر |
-| المساعد الذكي | متصل بـ Gemini | النموذج `gemini-2.5-flash` والمفتاح من `BuildConfig.GEMINI_API_KEY` |
+| المساعد الذكي | Firebase AI Logic | النموذج `gemini-2.5-flash` عبر `firebase-ai` + App Check — بلا مفتاح في الـ APK |
 | تسجيل الدخول Google | مهيأ | Web Client ID مأخوذ من `client_type = 3` في `google-services.json` |
 | Firebase | متصل | Authentication وFirestore وStorage وFCM مستخدمة في التطبيق واللوحة |
-| لوحة المالك | منشورة ومتصلة | إدارة المحتوى والشكاوى والإشعارات عبر Firestore |
+| قواعد Firestore | موحّدة ومقوّاة | `firebase/firestore.rules` هو ملف النشر؛ نسخة الجذر متزامنة |
+| اختبارات القواعد | 39/39 ناجح | `npm run test:rules` على محاكي المنفذ 8181 |
+| لوحة المالك | Google + RBAC | لا كلمة مرور ثابتة؛ الدخول عبر Google ثم `admins/{uid}` |
 | اختبارات UI | مضافة ومجمّعة | اختبارات Compose لتسجيل الدخول والأذكار |
 | اختبار الصوت | مضاف ومجمّع | اختبار lifecycle لمشغل `AudioPlayer` |
 | اختبار جهاز فعلي | لم يُنفذ بعد | لا توجد أجهزة متصلة عبر ADB |
@@ -36,11 +38,11 @@
 
 ## المساعد الذكي
 
-يستخدم التطبيق نموذج `gemini-2.5-flash` حصراً، ويقرأ مفتاح API من `BuildConfig.GEMINI_API_KEY` بدل تضمينه في منطق الشاشة. تُنفذ طلبات Gemini خارج خيط الواجهة باستخدام `Dispatchers.IO`.
+يستخدم التطبيق Firebase AI Logic SDK (`firebase-ai`) مع النموذج `gemini-2.5-flash` عبر `GenerativeBackend.googleAI()`. المصادقة هي مشروع Firebase + App Check (Play Integrity في الإصدار، Debug في التطوير). **لا يوجد مفتاح Gemini داخل الـ APK ولا داخل `BuildConfig`.** تُنفذ الطلبات خارج خيط الواجهة باستخدام `Dispatchers.IO`.
 
-ضُبطت مهلات الاتصال والقراءة والكتابة على 20 ثانية. تعالج طبقة المستودع حالات انقطاع الشبكة وانتهاء المهلة برسالة عربية واضحة، كما تعالج HTTP 429 برسالة تشير إلى تجاوز حد الاستخدام المؤقت. وتحتوي طبقة `AppViewModel` على حالة تحميل مستقلة حتى لا تبقى شاشة المساعد في حالة انتظار بعد فشل الطلب.
+تعالج طبقة المستودع حالات انقطاع الشبكة وانتهاء المهلة برسالة عربية واضحة، كما تعالج HTTP 429 / `RESOURCE_EXHAUSTED` برسالة تشير إلى تجاوز حد الاستخدام المؤقت. وتحتوي طبقة `AppViewModel` على حالة تحميل مستقلة حتى لا تبقى شاشة المساعد في حالة انتظار بعد فشل الطلب.
 
-تقدم شاشة المساعد رسائل عربية مختصرة، وتطلب من النموذج الاعتماد على المصادر الموثوقة وعدم إصدار فتاوى أو أحكام شرعية من عنده. يظل هذا النظام مساعدًا للمعلومة والتدبر، ولا يحل محل التحقق العلمي أو سؤال أهل الاختصاص.
+تقدم شاشة المساعد رسائل عربية مختصرة، وتطلب من النموذج الاعتماد على المصادر الموثوقة (الأحاديث الصحيحة وحصن المسلم) وعدم إصدار فتاوى أو أحكام شرعية من عنده. يظل هذا النظام مساعدًا للمعلومة والتدبر، ولا يحل محل التحقق العلمي أو سؤال أهل الاختصاص.
 
 ## تسجيل الدخول بحساب Google
 
@@ -124,9 +126,39 @@ dhikr-counter
 
 ## لوحة المالك وFirebase
 
-تتصل لوحة المالك بـ Firebase Authentication وFirestore وStorage. تشمل وظائفها إدارة محتوى الأذكار، حالات المسودة والنشر، صندوق الشكاوى والاقتراحات، البحث والتصفية، عرض المرفقات، السجل الزمني، الرد المباشر، تحديث حالة الشكوى، وإعداد الإشعارات.
+تتصل لوحة المالك بـ Firebase Authentication (Google) وFirestore وStorage. تشمل وظائفها إدارة محتوى الأذكار، حالات المسودة والنشر، صندوق الشكاوى والاقتراحات، البحث والتصفية، عرض المرفقات، السجل الزمني، الرد المباشر، تحديث حالة الشكوى، وإرسال إشعارات عبر كتابة `notifications/{id}` بحالة `queued` (تستهلكها Cloud Function).
 
-تستخدم اللوحة تسجيل الدخول بالبريد الإلكتروني وكلمة المرور، مع رسائل Toast للنجاح والفشل، إظهار وإخفاء كلمة المرور، خيار تذكر الجلسة، وإعادة تعيين كلمة المرور. تم حفظ جلسة Firebase محليًا عند تفعيل التذكر، أو ضمن جلسة المتصفح عند تعطيله.
+**الدخول:** Google Sign-In ثم التحقق من وجود `admins/{uid}` أو custom claim `admin:true`. لا توجد كلمة مرور ثابتة في الواجهة، ولا بريد مالك مضمّن في القواعد.
+
+**تمهيد أول مشرف:** بعد إزالة البريد الثابت من القواعد، يجب إنشاء مستند `admins/{uid}` بدور `super_admin` من Firebase Console أو Admin SDK قبل أن يتمكن أي حساب من إدارة اللوحة.
+
+## قواعد Firestore واختباراتها
+
+ملف النشر الرسمي: `firebase/firestore.rules` (نسخة الجذر متزامنة). أبرز الضمانات:
+
+- المحتوى المنشور فقط يُقرأ للعامة؛ المسودات للأدمن.
+- المستخدم لا يكتب مفاتيح صلاحيات (`role`, `admin`, …).
+- التقدم بصيغة تاريخ `yyyy-MM-dd` وحد أعلى للتسبيح.
+- الشكاوى تُنشأ بحالة `new` بدون رد أدمن.
+- الإشعارات تُنشأ `queued` فقط؛ التعديل والحذف ممنوعان من العميل.
+- `admin_jobs` تُنشأ `pending` فقط.
+- `system/*` كتابة ممنوعة من العميل.
+- catch-all: deny.
+
+الاختبارات: `firebase/tests/rules.test.mjs` — 39 اختبارًا على 6 مجموعات (محتوى، ملف المستخدم، التقدم، الشكاوى، الإشعارات/المهام، RBAC). البريد العادي **لا** يمنح صلاحية أدمن.
+
+التشغيل من `firebase/`:
+
+```bash
+npm install
+npm run test:rules
+```
+
+النشر من `firebase/`:
+
+```bash
+firebase deploy --only firestore:rules,firestore:indexes,storage
+```
 
 ## القيود الحالية
 
@@ -134,7 +166,14 @@ dhikr-counter
 
 كما أن اختبار UI الحالي يعتمد على شاشة التطبيق الحقيقية وعلى بيانات Firebase المحلية أو الشبكية. ولرفع موثوقية الاختبارات في CI، يُستحسن لاحقًا توفير fake repositories وحقن dependencies بدل تهيئة Firebase وDataStore وWorkManager أثناء كل اختبار.
 
-## التوصيات التالية
+نشر القواعد ودوال FCM يحتاج تسجيل دخول Firebase CLI على مشروع `svrpmtt` من جهاز المالك.
+
+## التوصيات التالية (على المالك في Firebase Console)
+
+1. إنشاء `admins/{uid}` بدور `super_admin` لأول حساب مالك.
+2. نشر القواعد والفهارس والتخزين من مجلد `firebase/`.
+3. نشر Cloud Function `dispatchOwnerNotification` إن لم تكن منشورة.
+4. إضافة نطاق الاستضافة إلى Authorized domains في Authentication.
 
 يوصى أولًا بتوصيل جهاز Android فعلي وتشغيل الاختبارات التالية:
 
@@ -143,10 +182,6 @@ adb devices
 ./gradlew connectedDebugAndroidTest
 ```
 
-بعد ذلك يُستحسن اختبار تسجيل الدخول بحساب Google حقيقي على جهاز يحتوي على Google Play Services، ثم تجربة أذكار الصباح والمساء مع محرك TTS عربي، وتغيير مستوى الصوت، وإيقاف التطبيق واستئناف القراءة.
-
-يوصى أيضًا بعزل FCM token registration عن بدء التطبيق أو نقله إلى worker مخصص مع معالجة صريحة لحالات عدم توفر Google Play Services. وأخيرًا، يمكن إضافة fake `AudioEngine` واختبار وحدة يثبت أن الاستمرار يعود عند `onDone` و`onError` و`stop` دون الحاجة إلى محرك صوت حقيقي.
-
 ## الملفات الرئيسية
 
 - [مشغل الصوت](app/src/main/java/com/example/ui/AudioPlayer.kt)
@@ -154,6 +189,8 @@ adb devices
 - [اختبارات واجهة التطبيق](app/src/androidTest/java/com/example/BaqiyatUiTest.kt)
 - [شاشة الأذكار](app/src/main/java/com/example/ui/screens/AzkarScreen.kt)
 - [مستودع المساعد الذكي](app/src/main/java/com/example/data/AiRepository.kt)
+- [قواعد Firestore](firebase/firestore.rules)
+- [اختبارات القواعد](firebase/tests/rules.test.mjs)
 - [ملف إعداد Web Client ID](app/src/main/res/values/strings.xml)
 
 ## References
@@ -162,3 +199,4 @@ adb devices
 [2]: https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-cancellable-continuation/ "Kotlin Coroutines CancellableContinuation API"
 [3]: https://firebase.google.com/docs/cloud-messaging/android/client "Firebase Cloud Messaging Android client documentation"
 [4]: https://developer.android.com/reference/android/speech/tts/TextToSpeech "Android TextToSpeech API reference"
+[5]: https://firebase.google.com/docs/ai-logic/get-started "Firebase AI Logic"

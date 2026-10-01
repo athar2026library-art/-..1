@@ -4,15 +4,9 @@ service firebase.storage {
     function signedIn() {
       return request.auth != null;
     }
-    function isOwnerEmail() {
-      return signedIn()
-        && request.auth.token.email_verified == true
-        && request.auth.token.email == 'mgedh.9ali@gmail.com';
-    }
     function isAdmin() {
       return signedIn() && (
         request.auth.token.admin == true
-        || isOwnerEmail()
         || firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid))
       );
     }

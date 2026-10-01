@@ -21,3 +21,5 @@ debug.keystore
 admin-panel/firebase-config.js
 
 app/google-services.json
+firebase/node_modules/
+firebase/.emulator-data/
