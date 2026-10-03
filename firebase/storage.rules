@@ -1,37 +1,35 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    function signedIn() {
-      return request.auth != null;
-    }
-    function isAdmin() {
-      return signedIn() && (
-        request.auth.token.admin == true
-        || firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid))
-      );
-    }
-    function isOwner(userId) {
-      return signedIn() && request.auth.uid == userId;
-    }
-    function validImage() {
-      return request.resource.size < 5 * 1024 * 1024
-        && request.resource.contentType.matches('image/(jpeg|png|webp|jpg)');
-    }
-
     match /content/azkar/{assetId}/{fileName} {
       allow read: if true;
-      allow write: if isAdmin() && validImage();
-      allow delete: if isAdmin();
+      allow write: if request.auth != null
+        && (request.auth.token.admin == true
+          || request.auth.token.email == 'mgedh.9ali@gmail.com')
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+      allow delete: if request.auth != null
+        && (request.auth.token.admin == true
+          || request.auth.token.email == 'mgedh.9ali@gmail.com');
     }
 
-    match /feedback/{userId}/{feedbackId}/{fileName} {
-      allow read: if isOwner(userId) || isAdmin();
-      allow write: if isOwner(userId) && validImage();
-      allow delete: if isOwner(userId) || isAdmin();
+    match /feedback/{uid}/{feedbackId}/{fileName} {
+      allow read: if request.auth != null
+        && (request.auth.token.admin == true
+          || request.auth.token.email == 'mgedh.9ali@gmail.com'
+          || (request.auth.uid == uid && request.app != null)
+        );
+      allow write: if request.auth != null
+        && request.auth.uid == uid
+        && request.app != null
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+      allow delete: if request.auth != null
+        && (request.auth.token.admin == true
+          || request.auth.token.email == 'mgedh.9ali@gmail.com'
+          || (request.auth.uid == uid && request.app != null)
+        );
     }
-
-    match /{allPaths=**} {
-      allow read, write: if false;
-    }
+    match /{allPaths=**} { allow read, write: if false; }
   }
 }

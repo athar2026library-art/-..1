@@ -50,11 +50,7 @@ class AzkarApplication : Application() {
             if (BuildConfig.DEBUG) {
                 DebugAppCheckProviderFactory.getInstance()
             } else {
-                try {
-                    PlayIntegrityAppCheckProviderFactory.getInstance()
-                } catch (_: Exception) {
-                    DebugAppCheckProviderFactory.getInstance()
-                }
+                PlayIntegrityAppCheckProviderFactory.getInstance()
             }
         )
     }
