@@ -51,10 +51,10 @@ service cloud.firestore {
     function validFeedbackCreate() {
       let d = request.resource.data;
       return d.userId == request.auth.uid
-        && d.keys().hasAll(['userId', 'message'])
+        && d.keys().hasOnly(['userId', 'message', 'title', 'type', 'status', 'adminReply', 'replyUnread', 'createdAt', 'updatedAt', 'attachmentUrl', 'priority'])
         && d.message is string
         && d.message.size() > 0
-        && d.message.size() < 8000
+        && d.message.size() <= 1000
         && d.get('title', '') is string
         && d.get('title', '').size() < 200
         && d.get('type', 'suggestion') in ['suggestion', 'complaint', 'technical', 'bug', 'other']
@@ -89,13 +89,11 @@ service cloud.firestore {
         && noPrivilegeKeys(d);
     }
 
-    // --- RBAC ---
     match /admins/{adminId} {
       allow read: if isAdmin() || isOwner(adminId);
       allow create, update, delete: if isSuperAdmin();
     }
 
-    // --- Users ---
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
       allow create, update: if isOwner(userId)
@@ -123,7 +121,6 @@ service cloud.firestore {
       }
     }
 
-    // --- Published content (public read of published only) ---
     match /content/azkar {
       allow read: if true;
       allow write: if isAdmin();
@@ -140,7 +137,6 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
-    // --- Feedback inbox ---
     match /feedback/{feedbackId} {
       allow create: if signedIn() && validFeedbackCreate();
       allow read: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
@@ -157,7 +153,6 @@ service cloud.firestore {
       }
     }
 
-    // --- Owner broadcast (consumed by Cloud Function) ---
     match /notifications/{notificationId} {
       allow read: if isAdmin();
       allow create: if isAdmin()
@@ -172,17 +167,24 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    // --- Admin job queue (example FCM function) ---
     match /admin_jobs/{jobId} {
       allow read: if isAdmin();
       allow create: if isAdmin()
         && request.resource.data.keys().hasAll(['type', 'status'])
         && request.resource.data.status == 'pending'
-        && request.resource.data.type in ['fcm_broadcast', 'feedback_reply'];
+        && request.resource.data.type in ['fcm_broadcast', 'feedback_reply', 'broadcast'];
       allow update, delete: if false;
     }
 
-    // Rate-limit counters: Cloud Functions / Admin SDK only
+    match /rateLimits/{uid} {
+      allow read, write: if false;
+    }
+
+    match /audit_logs/{logId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
     match /system/{docId} {
       allow read: if isAdmin();
       allow write: if false;
