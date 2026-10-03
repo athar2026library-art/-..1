@@ -6,37 +6,48 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 
+/**
+ * Gemini فقط عبر Callable Cloud Function (europe-west1).
+ * لا مفتاح في الـ APK — المصادقة + App Check + حد معدل على الخادم.
+ */
 class AiRepository {
-    private val functions by lazy { FirebaseFunctions.getInstance("us-central1") }
+    private val functions by lazy { FirebaseFunctions.getInstance("europe-west1") }
 
-    suspend fun explainZekr(zekr: String): String = withContext(Dispatchers.IO) {
-        val prompt = "قم بشرح وتدبر هذا الذكر بأسلوب إيماني، ميسر ومختصر جداً: \n\n\"$zekr\""
-        callGemini(prompt)
-    }
+    suspend fun explainZekr(zekr: String): String =
+        ask(mode = "explain", text = zekr)
 
-    suspend fun suggestZekrForFeeling(feeling: String): String = withContext(Dispatchers.IO) {
-        val prompt = "أشعر بـ ($feeling) أو أحتاج إلى دعاء بهذا الخصوص. اقترح لي ذكراً أو دعاءً من الأحاديث الصحيحة وحصن المسلم يناسب حالتي.\nنرجو الرد بالتنسيق التالي حصراً:\nالذكر: [النص]\nفضله: [شرح مبسط ومختصر لفضله]\nالمصدر والتخريج: [الكتاب الراوي واسم المرجع كحصن المسلم]"
-        callGemini(prompt)
-    }
+    suspend fun suggestZekrForFeeling(feeling: String): String =
+        ask(mode = "suggest", text = feeling)
 
-    private suspend fun callGemini(prompt: String): String {
-        return try {
+    private suspend fun ask(mode: String, text: String): String = withContext(Dispatchers.IO) {
+        try {
             val result = functions
                 .getHttpsCallable("generateGemini")
-                .call(mapOf("prompt" to prompt))
+                .call(mapOf("mode" to mode, "text" to text))
                 .await()
             val data = result.data as? Map<*, *>
-            data?.get("text") as? String ?: "عذراً، لم أتمكن من استخراج الإجابة."
-        } catch (e: Exception) {
+            val body = data?.get("text") as? String
             when {
-                e is FirebaseFunctionsException && e.code == FirebaseFunctionsException.Code.RESOURCE_EXHAUSTED ->
-                    "عذراً، تم تجاوز حد الاستخدام المؤقت للمساعد الذكي. يرجى المحاولة بعد قليل. ⏳"
-                e is FirebaseFunctionsException && e.code == FirebaseFunctionsException.Code.DEADLINE_EXCEEDED ->
-                    "عذراً، انتهت مهلة الاستجابة. يرجى المحاولة مرة أخرى. ⏱️"
-                e is FirebaseFunctionsException && e.code == FirebaseFunctionsException.Code.UNAVAILABLE ->
-                    "عذراً، خدمة المساعد غير متاحة مؤقتاً. يرجى المحاولة لاحقاً. 🌐"
-                else -> "حدث خطأ أثناء الاتصال بالمساعد الذكي. تحقق من الاتصال وحاول مرة أخرى لاحقاً. ⚠️"
+                body.isNullOrBlank() -> "عذراً، لم أتمكن من استخراج الإجابة."
+                else -> body
             }
+        } catch (e: FirebaseFunctionsException) {
+            when (e.code) {
+                FirebaseFunctionsException.Code.UNAUTHENTICATED ->
+                    "سجّل الدخول للمساعد"
+                FirebaseFunctionsException.Code.RESOURCE_EXHAUSTED ->
+                    "وصلت للحد، حاول بعد قليل"
+                FirebaseFunctionsException.Code.UNAVAILABLE ->
+                    "لا اتصال"
+                FirebaseFunctionsException.Code.INVALID_ARGUMENT ->
+                    "النص غير صالح أو طويل جداً"
+                FirebaseFunctionsException.Code.DEADLINE_EXCEEDED ->
+                    "انتهت مهلة الاستجابة. حاول مرة أخرى."
+                else ->
+                    "حدث خطأ أثناء الاتصال بالمساعد. حاول لاحقاً."
+            }
+        } catch (_: Exception) {
+            "لا اتصال"
         }
     }
 }
