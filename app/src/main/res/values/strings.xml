@@ -1,5 +1,4 @@
 <resources>
     <string name="app_name">الباقيات</string>
-    <!-- OAuth web client ID من Firebase المستخدم مع Google Credential Manager -->
-    <string name="default_web_client_id">372887186106-ori5bj4fde42ovqabuh34eedt3f1dcta.apps.googleusercontent.com</string>
+    <!-- default_web_client_id يُولَّد تلقائياً من google-services.json (client_type 3) -->
 </resources>
