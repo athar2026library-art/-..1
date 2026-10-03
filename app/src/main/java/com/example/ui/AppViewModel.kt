@@ -12,6 +12,8 @@ import com.example.data.FirestoreRepository
 import com.example.data.FeedbackDraft
 import com.example.data.FeedbackItem
 import com.example.data.Zekr
+import com.google.firebase.functions.FirebaseFunctions
+import com.google.firebase.functions.FirebaseFunctionsException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,6 +23,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import java.util.concurrent.atomic.AtomicInteger
 
 class AppViewModel(
@@ -190,7 +193,7 @@ class AppViewModel(
             try {
                 _aiResponse.value = aiRepository.explainZekr(zekr)
             } catch (e: Exception) {
-                _aiResponse.value = "تعذر الاتصال. يرجى التأكد من اتصالك بالإنترنت للميزات الذكية 🌐"
+                _aiResponse.value = "لا اتصال"
             } finally {
                 _isLoadingAi.value = false
             }
@@ -204,7 +207,7 @@ class AppViewModel(
             try {
                 _aiResponse.value = aiRepository.suggestZekrForFeeling(feeling)
             } catch (e: Exception) {
-                _aiResponse.value = "تعذر الاتصال. يرجى التأكد من اتصالك بالإنترنت للميزات الذكية 🌐"
+                _aiResponse.value = "لا اتصال"
             } finally {
                 _isLoadingAi.value = false
             }
@@ -230,6 +233,30 @@ class AppViewModel(
         authRepository.signOut()
         _userSignedIn.value = false
         _statusMessage.value = "تم تسجيل الخروج."
+    }
+
+    /** يحذف users/{uid} وفروعه + حساب Auth عبر Cloud Function */
+    fun deleteAccount() {
+        viewModelScope.launch {
+            _statusMessage.value = "جاري حذف الحساب..."
+            try {
+                FirebaseFunctions.getInstance("europe-west1")
+                    .getHttpsCallable("deleteAccount")
+                    .call()
+                    .await()
+                authRepository.signOut()
+                _userSignedIn.value = false
+                _statusMessage.value = "تم حذف الحساب نهائياً."
+            } catch (e: FirebaseFunctionsException) {
+                _statusMessage.value = when (e.code) {
+                    FirebaseFunctionsException.Code.UNAUTHENTICATED ->
+                        "سجّل الدخول مجدداً ثم أعد المحاولة."
+                    else -> "تعذر حذف الحساب. حاول لاحقاً."
+                }
+            } catch (_: Exception) {
+                _statusMessage.value = "تعذر حذف الحساب. تحقق من الاتصال."
+            }
+        }
     }
 
     fun markFeedbackReplyRead(feedbackId: String) {
