@@ -41,7 +41,30 @@ fun SettingsScreen(
     val autoPlayEnabled by viewModel.autoPlayEnabled.collectAsStateWithLifecycle()
 
     val userSignedIn by viewModel.userSignedIn.collectAsStateWithLifecycle()
+    val statusMessage by viewModel.statusMessage.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("حذف الحساب نهائياً؟") },
+            text = {
+                Text("سيُحذف تقدمك السحابي والشكاوى وحساب تسجيل الدخول. لا يمكن التراجع.")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteConfirm = false
+                        viewModel.deleteAccount()
+                    }
+                ) { Text("حذف", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) { Text("إلغاء") }
+            }
+        )
+    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -62,6 +85,15 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState())
         ) {
             Spacer(modifier = Modifier.height(16.dp))
+
+            if (statusMessage.isNotBlank()) {
+                Text(
+                    statusMessage,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontSize = 13.sp,
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
+            }
 
             Text("المظهر", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
             Spacer(modifier = Modifier.height(16.dp))
@@ -291,6 +323,13 @@ fun SettingsScreen(
                         ) {
                             Text("تسجيل الخروج")
                         }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        TextButton(
+                            onClick = { showDeleteConfirm = true },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("حذف الحساب نهائياً", color = MaterialTheme.colorScheme.error)
+                        }
                     } else {
                         Text("سجل الدخول لحفظ تقدمك", fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(modifier = Modifier.height(16.dp))
@@ -325,7 +364,7 @@ fun SettingsScreen(
                     Text("الباقيات", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        "تطبيق هادئ يساعدك على المحافظة على الأذكار والورد اليومي.",
+                        "تطبيق هادئ يساعدك على المحافظة على الأذكار والورد اليومي.\nالمساعد الذكي: إجابة آلية، ليست فتوى.",
                         fontSize = 13.sp,
                         lineHeight = 22.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
