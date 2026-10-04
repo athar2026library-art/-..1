@@ -10,7 +10,6 @@ import com.example.data.FirestoreRepository
 import com.example.data.ProgressRepository
 import com.google.firebase.auth.FirebaseAuth
 import java.util.concurrent.TimeUnit
-import kotlinx.coroutines.flow.first
 
 /** Offline-first background backup: merge remote then upload local. */
 class SyncWorker(
@@ -26,10 +25,16 @@ class SyncWorker(
             val progress = ProgressRepository.getInstance(applicationContext)
             val cloud = FirestoreRepository()
             val remote = cloud.fetchProgress()
+            if (remote == null) {
+                // فشل الشبكة/القواعد — أعد المحاولة بدل اعتبارها نجاحاً
+                return if (runAttemptCount < 3) Result.retry() else Result.failure()
+            }
             progress.syncProgress(remote)
-            val local = progress.getRecentProgress().first()
-            cloud.backupProgress(local)
-            Result.success()
+            val local = progress.getAllProgress()
+            val ok = cloud.backupProgress(local)
+            if (ok) Result.success()
+            else if (runAttemptCount < 3) Result.retry()
+            else Result.failure()
         } catch (_: Exception) {
             if (runAttemptCount < 3) Result.retry() else Result.failure()
         }

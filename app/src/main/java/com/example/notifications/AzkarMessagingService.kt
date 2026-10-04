@@ -10,6 +10,10 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.example.MainActivity
 import com.example.R
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
 import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
@@ -19,11 +23,21 @@ class AzkarMessagingService : FirebaseMessagingService() {
     override fun onNewToken(token: String) {
         super.onNewToken(token)
         Log.d(TAG, "FCM token refreshed")
-        // Subscribe so admin broadcasts (topic "all") reach this device
         FirebaseMessaging.getInstance().subscribeToTopic("all")
             .addOnCompleteListener { task ->
                 Log.d(TAG, "subscribe all: ${task.isSuccessful}")
             }
+        // حفظ التوكن إن وُجد مستخدم مسجّل (نفس قاعدة users/{uid})
+        val user = FirebaseAuth.getInstance().currentUser ?: return
+        FirebaseFirestore.getInstance().collection("users").document(user.uid).set(
+            mapOf(
+                "fcmTokens" to FieldValue.arrayUnion(token),
+                "updatedAt" to FieldValue.serverTimestamp()
+            ),
+            SetOptions.merge()
+        ).addOnFailureListener { e ->
+            Log.w(TAG, "Failed to persist FCM token", e)
+        }
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
