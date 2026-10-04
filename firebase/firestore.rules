@@ -80,13 +80,13 @@ service cloud.firestore {
     function validProgress(date) {
       let d = request.resource.data;
       return date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && d.keys().hasOnly(['date', 'completedSabah', 'completedMasaa', 'totalTasbeeh'])
         && d.date == date
         && d.completedSabah is bool
         && d.completedMasaa is bool
         && d.totalTasbeeh is int
         && d.totalTasbeeh >= 0
-        && d.totalTasbeeh < 1000000
-        && noPrivilegeKeys(d);
+        && d.totalTasbeeh < 1000000;
     }
 
     match /admins/{adminId} {
@@ -176,7 +176,6 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    // Server-only counters (Admin SDK / Functions)
     match /rateLimits/{uid} {
       allow read, write: if false;
     }
