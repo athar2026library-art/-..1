@@ -1,64 +1,89 @@
 package com.example.data
 
-import android.util.Log
 import android.net.Uri
+import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
+import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.storage.FirebaseStorage
-import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
-
-class SyncException(message: String, cause: Throwable? = null) : Exception(message, cause)
+import kotlinx.coroutines.tasks.await
 
 class FirestoreRepository {
-    private val firestore by lazy {
-        try { FirebaseFirestore.getInstance() } catch (_: Exception) { null }
-    }
-    private val auth by lazy {
-        try { FirebaseAuth.getInstance() } catch (_: Exception) { null }
-    }
+    private val firestore by lazy { runCatching { FirebaseFirestore.getInstance() }.getOrNull() }
+    private val auth by lazy { runCatching { FirebaseAuth.getInstance() }.getOrNull() }
 
-    suspend fun backupProgress(progressList: List<UserProgress>) {
-        val user = auth?.currentUser ?: throw SyncException("AUTH_REQUIRED")
-        val db = firestore ?: throw SyncException("FIRESTORE_UNAVAILABLE")
-        try {
-            val batch = db.batch()
-            for (progress in progressList) {
-                if (progress.date.isBlank()) continue
-                val docRef = db.collection("users").document(user.uid)
-                    .collection("progress").document(progress.date)
-                batch.set(
-                    docRef,
-                    mapOf(
-                        "date" to progress.date,
-                        "completedSabah" to progress.completedSabah,
-                        "completedMasaa" to progress.completedMasaa,
-                        "totalTasbeeh" to progress.totalTasbeeh
+    /** true عند النجاح فقط — لا رسالة نجاح كاذبة عند رفض القواعد. */
+    suspend fun backupProgress(progressList: List<UserProgress>): Boolean {
+        val user = auth?.currentUser ?: return false
+        val db = firestore ?: return false
+        if (progressList.isEmpty()) return true
+        return try {
+            val col = db.collection("users").document(user.uid).collection("progress")
+            progressList.chunked(400).forEach { chunk ->
+                val batch = db.batch()
+                chunk.forEach { p ->
+                    if (p.date.isBlank()) return@forEach
+                    batch.set(
+                        col.document(p.date),
+                        mapOf(
+                            "date" to p.date,
+                            "completedSabah" to p.completedSabah,
+                            "completedMasaa" to p.completedMasaa,
+                            "totalTasbeeh" to p.totalTasbeeh
+                        )
                     )
-                )
+                }
+                batch.commit().await()
             }
-            batch.commit().await()
-        } catch (e: SyncException) {
+            true
+        } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            throw SyncException("BACKUP_FAILED", e)
+            Log.e("FirestoreRepository", "Backup failed", e)
+            false
         }
     }
 
-    suspend fun fetchProgress(): List<UserProgress> {
-        val user = auth?.currentUser ?: throw SyncException("AUTH_REQUIRED")
-        val db = firestore ?: throw SyncException("FIRESTORE_UNAVAILABLE")
+    /** null عند الفشل؛ قائمة (قد تكون فارغة) عند النجاح. */
+    suspend fun fetchProgress(): List<UserProgress>? {
+        val user = auth?.currentUser ?: return null
+        val db = firestore ?: return null
         return try {
-            val snapshot = db.collection("users").document(user.uid)
+            db.collection("users").document(user.uid)
                 .collection("progress").get().await()
-            snapshot.toObjects(UserProgress::class.java)
-        } catch (e: SyncException) {
+                .toObjects(UserProgress::class.java)
+        } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            throw SyncException("FETCH_FAILED", e)
+            Log.e("FirestoreRepository", "Fetch failed", e)
+            null
+        }
+    }
+
+    /** onNewToken لا يكفي بعد تسجيل دخول لاحق — نحفظ التوكن صراحةً. */
+    suspend fun saveFcmToken() {
+        val user = auth?.currentUser ?: return
+        val db = firestore ?: return
+        try {
+            val token = FirebaseMessaging.getInstance().token.await()
+            db.collection("users").document(user.uid).set(
+                mapOf(
+                    "fcmTokens" to FieldValue.arrayUnion(token),
+                    "updatedAt" to FieldValue.serverTimestamp()
+                ),
+                SetOptions.merge()
+            ).await()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.e("FirestoreRepository", "Saving FCM token failed", e)
         }
     }
 
@@ -141,8 +166,8 @@ class FirestoreRepository {
                 "status" to "new",
                 "adminReply" to "",
                 "replyUnread" to false,
-                "createdAt" to com.google.firebase.firestore.FieldValue.serverTimestamp(),
-                "updatedAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
+                "createdAt" to FieldValue.serverTimestamp(),
+                "updatedAt" to FieldValue.serverTimestamp()
             )
             if (attachmentUrl.isNotEmpty()) data["attachmentUrl"] = attachmentUrl
             db.runBatch { batch ->
@@ -162,10 +187,16 @@ class FirestoreRepository {
     fun observeMyFeedback(): Flow<List<FeedbackItem>> = callbackFlow {
         val user = auth?.currentUser
         val db = firestore
-        if (user == null || db == null) { close(); return@callbackFlow }
+        if (user == null || db == null) {
+            close()
+            return@callbackFlow
+        }
         val registration = db.collection("feedback").whereEqualTo("userId", user.uid)
             .addSnapshotListener { snapshot, error ->
-                if (error != null) { close(error); return@addSnapshotListener }
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
                 val items = snapshot?.documents.orEmpty().map { doc ->
                     FeedbackItem(
                         id = doc.id,
