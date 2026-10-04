@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import android.app.Activity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -38,6 +39,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -58,6 +60,7 @@ fun FeedbackScreen(viewModel: AppViewModel) {
     var attachmentUri by remember { mutableStateOf<Uri?>(null) }
     var showConfirmation by remember { mutableStateOf(false) }
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri -> attachmentUri = uri }
+    val activity = LocalContext.current as? Activity
 
     Scaffold(
         topBar = {
@@ -237,7 +240,8 @@ fun FeedbackScreen(viewModel: AppViewModel) {
                                 aiSummary = message.take(140),
                                 aiCategory = type,
                                 attachmentUri = attachmentUri
-                            )
+                            ),
+                            activity
                         )
                     }
                 ) {
