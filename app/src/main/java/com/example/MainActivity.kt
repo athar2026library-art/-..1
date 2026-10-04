@@ -122,11 +122,7 @@ class MainActivity : ComponentActivity() {
             val isDarkMode by viewModel.isDarkMode.collectAsState()
             val onboardingComplete by settingsRepository.onboardingCompleteFlow.collectAsState(initial = false)
 
-            val currentHour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
-            val isFajrTime = currentHour in 3..6
-            val finalDarkMode = isDarkMode || isFajrTime
-
-            MyApplicationTheme(darkTheme = finalDarkMode, isFajrMode = isFajrTime) {
+            MyApplicationTheme(darkTheme = isDarkMode) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -167,13 +163,13 @@ private fun BaqiyatOnboarding(onDone: () -> Unit) {
         Image(painterResource(current.third), contentDescription = "شعار الباقيات", modifier = Modifier.size(154.dp))
         Spacer(Modifier.height(30.dp))
         Text("مرحباً بك في الباقيات", color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-        Spacer(Modifier.height(12.dp))
+        Spacer(modifier.height(12.dp))
         Text(current.first, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.primary)
-        Spacer(Modifier.height(12.dp))
+        Spacer(modifier.height(12.dp))
         Text(current.second, style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 26.sp)
         Spacer(Modifier.weight(1f))
         Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) { pages.indices.forEach { index -> Box(Modifier.size(if (index == page) 26.dp else 8.dp, 8.dp).background(if (index == page) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.outline.copy(alpha = .35f), RoundedCornerShape(8.dp))) } }
-        Spacer(Modifier.height(24.dp))
+        Spacer(modifier.height(24.dp))
         Button(onClick = { if (page == pages.lastIndex) onDone() else page++ }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) { Text(if (page == pages.lastIndex) "ابدأ الآن" else "التالي") }
         if (page < pages.lastIndex) { TextButton(onClick = onDone) { Text("تخطي") } } else { Spacer(Modifier.height(48.dp)) }
     }
