@@ -27,7 +27,6 @@ class AzkarMessagingService : FirebaseMessagingService() {
             .addOnCompleteListener { task ->
                 Log.d(TAG, "subscribe all: ${task.isSuccessful}")
             }
-        // حفظ التوكن إن وُجد مستخدم مسجّل (نفس قاعدة users/{uid})
         val user = FirebaseAuth.getInstance().currentUser ?: return
         FirebaseFirestore.getInstance().collection("users").document(user.uid).set(
             mapOf(
@@ -60,7 +59,7 @@ class AzkarMessagingService : FirebaseMessagingService() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         val notification = NotificationCompat.Builder(this, channelId)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_stat_azkar)
             .setContentTitle(title)
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))

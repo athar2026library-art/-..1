@@ -133,10 +133,7 @@ fun AppNavGraph(
             composable("feedback") { FeedbackScreen(viewModel = viewModel) }
 
             composable("stats") {
-                StatsScreen(
-                    viewModel = viewModel,
-                    onNavigateBack = { navController.popBackStack() }
-                )
+                StatsScreen(viewModel = viewModel)
             }
 
             composable("settings") {

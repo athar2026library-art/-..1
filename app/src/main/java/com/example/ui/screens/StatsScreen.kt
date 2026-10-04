@@ -34,7 +34,7 @@ import java.util.Locale
 @Composable
 fun StatsScreen(
     viewModel: AppViewModel,
-    onNavigateBack: () -> Unit
+    onNavigateBack: (() -> Unit)? = null
 ) {
     val recentProgress by viewModel.recentProgress.collectAsStateWithLifecycle()
     val streak = remember(recentProgress) { calculateStreak(recentProgress) }
@@ -49,8 +49,10 @@ fun StatsScreen(
             TopAppBar(
                 title = { Text("تقدمي 🌿", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "رجوع")
+                    if (onNavigateBack != null) {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "رجوع")
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -234,7 +236,7 @@ private fun MonthlyCalendar(progress: List<UserProgress>) {
         )
         Spacer(modifier = Modifier.height(12.dp))
 
-        Row(Modifier.fillMaxWidth()) {
+        Row(modifier = Modifier.fillMaxWidth()) {
             dayNames.forEach { d ->
                 Text(
                     d,
@@ -320,7 +322,7 @@ private fun LegendDot(color: Color, label: String) {
                 .clip(CircleShape)
                 .background(color)
         )
-        Spacer(Modifier.width(6.dp))
+        Spacer(modifier = Modifier.width(6.dp))
         Text(label, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
