@@ -21,8 +21,7 @@ class ProgressRepository(private val progressDao: ProgressDao) {
     suspend fun getAllProgress(): List<UserProgress> = progressDao.getAllProgressSync()
 
     suspend fun initTodayProgress() {
-        val date = getTodayDateStr()
-        progressDao.insertProgressIfNotExists(UserProgress(date = date))
+        progressDao.insertProgressIfNotExists(UserProgress(date = getTodayDateStr()))
     }
 
     suspend fun completeSabah() {
