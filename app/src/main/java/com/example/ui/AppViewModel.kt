@@ -1,5 +1,6 @@
 package com.example.ui
 
+import android.app.Activity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -11,6 +12,7 @@ import com.example.data.AuthRepository
 import com.example.data.FirestoreRepository
 import com.example.data.FeedbackDraft
 import com.example.data.FeedbackItem
+import com.example.data.SyncException
 import com.example.data.Zekr
 import com.google.firebase.functions.FirebaseFunctions
 import com.google.firebase.functions.FirebaseFunctionsException
@@ -192,7 +194,7 @@ class AppViewModel(
             _aiResponse.value = ""
             try {
                 _aiResponse.value = aiRepository.explainZekr(zekr)
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 _aiResponse.value = "لا اتصال"
             } finally {
                 _isLoadingAi.value = false
@@ -206,7 +208,7 @@ class AppViewModel(
             _aiResponse.value = ""
             try {
                 _aiResponse.value = aiRepository.suggestZekrForFeeling(feeling)
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 _aiResponse.value = "لا اتصال"
             } finally {
                 _isLoadingAi.value = false
@@ -217,9 +219,9 @@ class AppViewModel(
     fun clearAiResponse() { _aiResponse.value = "" }
     fun clearStatusMessage() { _statusMessage.value = "" }
 
-    fun signIn() {
+    fun signIn(activity: Activity) {
         viewModelScope.launch {
-            val success = authRepository.signInWithGoogle()
+            val success = authRepository.signInWithGoogle(activity)
             if (success) {
                 _userSignedIn.value = true
                 _statusMessage.value = "تم تسجيل الدخول بنجاح!"
@@ -235,7 +237,6 @@ class AppViewModel(
         _statusMessage.value = "تم تسجيل الخروج."
     }
 
-    /** يحذف users/{uid} وفروعه + حساب Auth عبر Cloud Function */
     fun deleteAccount() {
         viewModelScope.launch {
             _statusMessage.value = "جاري حذف الحساب..."
@@ -244,6 +245,8 @@ class AppViewModel(
                     .getHttpsCallable("deleteAccount")
                     .call()
                     .await()
+                progressRepository.clearLocalProgress()
+                progressRepository.initTodayProgress()
                 authRepository.signOut()
                 _userSignedIn.value = false
                 _statusMessage.value = "تم حذف الحساب نهائياً."
@@ -263,10 +266,14 @@ class AppViewModel(
         viewModelScope.launch { firestoreRepository.markFeedbackReplyRead(feedbackId) }
     }
 
-    fun submitFeedback(draft: FeedbackDraft) {
+    fun submitFeedback(draft: FeedbackDraft, activity: Activity?) {
         viewModelScope.launch {
             if (authRepository.getCurrentUser() == null) {
-                val signedIn = authRepository.signInWithGoogle()
+                if (activity == null) {
+                    _statusMessage.value = "يجب تسجيل الدخول لإرسال الطلب."
+                    return@launch
+                }
+                val signedIn = authRepository.signInWithGoogle(activity)
                 _userSignedIn.value = signedIn
                 if (!signedIn) {
                     _statusMessage.value = "يجب تسجيل الدخول لإرسال الطلب."
@@ -288,9 +295,15 @@ class AppViewModel(
             try {
                 val remoteProgress = firestoreRepository.fetchProgress()
                 progressRepository.syncProgress(remoteProgress)
-                firestoreRepository.backupProgress(recentProgress.value)
+                val allLocal = progressRepository.getAllProgress()
+                firestoreRepository.backupProgress(allLocal)
                 _statusMessage.value = "تمت مزامنة البستان بنجاح! 🌴"
-            } catch (e: Exception) {
+            } catch (e: SyncException) {
+                _statusMessage.value = when (e.message) {
+                    "AUTH_REQUIRED" -> "سجّل الدخول أولاً للمزامنة."
+                    else -> "تعذرت المزامنة. تحقق من الاتصال وحاول مجدداً."
+                }
+            } catch (_: Exception) {
                 _statusMessage.value = "تعذرت المزامنة، تأكد من اتصالك بالإنترنت 🌐"
             }
         }
