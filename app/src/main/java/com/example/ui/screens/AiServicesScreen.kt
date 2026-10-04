@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -141,10 +142,3 @@ fun ChatBubble(message: ChatMessage) {
         }
     }
 }
-
-private fun Modifier.background(
-    color: androidx.compose.ui.graphics.Color,
-    shape: androidx.compose.ui.graphics.Shape
-): Modifier = this.then(
-    androidx.compose.foundation.background(color, shape)
-)

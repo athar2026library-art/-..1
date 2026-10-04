@@ -15,18 +15,19 @@ import com.example.data.FeedbackItem
 import com.example.data.Zekr
 import com.google.firebase.functions.FirebaseFunctions
 import com.google.firebase.functions.FirebaseFunctionsException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
-import java.util.concurrent.atomic.AtomicInteger
 
 class AppViewModel(
     private val progressRepository: ProgressRepository,
@@ -78,14 +79,21 @@ class AppViewModel(
     val lastReadRemaining: StateFlow<Int> = settingsRepository.lastReadRemainingFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
-    private val _aiResponse = MutableStateFlow("")
-    val aiResponse: StateFlow<String> = _aiResponse.asStateFlow()
-
     private val _statusMessage = MutableStateFlow("")
     val statusMessage: StateFlow<String> = _statusMessage.asStateFlow()
 
     private val _isLoadingAi = MutableStateFlow(false)
     val isLoadingAi: StateFlow<Boolean> = _isLoadingAi.asStateFlow()
+
+    private val _chatMessages = MutableStateFlow(
+        listOf(
+            ChatMessage(
+                "السلام عليكم، كيف يمكنني مساعدتك اليوم؟ (أذكار، أدعية، فضل ذكر معين...)",
+                isUser = false
+            )
+        )
+    )
+    val chatMessages: StateFlow<List<ChatMessage>> = _chatMessages.asStateFlow()
 
     private val _userSignedIn = MutableStateFlow(authRepository.getCurrentUser() != null)
     val userSignedIn: StateFlow<Boolean> = _userSignedIn.asStateFlow()
@@ -97,7 +105,7 @@ class AppViewModel(
         .let { flow -> kotlinx.coroutines.flow.flow { flow.collect { emit(it.count { item -> item.replyUnread }) } } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
-    private val pendingTasbeeh = AtomicInteger(0)
+    private var pendingTasbeeh = 0
     private var flushJob: Job? = null
 
     init {
@@ -107,24 +115,25 @@ class AppViewModel(
     }
 
     fun addTasbeeh(count: Int = 1) {
-        pendingTasbeeh.addAndGet(count)
-        if (flushJob?.isActive != true) {
-            flushJob = viewModelScope.launch {
-                delay(1500)
-                flushPendingTasbeeh()
-            }
+        pendingTasbeeh += count
+        flushJob?.cancel()
+        flushJob = viewModelScope.launch {
+            delay(800)
+            flushTasbeeh()
         }
     }
 
-    fun flushPendingTasbeeh() {
-        val toWrite = pendingTasbeeh.getAndSet(0)
+    private suspend fun flushTasbeeh() {
+        val toWrite = pendingTasbeeh
+        pendingTasbeeh = 0
         if (toWrite > 0) {
-            viewModelScope.launch {
-                progressRepository.addTasbeeh(toWrite)
-            }
+            progressRepository.addTasbeeh(toWrite)
         }
-        flushJob?.cancel()
         flushJob = null
+    }
+
+    fun flushPendingTasbeeh() {
+        viewModelScope.launch { flushTasbeeh() }
     }
 
     override fun onCleared() {
@@ -188,35 +197,29 @@ class AppViewModel(
         viewModelScope.launch { settingsRepository.setAutoPlay(enabled) }
     }
 
-    fun explainZekr(zekr: String) {
+    fun sendChatMessage(text: String) {
+        val message = text.trim()
+        if (message.isEmpty() || _isLoadingAi.value) return
+        _isLoadingAi.value = true
+        _chatMessages.update {
+            it + ChatMessage(message, isUser = true) +
+                ChatMessage("جاري البحث...", isUser = false, isLoading = true)
+        }
         viewModelScope.launch {
-            _isLoadingAi.value = true
-            _aiResponse.value = ""
-            try {
-                _aiResponse.value = aiRepository.explainZekr(zekr)
+            val reply = try {
+                aiRepository.ask(message)
+            } catch (e: CancellationException) {
+                throw e
             } catch (_: Exception) {
-                _aiResponse.value = "لا اتصال"
-            } finally {
-                _isLoadingAi.value = false
+                "تعذر الاتصال. يرجى التأكد من اتصالك بالإنترنت للميزات الذكية 🌐"
             }
+            _chatMessages.update { list ->
+                list.filterNot { it.isLoading } + ChatMessage(reply, isUser = false)
+            }
+            _isLoadingAi.value = false
         }
     }
 
-    fun suggestZekr(feeling: String) {
-        viewModelScope.launch {
-            _isLoadingAi.value = true
-            _aiResponse.value = ""
-            try {
-                _aiResponse.value = aiRepository.suggestZekrForFeeling(feeling)
-            } catch (_: Exception) {
-                _aiResponse.value = "لا اتصال"
-            } finally {
-                _isLoadingAi.value = false
-            }
-        }
-    }
-
-    fun clearAiResponse() { _aiResponse.value = "" }
     fun clearStatusMessage() { _statusMessage.value = "" }
 
     fun signIn(context: Context) {
