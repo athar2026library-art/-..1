@@ -1,9 +1,9 @@
 package com.example.ui.screens
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -15,40 +15,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.AppViewModel
-
-data class ChatMessage(val text: String, val isUser: Boolean, val isLoading: Boolean = false)
+import com.example.ui.ChatMessage
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AiServicesScreen(
     viewModel: AppViewModel
 ) {
-    val aiResponse by viewModel.aiResponse.collectAsStateWithLifecycle()
-    val isLoadingAi by viewModel.isLoadingAi.collectAsStateWithLifecycle()
+    val messages by viewModel.chatMessages.collectAsState()
+    val isLoadingAi by viewModel.isLoadingAi.collectAsState()
 
     var inputText by remember { mutableStateOf("") }
+    val listState = rememberLazyListState()
 
-    var messages by remember {
-        mutableStateOf(
-            listOf(
-                ChatMessage(
-                    "السلام عليكم، كيف يمكنني مساعدتك اليوم؟ (أذكار، أدعية، فضل ذكر معيّن...)",
-                    isUser = false
-                )
-            )
-        )
-    }
-
-    LaunchedEffect(aiResponse, isLoadingAi) {
-        if (isLoadingAi) {
-            if (messages.lastOrNull()?.isLoading != true) {
-                messages = messages + ChatMessage("جاري البحث...", isUser = false, isLoading = true)
-            }
-        } else if (aiResponse.isNotEmpty()) {
-            messages = messages.filterNot { it.isLoading } + ChatMessage(aiResponse, isUser = false)
-        }
+    LaunchedEffect(messages.size) {
+        if (messages.isNotEmpty()) listState.animateScrollToItem(messages.lastIndex)
     }
 
     Scaffold(
@@ -76,23 +58,19 @@ fun AiServicesScreen(
                 ) {
                     OutlinedTextField(
                         value = inputText,
-                        onValueChange = { inputText = it },
+                        onValueChange = { inputText = it.take(500) },
                         modifier = Modifier.weight(1f),
-                        placeholder = { Text("بماذا تشعر؟ أو أدخل ذكراً لتدبّره...") },
-                        shape = RoundedCornerShape(24.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                            focusedBorderColor = MaterialTheme.colorScheme.primary
-                        )
+                        placeholder = { Text("اسأل عن ذكر أو صف شعورك...") },
+                        maxLines = 3,
+                        shape = RoundedCornerShape(20.dp)
                     )
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
                     IconButton(
                         onClick = {
-                            if (inputText.isNotBlank() && !isLoadingAi) {
-                                val userMessage = inputText
+                            val t = inputText.trim()
+                            if (t.isNotEmpty()) {
+                                viewModel.sendChatMessage(t)
                                 inputText = ""
-                                messages = messages + ChatMessage(userMessage, isUser = true)
-                                viewModel.suggestZekr(userMessage)
                             }
                         },
                         modifier = Modifier
@@ -111,6 +89,7 @@ fun AiServicesScreen(
         }
     ) { padding ->
         LazyColumn(
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
@@ -162,3 +141,10 @@ fun ChatBubble(message: ChatMessage) {
         }
     }
 }
+
+private fun Modifier.background(
+    color: androidx.compose.ui.graphics.Color,
+    shape: androidx.compose.ui.graphics.Shape
+): Modifier = this.then(
+    androidx.compose.foundation.background(color, shape)
+)
