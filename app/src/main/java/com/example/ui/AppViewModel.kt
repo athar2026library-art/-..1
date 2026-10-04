@@ -1,6 +1,6 @@
 package com.example.ui
 
-import android.app.Activity
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -12,7 +12,6 @@ import com.example.data.AuthRepository
 import com.example.data.FirestoreRepository
 import com.example.data.FeedbackDraft
 import com.example.data.FeedbackItem
-import com.example.data.SyncException
 import com.example.data.Zekr
 import com.google.firebase.functions.FirebaseFunctions
 import com.google.firebase.functions.FirebaseFunctionsException
@@ -22,6 +21,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -219,22 +219,25 @@ class AppViewModel(
     fun clearAiResponse() { _aiResponse.value = "" }
     fun clearStatusMessage() { _statusMessage.value = "" }
 
-    fun signIn(activity: Activity) {
+    fun signIn(context: Context) {
         viewModelScope.launch {
-            val success = authRepository.signInWithGoogle(activity)
+            val success = authRepository.signInWithGoogle(context)
             if (success) {
                 _userSignedIn.value = true
                 _statusMessage.value = "تم تسجيل الدخول بنجاح!"
+                firestoreRepository.saveFcmToken()
             } else {
-                _statusMessage.value = "فشل تسجيل الدخول. تأكد من إعدادات Firebase."
+                _statusMessage.value = "فشل تسجيل الدخول أو تم إلغاؤه."
             }
         }
     }
 
     fun signOut() {
-        authRepository.signOut()
-        _userSignedIn.value = false
-        _statusMessage.value = "تم تسجيل الخروج."
+        viewModelScope.launch {
+            authRepository.signOut()
+            _userSignedIn.value = false
+            _statusMessage.value = "تم تسجيل الخروج."
+        }
     }
 
     fun deleteAccount() {
@@ -266,19 +269,20 @@ class AppViewModel(
         viewModelScope.launch { firestoreRepository.markFeedbackReplyRead(feedbackId) }
     }
 
-    fun submitFeedback(draft: FeedbackDraft, activity: Activity?) {
+    fun submitFeedback(draft: FeedbackDraft, context: Context?) {
         viewModelScope.launch {
             if (authRepository.getCurrentUser() == null) {
-                if (activity == null) {
+                if (context == null) {
                     _statusMessage.value = "يجب تسجيل الدخول لإرسال الطلب."
                     return@launch
                 }
-                val signedIn = authRepository.signInWithGoogle(activity)
+                val signedIn = authRepository.signInWithGoogle(context)
                 _userSignedIn.value = signedIn
                 if (!signedIn) {
                     _statusMessage.value = "يجب تسجيل الدخول لإرسال الطلب."
                     return@launch
                 }
+                firestoreRepository.saveFcmToken()
             }
             val result = firestoreRepository.submitFeedback(draft, draft.attachmentUri)
             _statusMessage.value = if (result.isSuccess) {
@@ -292,20 +296,18 @@ class AppViewModel(
     fun syncData() {
         viewModelScope.launch {
             _statusMessage.value = "جاري المزامنة مع السحابة..."
-            try {
-                val remoteProgress = firestoreRepository.fetchProgress()
-                progressRepository.syncProgress(remoteProgress)
-                val allLocal = progressRepository.getAllProgress()
-                firestoreRepository.backupProgress(allLocal)
-                _statusMessage.value = "تمت مزامنة البستان بنجاح! 🌴"
-            } catch (e: SyncException) {
-                _statusMessage.value = when (e.message) {
-                    "AUTH_REQUIRED" -> "سجّل الدخول أولاً للمزامنة."
-                    else -> "تعذرت المزامنة. تحقق من الاتصال وحاول مجدداً."
-                }
-            } catch (_: Exception) {
-                _statusMessage.value = "تعذرت المزامنة، تأكد من اتصالك بالإنترنت 🌐"
+            val remote = firestoreRepository.fetchProgress()
+            if (remote == null) {
+                _statusMessage.value = "تعذرت المزامنة، تأكد من اتصالك وتسجيل الدخول 🌐"
+                return@launch
             }
+            progressRepository.syncProgress(remote)
+            val local = progressRepository.getAllProgress().ifEmpty {
+                progressRepository.getRecentProgress().first()
+            }
+            val ok = firestoreRepository.backupProgress(local)
+            _statusMessage.value =
+                if (ok) "تمت مزامنة البستان بنجاح! 🌴" else "تعذر رفع التقدم إلى السحابة"
         }
     }
 
