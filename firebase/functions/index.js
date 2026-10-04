@@ -2,9 +2,10 @@ const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const { defineSecret } = require("firebase-functions/params");
 const { initializeApp } = require("firebase-admin/app");
-const { getFirestore, FieldValue, Timestamp } = require("firebase-admin/firestore");
+const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const { getAuth } = require("firebase-admin/auth");
 const { getMessaging } = require("firebase-admin/messaging");
+const { getStorage } = require("firebase-admin/storage");
 
 initializeApp();
 
@@ -46,7 +47,6 @@ async function getBroadcastTokens(audience = "all") {
   return users.docs.flatMap((user) => user.data().fcmTokens || []);
 }
 
-/** Server-side rate limit: rateLimits/{uid} — clients cannot write (rules deny). */
 async function enforceRateLimit(uid, { perMinute = 3, perDay = 30 } = {}) {
   const db = getFirestore();
   const ref = db.collection("rateLimits").doc(uid);
@@ -73,6 +73,25 @@ async function enforceRateLimit(uid, { perMinute = 3, perDay = 30 } = {}) {
       },
       { merge: true },
     );
+  });
+}
+
+/** Refund one unit if Gemini call failed after consuming quota. */
+async function refundRateLimit(uid) {
+  const db = getFirestore();
+  const ref = db.collection("rateLimits").doc(uid);
+  const now = Date.now();
+  const minuteKey = Math.floor(now / 60000);
+  const dayKey = Math.floor(now / 86400000);
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists) return;
+    const data = snap.data() || {};
+    const minuteCount =
+      data.minuteKey === minuteKey ? Math.max(0, (data.minuteCount || 0) - 1) : data.minuteCount || 0;
+    const dayCount =
+      data.dayKey === dayKey ? Math.max(0, (data.dayCount || 0) - 1) : data.dayCount || 0;
+    tx.set(ref, { minuteCount, dayCount, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
   });
 }
 
@@ -110,56 +129,78 @@ exports.generateGemini = onCall(
     await enforceRateLimit(req.auth.uid, { perMinute: 3, perDay: 30 });
 
     const userPrompt = buildUserPrompt(mode, text.trim());
-    // Do not log user text (may contain personal feelings).
 
     let response;
     try {
       response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(GEMINI_API_KEY.value())}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
         {
           method: "POST",
-          headers: { "content-type": "application/json" },
+          headers: {
+            "content-type": "application/json",
+            "x-goog-api-key": GEMINI_API_KEY.value(),
+          },
           body: JSON.stringify({
             contents: [{ parts: [{ text: userPrompt }] }],
             systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
             generationConfig: { temperature: 0.4 },
           }),
+          signal: AbortSignal.timeout(20000),
         },
       );
     } catch (_e) {
+      await refundRateLimit(req.auth.uid).catch(() => {});
       throw new HttpsError("unavailable", "لا اتصال");
     }
 
     if (response.status === 429) {
+      await refundRateLimit(req.auth.uid).catch(() => {});
       throw new HttpsError("resource-exhausted", "وصلت لحد الاستخدام. حاول بعد قليل.");
     }
     if (!response.ok) {
+      await refundRateLimit(req.auth.uid).catch(() => {});
       throw new HttpsError("internal", "تعذر الحصول على إجابة من المساعد.");
     }
 
     const payload = await response.json();
     const out = payload.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!out) throw new HttpsError("internal", "لم يتم العثور على إجابة صالحة.");
+    if (!out) {
+      await refundRateLimit(req.auth.uid).catch(() => {});
+      throw new HttpsError("internal", "لم يتم العثور على إجابة صالحة.");
+    }
     return { text: out, disclaimer: true };
   },
 );
 
-/** Delete account: recursive users/{uid} then Auth user. Requires recent login on client. */
 exports.deleteAccount = onCall(
-  { region: REGION, enforceAppCheck: true, timeoutSeconds: 60 },
+  { region: REGION, enforceAppCheck: true, timeoutSeconds: 120 },
   async (req) => {
     if (!req.auth?.uid) {
       throw new HttpsError("unauthenticated", "سجّل الدخول أولاً");
     }
     const uid = req.auth.uid;
     const db = getFirestore();
-    await db.recursiveDelete(db.collection("users").doc(uid));
-    // Best-effort: remove top-level feedback owned by user
+
+    // 1) Feedback (+ timeline subcollections) before Auth delete
     const fb = await db.collection("feedback").where("userId", "==", uid).get();
-    const batch = db.batch();
-    fb.docs.forEach((d) => batch.delete(d.ref));
-    if (!fb.empty) await batch.commit();
+    for (const d of fb.docs) {
+      await db.recursiveDelete(d.ref);
+    }
+
+    // 2) User tree
+    await db.recursiveDelete(db.collection("users").doc(uid));
+
+    // 3) Ancillary docs
     await db.collection("rateLimits").doc(uid).delete().catch(() => {});
+    await db.collection("admins").doc(uid).delete().catch(() => {});
+
+    // 4) Storage attachments
+    await getStorage()
+      .bucket()
+      .deleteFiles({ prefix: `feedback/${uid}/` })
+      .catch(() => {});
+
+    // 5) Auth last so retries remain possible if earlier steps fail
     await getAuth().deleteUser(uid);
     return { ok: true };
   },
