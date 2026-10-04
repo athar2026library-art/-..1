@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import android.app.Activity
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
@@ -43,6 +44,7 @@ fun SettingsScreen(
     val userSignedIn by viewModel.userSignedIn.collectAsStateWithLifecycle()
     val statusMessage by viewModel.statusMessage.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val activity = context as? Activity
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
     if (showDeleteConfirm) {
@@ -111,16 +113,11 @@ fun SettingsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text("الوضع الليلي", fontSize = 16.sp)
-                        Switch(
-                            checked = isDarkMode,
-                            onCheckedChange = { viewModel.setDarkMode(it) }
-                        )
+                        Switch(checked = isDarkMode, onCheckedChange = { viewModel.setDarkMode(it) })
                     }
-
                     Spacer(modifier = Modifier.height(16.dp))
                     HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
                     Spacer(modifier = Modifier.height(16.dp))
-
                     Text("حجم الخط (${fontSize.toInt()})", fontSize = 16.sp)
                     var localFontSize by remember(fontSize) { mutableFloatStateOf(fontSize) }
                     Slider(
@@ -134,14 +131,11 @@ fun SettingsScreen(
             }
 
             Spacer(modifier = Modifier.height(32.dp))
-
             Text("التذكيرات", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
             Spacer(modifier = Modifier.height(16.dp))
-
             Card(
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(0.dp),
                 border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
@@ -154,77 +148,26 @@ fun SettingsScreen(
                             Text("تذكيرات الأذكار", fontSize = 16.sp)
                             Text("صباح ومساء — يمكن إيقافها بالكامل", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        Switch(
-                            checked = notificationsEnabled,
-                            onCheckedChange = { viewModel.setNotificationsEnabled(it) }
-                        )
+                        Switch(checked = notificationsEnabled, onCheckedChange = { viewModel.setNotificationsEnabled(it) })
                     }
                 }
             }
 
             Spacer(modifier = Modifier.height(32.dp))
-
             Text("القراءة والتفاعل", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
             Spacer(modifier = Modifier.height(16.dp))
-
             Card(
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(0.dp),
                 border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("الاهتزاز عند التسبيح", fontSize = 16.sp)
-                        Switch(
-                            checked = isVibrationEnabled,
-                            onCheckedChange = { viewModel.setVibration(it) }
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("القراءة المستمرة", fontSize = 16.sp)
-                            Text("تشغيل الصوت والانتقال للذكر التالي تلقائياً", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        Switch(checked = autoPlayEnabled, onCheckedChange = { viewModel.setAutoPlay(it) })
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("إبقاء الشاشة مضاءة", fontSize = 16.sp)
-                            Text("أثناء قراءة الأذكار فقط", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        Switch(
-                            checked = keepScreenOn,
-                            onCheckedChange = { viewModel.setKeepScreenOn(it) }
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
-                    Spacer(modifier = Modifier.height(16.dp))
-
+                    SettingSwitchRow("الاهتزاز عند التسبيح", isVibrationEnabled) { viewModel.setVibration(it) }
+                    SettingDivider()
+                    SettingSwitchRow("القراءة المستمرة", autoPlayEnabled, "تشغيل الصوت والانتقال للذكر التالي تلقائياً") { viewModel.setAutoPlay(it) }
+                    SettingDivider()
+                    SettingSwitchRow("إبقاء الشاشة مضاءة", keepScreenOn, "أثناء قراءة الأذكار فقط") { viewModel.setKeepScreenOn(it) }
+                    SettingDivider()
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -238,68 +181,32 @@ fun SettingsScreen(
                             checked = autoDnd,
                             onCheckedChange = { checked ->
                                 if (checked) {
-                                    val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-                                    if (!notificationManager.isNotificationPolicyAccessGranted) {
-                                        val intent = Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)
-                                        context.startActivity(intent)
-                                    } else {
-                                        viewModel.setAutoDnd(true)
-                                    }
-                                } else {
-                                    viewModel.setAutoDnd(false)
-                                }
+                                    val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                                    if (!nm.isNotificationPolicyAccessGranted) {
+                                        context.startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
+                                    } else viewModel.setAutoDnd(true)
+                                } else viewModel.setAutoDnd(false)
                             }
                         )
                     }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("إخفاء الفضائل", fontSize = 16.sp)
-                            Text("قراءة النص فقط بدون تفاصيل إضافية", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        Switch(checked = hideVirtues, onCheckedChange = { viewModel.setHideVirtues(it) })
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("إخفاء المصادر", fontSize = 16.sp)
-                            Text("تبسيط شاشة القراءة من غير إلغاء المصدر", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        Switch(checked = hideSources, onCheckedChange = { viewModel.setHideSources(it) })
-                    }
+                    SettingDivider()
+                    SettingSwitchRow("إخفاء الفضائل", hideVirtues, "قراءة النص فقط بدون تفاصيل إضافية") { viewModel.setHideVirtues(it) }
+                    SettingDivider()
+                    SettingSwitchRow("إخفاء المصادر", hideSources, "تبسيط شاشة القراءة") { viewModel.setHideSources(it) }
                 }
             }
 
             Spacer(modifier = Modifier.height(32.dp))
-
             Text("المزامنة السحابية", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
             Spacer(modifier = Modifier.height(16.dp))
-
             Card(
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(0.dp),
                 border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
                     Text(
-                        "المزامنة التلقائية تعمل في الخلفية كل 6 ساعات عند تسجيل الدخول، مع دمج الإنجاز المحلي والسحابي.",
+                        "المزامنة التلقائية تعمل في الخلفية كل 6 ساعات عند تسجيل الدخول.",
                         fontSize = 13.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         lineHeight = 20.sp
@@ -308,37 +215,28 @@ fun SettingsScreen(
                     if (userSignedIn) {
                         Text("تم تسجيل الدخول", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.height(16.dp))
-                        Button(
-                            onClick = { viewModel.syncData() },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
+                        Button(onClick = { viewModel.syncData() }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
                             Text("مزامنة الآن")
                         }
                         Spacer(modifier = Modifier.height(8.dp))
-                        OutlinedButton(
-                            onClick = { viewModel.signOut() },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
+                        OutlinedButton(onClick = { viewModel.signOut() }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
                             Text("تسجيل الخروج")
                         }
                         Spacer(modifier = Modifier.height(8.dp))
-                        TextButton(
-                            onClick = { showDeleteConfirm = true },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
+                        TextButton(onClick = { showDeleteConfirm = true }, modifier = Modifier.fillMaxWidth()) {
                             Text("حذف الحساب نهائياً", color = MaterialTheme.colorScheme.error)
                         }
                     } else {
                         Text("سجل الدخول لحفظ تقدمك", fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(modifier = Modifier.height(16.dp))
                         Button(
-                            onClick = { viewModel.signIn() },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("google-sign-in-button"),
-                            shape = RoundedCornerShape(12.dp)
+                            onClick = {
+                                activity?.let { viewModel.signIn(it) }
+                                    ?: run { /* no activity */ }
+                            },
+                            modifier = Modifier.fillMaxWidth().testTag("google-sign-in-button"),
+                            shape = RoundedCornerShape(12.dp),
+                            enabled = activity != null
                         ) {
                             Text("تسجيل الدخول باستخدام Google")
                         }
@@ -375,10 +273,7 @@ fun SettingsScreen(
                             val shareIntent = Intent(Intent.ACTION_SEND).apply {
                                 type = "text/plain"
                                 putExtra(Intent.EXTRA_SUBJECT, "جرّب تطبيق الباقيات")
-                                putExtra(
-                                    Intent.EXTRA_TEXT,
-                                    "جرّب تطبيق الباقيات للمحافظة على الأذكار والورد اليومي."
-                                )
+                                putExtra(Intent.EXTRA_TEXT, "جرّب تطبيق الباقيات للمحافظة على الأذكار والورد اليومي.")
                             }
                             context.startActivity(Intent.createChooser(shareIntent, "مشاركة الباقيات"))
                         },
@@ -393,5 +288,34 @@ fun SettingsScreen(
             }
             Spacer(modifier = Modifier.height(32.dp))
         }
+    }
+}
+
+@Composable
+private fun SettingDivider() {
+    Spacer(modifier = Modifier.height(16.dp))
+    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+    Spacer(modifier = Modifier.height(16.dp))
+}
+
+@Composable
+private fun SettingSwitchRow(
+    title: String,
+    checked: Boolean,
+    subtitle: String? = null,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, fontSize = 16.sp)
+            if (subtitle != null) {
+                Text(subtitle, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
