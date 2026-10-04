@@ -13,7 +13,8 @@ import androidx.room.PrimaryKey
     ]
 )
 data class UserProgress(
-    @PrimaryKey val date: String, // format yyyy-MM-dd
+    /** قيمة افتراضية مطلوبة لـ Firestore toObjects في release مع R8 */
+    @PrimaryKey val date: String = "",
     val completedSabah: Boolean = false,
     val completedMasaa: Boolean = false,
     val totalTasbeeh: Int = 0

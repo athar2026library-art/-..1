@@ -11,40 +11,54 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 
+class SyncException(message: String, cause: Throwable? = null) : Exception(message, cause)
+
 class FirestoreRepository {
     private val firestore by lazy {
-        try { FirebaseFirestore.getInstance() } catch (e: Exception) { null }
+        try { FirebaseFirestore.getInstance() } catch (_: Exception) { null }
     }
     private val auth by lazy {
-        try { FirebaseAuth.getInstance() } catch (e: Exception) { null }
+        try { FirebaseAuth.getInstance() } catch (_: Exception) { null }
     }
 
     suspend fun backupProgress(progressList: List<UserProgress>) {
-        val user = auth?.currentUser ?: return
-        val db = firestore ?: return
+        val user = auth?.currentUser ?: throw SyncException("AUTH_REQUIRED")
+        val db = firestore ?: throw SyncException("FIRESTORE_UNAVAILABLE")
         try {
             val batch = db.batch()
             for (progress in progressList) {
+                if (progress.date.isBlank()) continue
                 val docRef = db.collection("users").document(user.uid)
                     .collection("progress").document(progress.date)
-                batch.set(docRef, progress)
+                batch.set(
+                    docRef,
+                    mapOf(
+                        "date" to progress.date,
+                        "completedSabah" to progress.completedSabah,
+                        "completedMasaa" to progress.completedMasaa,
+                        "totalTasbeeh" to progress.totalTasbeeh
+                    )
+                )
             }
             batch.commit().await()
+        } catch (e: SyncException) {
+            throw e
         } catch (e: Exception) {
-            Log.e("FirestoreRepository", "Backup failed", e)
+            throw SyncException("BACKUP_FAILED", e)
         }
     }
 
     suspend fun fetchProgress(): List<UserProgress> {
-        val user = auth?.currentUser ?: return emptyList()
-        val db = firestore ?: return emptyList()
+        val user = auth?.currentUser ?: throw SyncException("AUTH_REQUIRED")
+        val db = firestore ?: throw SyncException("FIRESTORE_UNAVAILABLE")
         return try {
             val snapshot = db.collection("users").document(user.uid)
                 .collection("progress").get().await()
             snapshot.toObjects(UserProgress::class.java)
+        } catch (e: SyncException) {
+            throw e
         } catch (e: Exception) {
-            Log.e("FirestoreRepository", "Fetch failed", e)
-            emptyList()
+            throw SyncException("FETCH_FAILED", e)
         }
     }
 
@@ -113,30 +127,30 @@ class FirestoreRepository {
         val db = firestore ?: return Result.failure(IllegalStateException("FIRESTORE_UNAVAILABLE"))
         return try {
             val ref = db.collection("feedback").document()
-            val attachmentUrls = if (attachmentUri != null) {
-                val storageRef = FirebaseStorage.getInstance().reference.child("feedback/${user.uid}/${ref.id}/attachment.jpg")
+            val attachmentUrl = if (attachmentUri != null) {
+                val storageRef = FirebaseStorage.getInstance().reference
+                    .child("feedback/${user.uid}/${ref.id}/attachment.jpg")
                 storageRef.putFile(attachmentUri).await()
-                listOf(storageRef.downloadUrl.await().toString())
-            } else emptyList()
-            val data = hashMapOf(
-                "id" to ref.id,
+                storageRef.downloadUrl.await().toString()
+            } else ""
+            val data = hashMapOf<String, Any>(
                 "userId" to user.uid,
-                "userEmail" to (user.email ?: ""),
                 "type" to draft.type,
                 "title" to draft.title,
                 "message" to draft.message,
-                "aiSummary" to draft.aiSummary,
-                "aiCategory" to draft.aiCategory,
-                "priority" to draft.priority,
                 "status" to "new",
                 "adminReply" to "",
-                "attachmentUrls" to attachmentUrls,
+                "replyUnread" to false,
                 "createdAt" to com.google.firebase.firestore.FieldValue.serverTimestamp(),
                 "updatedAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
             )
+            if (attachmentUrl.isNotEmpty()) data["attachmentUrl"] = attachmentUrl
             db.runBatch { batch ->
                 batch.set(ref, data)
-                batch.set(db.collection("users").document(user.uid).collection("feedback").document(ref.id), data)
+                batch.set(
+                    db.collection("users").document(user.uid).collection("feedback").document(ref.id),
+                    data
+                )
             }.await()
             Result.success(ref.id)
         } catch (e: Exception) {
@@ -175,7 +189,10 @@ class FirestoreRepository {
         val db = firestore ?: return
         try {
             db.collection("feedback").document(feedbackId).update("replyUnread", false).await()
-            db.collection("users").document(user.uid).collection("feedback").document(feedbackId).update("replyUnread", false).await()
-        } catch (e: Exception) { Log.e("FirestoreRepository", "Mark reply read failed", e) }
+            db.collection("users").document(user.uid).collection("feedback")
+                .document(feedbackId).update("replyUnread", false).await()
+        } catch (e: Exception) {
+            Log.e("FirestoreRepository", "Mark reply read failed", e)
+        }
     }
 }

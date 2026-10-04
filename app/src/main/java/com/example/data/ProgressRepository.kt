@@ -18,6 +18,8 @@ class ProgressRepository(private val progressDao: ProgressDao) {
     suspend fun getTodayProgressSync(date: String = getTodayDateStr()): UserProgress? =
         progressDao.getProgressByDateSync(date)
 
+    suspend fun getAllProgress(): List<UserProgress> = progressDao.getAllProgressSync()
+
     suspend fun initTodayProgress() {
         val date = getTodayDateStr()
         progressDao.insertProgressIfNotExists(UserProgress(date = date))
@@ -35,8 +37,13 @@ class ProgressRepository(private val progressDao: ProgressDao) {
         progressDao.addTasbeeh(getTodayDateStr(), count)
     }
 
+    suspend fun clearLocalProgress() {
+        progressDao.clearAll()
+    }
+
     suspend fun syncProgress(remoteList: List<UserProgress>) {
         for (remote in remoteList) {
+            if (remote.date.isBlank()) continue
             val local = progressDao.getProgressByDateSync(remote.date)
             if (local == null) {
                 progressDao.insertProgress(remote)

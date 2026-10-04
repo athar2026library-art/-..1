@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [UserProgress::class], version = 2, exportSchema = false)
+@Database(entities = [UserProgress::class], version = 2, exportSchema = true)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun progressDao(): ProgressDao
 
@@ -15,13 +15,13 @@ abstract class AppDatabase : RoomDatabase() {
         const val DB_NAME = "azkar_db"
 
         /**
-         * v1 -> v2: add helpful indices without wiping user progress.
-         * date is already PRIMARY KEY; extra indices help filtered stats queries.
+         * v1 -> v2: الفهرس على date يجب أن يكون UNIQUE ليطابق تعريف الكيان
+         * (date أصلاً PRIMARY KEY؛ UNIQUE INDEX آمن).
          */
         private val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
-                    "CREATE INDEX IF NOT EXISTS index_user_progress_date ON user_progress(date)"
+                    "CREATE UNIQUE INDEX IF NOT EXISTS index_user_progress_date ON user_progress(date)"
                 )
                 db.execSQL(
                     "CREATE INDEX IF NOT EXISTS index_user_progress_completedSabah ON user_progress(completedSabah)"

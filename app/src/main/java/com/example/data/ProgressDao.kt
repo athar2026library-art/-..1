@@ -17,6 +17,9 @@ interface ProgressDao {
     @Query("SELECT * FROM user_progress ORDER BY date DESC LIMIT 30")
     fun getRecentProgress(): Flow<List<UserProgress>>
 
+    @Query("SELECT * FROM user_progress ORDER BY date ASC")
+    suspend fun getAllProgressSync(): List<UserProgress>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertProgress(progress: UserProgress)
 
@@ -32,4 +35,7 @@ interface ProgressDao {
 
     @Query("UPDATE user_progress SET totalTasbeeh = totalTasbeeh + :count WHERE date = :date")
     suspend fun addTasbeeh(date: String, count: Int)
+
+    @Query("DELETE FROM user_progress")
+    suspend fun clearAll()
 }
