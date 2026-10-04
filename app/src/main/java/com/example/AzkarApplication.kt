@@ -4,9 +4,6 @@ import android.app.Application
 import android.os.StrictMode
 import android.util.Log
 import com.google.firebase.Firebase
-import com.google.firebase.appcheck.appCheck
-import com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory
-import com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreSettings
 import com.google.firebase.initialize
@@ -45,13 +42,6 @@ class AzkarApplication : Application() {
             Log.w("AzkarApplication", "Firestore settings already applied or unavailable", e)
         }
 
-        val appCheck = Firebase.appCheck
-        appCheck.installAppCheckProviderFactory(
-            if (BuildConfig.DEBUG) {
-                DebugAppCheckProviderFactory.getInstance()
-            } else {
-                PlayIntegrityAppCheckProviderFactory.getInstance()
-            }
-        )
+        AppCheckProviderInstaller.install(this)
     }
 }

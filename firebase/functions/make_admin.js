@@ -1,41 +1,26 @@
-/**
- * One-shot script: set Firebase Auth custom claim { admin: true } for a user.
- *
- * Prerequisites (run from firebase/functions after firebase login):
- *   npm install
- *   export GOOGLE_APPLICATION_CREDENTIALS=/path/to/serviceAccount.json
- *   # or: gcloud auth application-default login
- *
- * Usage:
- *   node make_admin.js
- *
- * Then edit TARGET_UID below to your Firebase Auth UID (Console → Authentication).
- */
-const admin = require("firebase-admin");
+const { initializeApp } = require("firebase-admin/app");
+const { getAuth } = require("firebase-admin/auth");
+const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 
-// ========== عدّل هذا فقط ==========
-const TARGET_UID = "REPLACE_WITH_YOUR_FIREBASE_AUTH_UID";
-// ==================================
-
-if (!admin.apps.length) {
-  admin.initializeApp({
-    projectId: process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT || "svrpmtt",
-  });
+const email = (process.argv[2] || "mgedh.9ali@gmail.com").trim().toLowerCase();
+if (!email || !email.includes("@")) {
+  console.error("Usage: node make_admin.js owner@example.com");
+  process.exit(2);
 }
 
-async function main() {
-  if (!TARGET_UID || TARGET_UID.startsWith("REPLACE_")) {
-    console.error("Edit TARGET_UID in make_admin.js to your real Firebase Auth UID.");
-    process.exit(1);
-  }
+initializeApp({ projectId: process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT || "svrpmtt" });
 
-  await admin.auth().setCustomUserClaims(TARGET_UID, { admin: true });
-  const user = await admin.auth().getUser(TARGET_UID);
-  console.log("OK — custom claims for", TARGET_UID, ":", user.customClaims);
-  console.log("User must sign out and sign in again for the claim to appear in the ID token.");
-}
-
-main().catch((err) => {
-  console.error(err);
+(async () => {
+  const auth = getAuth();
+  const user = await auth.getUserByEmail(email);
+  await auth.setCustomUserClaims(user.uid, { ...(user.customClaims || {}), admin: true });
+  await getFirestore().collection("admins").doc(user.uid).set(
+    { email, role: "super_admin", updatedAt: FieldValue.serverTimestamp() },
+    { merge: true },
+  );
+  console.log(`Admin claims and admins/${user.uid} updated for ${email}`);
+  console.log("The user must sign out and sign in again for the claim to refresh.");
+})().catch((error) => {
+  console.error(error);
   process.exit(1);
 });
