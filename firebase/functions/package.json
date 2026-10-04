@@ -1,6 +1,9 @@
 {
   "name": "azkar-functions",
   "private": true,
+  "scripts": {
+    "test": "node --test"
+  },
   "engines": { "node": "20" },
   "main": "index.js",
   "dependencies": {

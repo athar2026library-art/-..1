@@ -6,6 +6,7 @@ const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const { getAuth } = require("firebase-admin/auth");
 const { getMessaging } = require("firebase-admin/messaging");
 const { getStorage } = require("firebase-admin/storage");
+const { uniqueTokens, buildUserPrompt } = require("./lib/helpers");
 
 initializeApp();
 
@@ -17,10 +18,6 @@ const SYSTEM_INSTRUCTION =
   "أنت مساعد إسلامي متخصص في الأذكار والدعاء. اعتمد فقط على الأحاديث الصحيحة وكتاب حصن المسلم. " +
   "قدم إجاباتك بأسلوب ميسر، مختصر جداً، وهادئ. لا تفتِ ولا تصدر أحكاماً شرعية من عندك. " +
   "في نهاية كل إجابة أضف سطراً: (إجابة آلية، ليست فتوى).";
-
-function uniqueTokens(tokens) {
-  return [...new Set((tokens || []).filter((token) => typeof token === "string" && token.trim()))];
-}
 
 async function sendToTokens(tokens, message) {
   const unique = uniqueTokens(tokens);
@@ -93,16 +90,6 @@ async function refundRateLimit(uid) {
       data.dayKey === dayKey ? Math.max(0, (data.dayCount || 0) - 1) : data.dayCount || 0;
     tx.set(ref, { minuteCount, dayCount, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
   });
-}
-
-function buildUserPrompt(mode, text) {
-  if (mode === "explain") {
-    return `قم بشرح وتدبر هذا الذكر بأسلوب إيماني، ميسر ومختصر جداً:\n\n"${text}"`;
-  }
-  return (
-    `أشعر بـ (${text}) أو أحتاج إلى دعاء بهذا الخصوص. اقترح لي ذكراً أو دعاءً من الأحاديث الصحيحة وحصن المسلم يناسب حالتي.\n` +
-    "نرجو الرد بالتنسيق التالي حصراً:\nالذكر: [النص]\nفضله: [شرح مبسط]\nالمصدر: [المرجع]"
-  );
 }
 
 exports.generateGemini = onCall(

@@ -37,6 +37,10 @@ jobs:
         working-directory: firebase/functions
         run: npm ci
 
+      - name: Run function unit tests
+        working-directory: firebase/functions
+        run: npm test
+
       - name: Validate function source
         working-directory: firebase/functions
         run: node --check index.js
