@@ -4,26 +4,27 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.data.AiRepository
+import com.example.data.AuthRepository
+import com.example.data.FeedbackDraft
+import com.example.data.FeedbackItem
+import com.example.data.FirestoreRepository
 import com.example.data.ProgressRepository
 import com.example.data.SettingsRepository
 import com.example.data.UserProgress
-import com.example.data.AiRepository
-import com.example.data.AuthRepository
-import com.example.data.FirestoreRepository
-import com.example.data.FeedbackDraft
-import com.example.data.FeedbackItem
 import com.example.data.Zekr
 import com.google.firebase.functions.FirebaseFunctions
 import com.google.firebase.functions.FirebaseFunctionsException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -102,7 +103,7 @@ class AppViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val unreadFeedbackCount: StateFlow<Int> = myFeedback
-        .let { flow -> kotlinx.coroutines.flow.flow { flow.collect { emit(it.count { item -> item.replyUnread }) } } }
+        .map { list -> list.count { it.replyUnread } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
     private var pendingTasbeeh = 0
@@ -190,7 +191,11 @@ class AppViewModel(
     }
 
     fun setNotificationsEnabled(enabled: Boolean) {
-        viewModelScope.launch { settingsRepository.setNotificationsEnabled(enabled) }
+        viewModelScope.launch {
+            settingsRepository.setNotificationsEnabled(enabled)
+            // ضروري لوصول بث لوحة الإدارة (فلتر notificationsEnabled في Functions)
+            firestoreRepository.updateNotificationPrefs(enabled)
+        }
     }
 
     fun setAutoPlay(enabled: Boolean) {
@@ -228,7 +233,8 @@ class AppViewModel(
             if (success) {
                 _userSignedIn.value = true
                 _statusMessage.value = "تم تسجيل الدخول بنجاح!"
-                firestoreRepository.saveFcmToken()
+                val enabled = settingsRepository.notificationsEnabledFlow.first()
+                firestoreRepository.saveFcmToken(notificationsEnabled = enabled)
             } else {
                 _statusMessage.value = "فشل تسجيل الدخول أو تم إلغاؤه."
             }
@@ -285,7 +291,8 @@ class AppViewModel(
                     _statusMessage.value = "يجب تسجيل الدخول لإرسال الطلب."
                     return@launch
                 }
-                firestoreRepository.saveFcmToken()
+                val enabled = settingsRepository.notificationsEnabledFlow.first()
+                firestoreRepository.saveFcmToken(notificationsEnabled = enabled)
             }
             val result = firestoreRepository.submitFeedback(draft, draft.attachmentUri)
             _statusMessage.value = if (result.isSuccess) {
