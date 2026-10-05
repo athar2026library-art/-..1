@@ -19,7 +19,6 @@ class FirestoreRepository {
     private val firestore by lazy { runCatching { FirebaseFirestore.getInstance() }.getOrNull() }
     private val auth by lazy { runCatching { FirebaseAuth.getInstance() }.getOrNull() }
 
-    /** true عند النجاح فقط — لا رسالة نجاح كاذبة عند رفض القواعد. */
     suspend fun backupProgress(progressList: List<UserProgress>): Boolean {
         val user = auth?.currentUser ?: return false
         val db = firestore ?: return false
@@ -51,7 +50,6 @@ class FirestoreRepository {
         }
     }
 
-    /** null عند الفشل؛ قائمة (قد تكون فارغة) عند النجاح. */
     suspend fun fetchProgress(): List<UserProgress>? {
         val user = auth?.currentUser ?: return null
         val db = firestore ?: return null
@@ -67,8 +65,14 @@ class FirestoreRepository {
         }
     }
 
-    /** onNewToken لا يكفي بعد تسجيل دخول لاحق — نحفظ التوكن صراحةً. */
-    suspend fun saveFcmToken() {
+    /**
+     * يحفظ توكن FCM + تفضيلات الإشعارات حتى تصل بثوث لوحة الإدارة
+     * (getBroadcastTokens يفلتر notificationsEnabled == true).
+     */
+    suspend fun saveFcmToken(
+        notificationsEnabled: Boolean = true,
+        notificationAudience: String = "all"
+    ) {
         val user = auth?.currentUser ?: return
         val db = firestore ?: return
         try {
@@ -76,6 +80,8 @@ class FirestoreRepository {
             db.collection("users").document(user.uid).set(
                 mapOf(
                     "fcmTokens" to FieldValue.arrayUnion(token),
+                    "notificationsEnabled" to notificationsEnabled,
+                    "notificationAudience" to notificationAudience,
                     "updatedAt" to FieldValue.serverTimestamp()
                 ),
                 SetOptions.merge()
@@ -84,6 +90,29 @@ class FirestoreRepository {
             throw e
         } catch (e: Exception) {
             Log.e("FirestoreRepository", "Saving FCM token failed", e)
+        }
+    }
+
+    /** يحدّث تفضيل الإشعارات فقط (عند تبديل المفتاح في الإعدادات). */
+    suspend fun updateNotificationPrefs(
+        notificationsEnabled: Boolean,
+        notificationAudience: String = "all"
+    ) {
+        val user = auth?.currentUser ?: return
+        val db = firestore ?: return
+        try {
+            db.collection("users").document(user.uid).set(
+                mapOf(
+                    "notificationsEnabled" to notificationsEnabled,
+                    "notificationAudience" to notificationAudience,
+                    "updatedAt" to FieldValue.serverTimestamp()
+                ),
+                SetOptions.merge()
+            ).await()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.e("FirestoreRepository", "updateNotificationPrefs failed", e)
         }
     }
 
@@ -120,13 +149,14 @@ class FirestoreRepository {
             close()
             return@callbackFlow
         }
+        var lastGood: List<Zekr> = emptyList()
         val registration = db.collection("content").document("azkar").collection("items")
             .whereEqualTo("category", category)
             .whereEqualTo("published", true)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Log.e("FirestoreRepository", "Realtime content listener failed", error)
-                    trySend(emptyList())
+                    trySend(lastGood) // لا تمسح المحتوى الحي عند خطأ عابر
                     return@addSnapshotListener
                 }
                 val items = snapshot?.documents.orEmpty()
@@ -142,11 +172,13 @@ class FirestoreRepository {
                         )
                     }
                     .filter { it.text.isNotBlank() }
+                lastGood = items
                 trySend(items)
             }
         awaitClose { registration.remove() }
     }.distinctUntilChanged()
 
+    /** مسار واحد: feedback/{id} فقط — لا نسخة users/{uid}/feedback. */
     suspend fun submitFeedback(draft: FeedbackDraft, attachmentUri: Uri? = null): Result<String> {
         val user = auth?.currentUser ?: return Result.failure(IllegalStateException("AUTH_REQUIRED"))
         val db = firestore ?: return Result.failure(IllegalStateException("FIRESTORE_UNAVAILABLE"))
@@ -170,13 +202,7 @@ class FirestoreRepository {
                 "updatedAt" to FieldValue.serverTimestamp()
             )
             if (attachmentUrl.isNotEmpty()) data["attachmentUrl"] = attachmentUrl
-            db.runBatch { batch ->
-                batch.set(ref, data)
-                batch.set(
-                    db.collection("users").document(user.uid).collection("feedback").document(ref.id),
-                    data
-                )
-            }.await()
+            ref.set(data).await()
             Result.success(ref.id)
         } catch (e: Exception) {
             Log.e("FirestoreRepository", "Feedback submission failed", e)
@@ -216,12 +242,9 @@ class FirestoreRepository {
     }.distinctUntilChanged()
 
     suspend fun markFeedbackReplyRead(feedbackId: String) {
-        val user = auth?.currentUser ?: return
         val db = firestore ?: return
         try {
             db.collection("feedback").document(feedbackId).update("replyUnread", false).await()
-            db.collection("users").document(user.uid).collection("feedback")
-                .document(feedbackId).update("replyUnread", false).await()
         } catch (e: Exception) {
             Log.e("FirestoreRepository", "Mark reply read failed", e)
         }

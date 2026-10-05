@@ -4,8 +4,12 @@ service firebase.storage {
     function signedIn() {
       return request.auth != null;
     }
+    // موحّد مع Firestore: claim أو وثيقة admins/{uid}
     function isAdmin() {
-      return signedIn() && request.auth.token.admin == true;
+      return signedIn() && (
+        request.auth.token.admin == true
+        || firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid))
+      );
     }
     function isOwner(userId) {
       return signedIn() && request.auth.uid == userId;
