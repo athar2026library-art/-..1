@@ -14,16 +14,16 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun progressDao(): ProgressDao
 
     companion object {
-        /** الاسم الموحّد في الإنتاج. */
         const val DB_NAME = "azkar_db"
-        /** اسم قديم محتمل من حزم سابقة — يُرحَّل لمرة واحدة إن وُجد. */
         private const val LEGACY_DB_NAME = "azkar_database"
 
+        /**
+         * هجرة فارغة: date هو PrimaryKey فلا حاجة لفهرس إضافي.
+         * إنشاء فهرس غير مُعرَّف في الـ Entity كان يرمي IllegalStateException بعد الترقية.
+         */
         private val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL(
-                    "CREATE UNIQUE INDEX IF NOT EXISTS index_user_progress_date ON user_progress(date)"
-                )
+                // no-op — يرفع رقم الإصدار دون تغيير المخطط
             }
         }
 
@@ -43,23 +43,17 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
-        /**
-         * إن وُجد ملف قاعدة قديم باسم azkar_database ولم تُنشأ azkar_db بعد،
-         * ننسخ الملف مرة واحدة ثم نحذف القديم حتى لا يُفقد تقدم المستخدم.
-         */
         private fun migrateLegacyDatabaseIfNeeded(context: Context) {
             try {
                 val legacy = context.getDatabasePath(LEGACY_DB_NAME)
                 val current = context.getDatabasePath(DB_NAME)
                 if (legacy.exists() && !current.exists()) {
                     legacy.copyTo(current, overwrite = false)
-                    // ملفات WAL/SHM إن وُجدت
                     File(legacy.path + "-wal").takeIf { it.exists() }?.copyTo(File(current.path + "-wal"), false)
                     File(legacy.path + "-shm").takeIf { it.exists() }?.copyTo(File(current.path + "-shm"), false)
                     context.deleteDatabase(LEGACY_DB_NAME)
                     Log.i("AppDatabase", "Migrated legacy $LEGACY_DB_NAME → $DB_NAME")
                 } else if (legacy.exists() && current.exists()) {
-                    // كلاهما موجود: لا نستبدل الحالي؛ نحذف القديم فقط بعد التأكد أنه أصغر/أقدم
                     context.deleteDatabase(LEGACY_DB_NAME)
                     Log.i("AppDatabase", "Removed leftover legacy $LEGACY_DB_NAME")
                 }
