@@ -15,4 +15,15 @@
 .cxx
 local.properties
 .env
+.env.*
+!.env.example
 debug.keystore
+my-upload-key.jks
+*.jks
+*.keystore
+admin-panel/firebase-config.js
+
+app/google-services.json
+firebase/node_modules/
+firebase/.emulator-data/
+firebase/functions/node_modules/
