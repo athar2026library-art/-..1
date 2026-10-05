@@ -67,6 +67,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import com.google.firebase.messaging.FirebaseMessaging
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -95,7 +96,6 @@ class MainActivity : ComponentActivity() {
         val authRepository = AuthRepository(applicationContext)
         val firestoreRepository = FirestoreRepository()
 
-        // احفظ التوكن + notificationsEnabled حتى تصل بثوث لوحة الإدارة
         FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
             val user = FirebaseAuth.getInstance().currentUser ?: return@addOnSuccessListener
             lifecycleScope.launch {
@@ -179,7 +179,7 @@ private fun BaqiyatOnboarding(onDone: () -> Unit) {
         modifier = Modifier.fillMaxSize().padding(28.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(Modifier = Modifier.height(48.dp))
+        Spacer(modifier = Modifier.height(48.dp))
         Image(
             painterResource(current.third),
             contentDescription = "شعار الباقيات",
