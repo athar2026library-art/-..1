@@ -6,47 +6,93 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Prefer custom claims in production. Email check is a temporary fallback.
     function isAdmin() {
       return signedIn() && (
-        request.auth.token.admin == true ||
-        (request.auth.token.email_verified == true &&
-         request.auth.token.email in [
-           'mgedh.9ali@gmail.com'
-         ])
+        request.auth.token.admin == true
+        || exists(/databases/$(database)/documents/admins/$(request.auth.uid))
       );
     }
 
-    // Users can read/write their own progress
-    match /users/{userId} {
-      allow read, write: if signedIn() && request.auth.uid == userId;
-      allow read: if isAdmin();
+    function isSuperAdmin() {
+      return signedIn() && (
+        request.auth.token.admin == true
+        || (
+          exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+          && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.get('role', '') == 'super_admin'
+        )
+      );
     }
 
-    // Content (azkar) – public read of published, admin full access
-    match /content/{document=**} {
+    function isOwner(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function noPrivilegeKeys(data) {
+      return !data.keys().hasAny(['role', 'admin', 'isAdmin', 'permissions', 'super_admin']);
+    }
+
+    function validProgress(date) {
+      let d = request.resource.data;
+      return date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && d.keys().hasOnly(['date', 'completedSabah', 'completedMasaa', 'totalTasbeeh'])
+        && d.date == date
+        && d.completedSabah is bool
+        && d.completedMasaa is bool
+        && d.totalTasbeeh is int
+        && d.totalTasbeeh >= 0
+        && d.totalTasbeeh < 1000000;
+    }
+
+    match /admins/{adminId} {
+      allow read: if isAdmin() || isOwner(adminId);
+      allow create, update, delete: if isSuperAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create, update: if isOwner(userId)
+        && noPrivilegeKeys(request.resource.data)
+        && request.resource.data.keys().size() < 30;
+      allow delete: if isOwner(userId);
+
+      match /progress/{date} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create, update: if isOwner(userId) && validProgress(date);
+        allow delete: if isOwner(userId);
+      }
+
+      match /feedback/{feedbackId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create, update: if isOwner(userId);
+        allow delete: if isAdmin();
+      }
+
+      match /notifications/{notificationId} {
+        allow read: if isOwner(userId);
+        allow write: if false;
+      }
+    }
+
+    match /content/azkar {
       allow read: if true;
       allow write: if isAdmin();
+      match /items/{itemId} {
+        allow read: if isAdmin() || resource.data.published == true;
+        allow write: if isAdmin();
+      }
     }
 
-    // Feedback – users can create and update only limited fields on their own docs
     match /feedback/{feedbackId} {
-      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
-
-      allow read: if isAdmin() ||
-        (signedIn() && resource.data.userId == request.auth.uid);
-
-      // Critical fix: regular users may only touch a safe subset of fields
-      allow update: if isAdmin() ||
-        (signedIn() &&
-         resource.data.userId == request.auth.uid &&
-         request.resource.data.diff(resource.data).affectedKeys()
-           .hasOnly(['replyUnread', 'updatedAt']));
-
+      allow create: if signedIn();
+      allow read: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
+      allow update: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
       allow delete: if isAdmin();
     }
 
-    // Default deny
+    match /rateLimits/{uid} {
+      allow read, write: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
