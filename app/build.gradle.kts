@@ -84,7 +84,8 @@ dependencies {
   implementation(libs.androidx.compose.ui)
   implementation(libs.androidx.compose.ui.graphics)
   implementation(libs.androidx.compose.ui.tooling.preview)
-  implementation("androidx.compose.ui:ui-text-google-fonts:1.7.8")
+  // بدون رقم إصدار — Compose BOM يحدد النسخة المتوافقة
+  implementation("androidx.compose.ui:ui-text-google-fonts")
   implementation(libs.androidx.core.ktx)
   implementation(libs.androidx.datastore.preferences)
   implementation(libs.androidx.lifecycle.runtime.compose)
@@ -96,7 +97,7 @@ dependencies {
   implementation(libs.firebase.firestore)
   implementation(libs.firebase.auth)
   implementation(libs.firebase.messaging)
-  implementation(libs.firebase.ai)
+  // لا firebase-ai: المساعد يمر عبر Cloud Function فقط
   implementation("com.google.firebase:firebase-functions")
   implementation("com.google.firebase:firebase-storage")
   implementation(libs.androidx.credentials)
