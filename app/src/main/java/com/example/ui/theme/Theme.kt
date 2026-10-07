@@ -33,9 +33,9 @@ fun rememberMotionEnabled(): Boolean {
     }
 }
 
-/** يُحدّث الوضع كل دقيقة ليتبدل الفجر/المغرب/الليل أثناء فتح التطبيق. */
+/** الساعة الحالية، تُحدَّث كل دقيقة. */
 @Composable
-fun rememberTimeMode(isDark: Boolean): TimeMode {
+fun rememberHour(): Int {
     var hour by remember { mutableIntStateOf(Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -43,8 +43,12 @@ fun rememberTimeMode(isDark: Boolean): TimeMode {
             hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
         }
     }
-    return resolveTimeMode(isDark, hour)
+    return hour
 }
+
+/** الوضع الحالي حسب التفضيل والساعة؛ يتبدل أثناء فتح التطبيق. */
+@Composable
+fun rememberTimeMode(isDark: Boolean): TimeMode = resolveTimeMode(isDark, rememberHour())
 
 @Composable
 private fun Color.animatedTo(spec: AnimationSpec<Color>): Color =
@@ -75,7 +79,6 @@ private fun animatedPalette(target: BaqiyatPalette): BaqiyatPalette {
 
 private fun BaqiyatPalette.toColorScheme(): ColorScheme {
     val base = if (isLight) lightColorScheme() else darkColorScheme()
-    // سطح معتم مركّب من الزجاج فوق الخلفية: للبطاقات والنوافذ التي لا يجوز أن تُظهر ما خلفها.
     val surfaceSolid = glass.compositeOver(background)
     val surfaceTint = ink.copy(alpha = 0.06f).compositeOver(surfaceSolid)
     val mintSoft = mint.copy(alpha = if (isLight) 1f else 0.18f).compositeOver(background)
@@ -112,7 +115,6 @@ private fun BaqiyatPalette.toColorScheme(): ColorScheme {
 fun BaqiyatTheme(mode: TimeMode, content: @Composable () -> Unit) {
     val palette = animatedPalette(paletteFor(mode))
     val scheme = remember(palette) { palette.toColorScheme() }
-    // التطبيق عربي بالكامل: نثبّت الاتجاه من اليمين لليسار كي تبقى الأسهم والتخطيط صحيحة مهما كانت لغة الجهاز.
     CompositionLocalProvider(
         LocalBaqiyat provides palette,
         LocalLayoutDirection provides LayoutDirection.Rtl
