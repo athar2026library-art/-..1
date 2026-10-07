@@ -61,7 +61,10 @@ import java.util.Locale
 fun HomeScreen(
     viewModel: AppViewModel,
     onNavigateToAzkar: (String) -> Unit,
-    onNavigateToSearch: () -> Unit = {}
+    onNavigateToSearch: () -> Unit = {},
+    onNavigateToTasbih: () -> Unit = {},
+    onNavigateToAssistant: () -> Unit = {},
+    onNavigateToJourney: () -> Unit = {}
 ) {
     val lastReadCategory by viewModel.lastReadCategory.collectAsStateWithLifecycle()
     val lastReadIndex by viewModel.lastReadIndex.collectAsStateWithLifecycle()
@@ -184,7 +187,6 @@ fun HomeScreen(
                 StatCard(Modifier.weight(1f), "$totalTasbeeh", "تسبيحة", Icons.Default.AutoAwesome)
                 StatCard(Modifier.weight(1f), if (completedToday) "مكتمل" else "ابدأ الآن", "ورد اليوم", Icons.Default.SelfImprovement)
             }
-            // مساحة للشريط العائم وزر البحث
             Spacer(Modifier.height(96.dp))
         }
     }
