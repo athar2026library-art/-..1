@@ -51,7 +51,6 @@ import com.example.ui.AppViewModel
 @androidx.compose.material3.ExperimentalMaterial3Api
 @Composable
 fun FeedbackScreen(viewModel: AppViewModel) {
-    val response by viewModel.aiResponse.collectAsStateWithLifecycle()
     val signedIn by viewModel.userSignedIn.collectAsStateWithLifecycle()
     val history by viewModel.myFeedback.collectAsStateWithLifecycle()
     val unreadCount by viewModel.unreadFeedbackCount.collectAsStateWithLifecycle()
@@ -63,10 +62,11 @@ fun FeedbackScreen(viewModel: AppViewModel) {
     val activity = LocalContext.current as? Activity
 
     Scaffold(
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
             TopAppBar(
                 title = { Text("الشكاوى والاقتراحات", fontWeight = FontWeight.Bold) },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
             )
         }
     ) { padding ->
@@ -158,10 +158,6 @@ fun FeedbackScreen(viewModel: AppViewModel) {
                     Icon(Icons.AutoMirrored.Filled.Send, null)
                     Spacer(Modifier.padding(4.dp))
                     Text("مراجعة وإرسال")
-                }
-                if (response.isNotBlank()) {
-                    Spacer(Modifier.height(9.dp))
-                    Text(response, color = MaterialTheme.colorScheme.primary, fontSize = 12.sp)
                 }
             }
             if (history.isNotEmpty()) {

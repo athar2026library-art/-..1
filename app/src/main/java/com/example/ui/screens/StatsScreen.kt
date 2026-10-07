@@ -44,7 +44,7 @@ fun StatsScreen(
     val weekData = remember(recentProgress) { buildWeekChart(recentProgress) }
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
             TopAppBar(
                 title = { Text("تقدمي 🌿", fontWeight = FontWeight.Bold) },
@@ -56,7 +56,7 @@ fun StatsScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
+                    containerColor = androidx.compose.ui.graphics.Color.Transparent
                 )
             )
         }

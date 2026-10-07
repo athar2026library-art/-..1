@@ -10,6 +10,12 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import com.example.ui.components.BaqiyatButton
+import com.example.ui.components.MihrabCard
+import com.example.ui.components.ProgressRing
+import com.example.ui.theme.ZekrTextStyle
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -134,7 +140,7 @@ fun AzkarScreen(
             else if (category == "masaa") viewModel.completeMasaa()
             viewModel.clearLastReadState()
         }
-        Scaffold(containerColor = MaterialTheme.colorScheme.background) { padding ->
+        Scaffold(containerColor = androidx.compose.ui.graphics.Color.Transparent) { padding ->
             Column(
                 modifier = Modifier.fillMaxSize().padding(padding),
                 verticalArrangement = Arrangement.Center,
@@ -144,9 +150,11 @@ fun AzkarScreen(
                 Spacer(modifier = Modifier.height(24.dp))
                 Text("تقبل الله طاعتك", fontSize = 24.sp, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(32.dp))
-                Button(onClick = onNavigateBack, shape = RoundedCornerShape(24.dp)) {
-                    Text("العودة للرئيسية", modifier = Modifier.padding(8.dp))
-                }
+                BaqiyatButton(
+                    text = "العودة للرئيسية",
+                    onClick = onNavigateBack,
+                    modifier = Modifier.padding(horizontal = 40.dp)
+                )
             }
         }
         return
@@ -184,7 +192,7 @@ fun AzkarScreen(
     }
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
             Column {
                 TopAppBar(
@@ -207,7 +215,7 @@ fun AzkarScreen(
                             Text("A+", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                         }
                     },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
                 )
                 LinearProgressIndicator(
                     progress = { readingProgress },
@@ -231,7 +239,7 @@ fun AzkarScreen(
             }
         },
         bottomBar = {
-            Surface(color = MaterialTheme.colorScheme.background) {
+            Surface(color = androidx.compose.ui.graphics.Color.Transparent) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -291,85 +299,66 @@ fun AzkarScreen(
             }
         }
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-            Column(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp, vertical = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            MihrabCard(
+                modifier = Modifier.fillMaxWidth().testTag("dhikr-card"),
+                onClick = onDecrement,
+                clickLabel = "إنقاص العدّاد"
             ) {
-                Card(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(32.dp))
-                        .clickable(onClick = onDecrement)
-                        .testTag("dhikr-card"),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    elevation = CardDefaults.cardElevation(0.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+                        .padding(start = 26.dp, end = 26.dp, top = 92.dp, bottom = 30.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Column(modifier = Modifier.padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        AnimatedContent(
-                            targetState = currentZekr,
-                            transitionSpec = { fadeIn(tween(400)) togetherWith fadeOut(tween(400)) },
-                            label = "zekr_text"
-                        ) { zekr ->
-                            Text(
-                                text = zekr.text,
-                                fontSize = fontSize.sp,
-                                lineHeight = (fontSize * 1.8f).sp,
-                                textAlign = TextAlign.Center,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
+                    AnimatedContent(
+                        targetState = currentZekr,
+                        transitionSpec = { fadeIn(tween(400)) togetherWith fadeOut(tween(400)) },
+                        label = "zekr_text"
+                    ) { zekr ->
+                        Text(
+                            text = zekr.text,
+                            style = ZekrTextStyle.copy(fontSize = fontSize.sp, lineHeight = (fontSize * 1.95f).sp),
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    Spacer(Modifier.height(28.dp))
+                    ProgressRing(
+                        progress = if (currentZekr.repeatCount == 0) 1f
+                        else (currentZekr.repeatCount - countRemaining).toFloat() / currentZekr.repeatCount,
+                        size = 96.dp
+                    ) {
+                        Text(
+                            "$countRemaining",
+                            modifier = Modifier.testTag("dhikr-counter"),
+                            style = MaterialTheme.typography.headlineSmall.copy(fontSize = 34.sp),
+                            color = MaterialTheme.colorScheme.primary
+                        )
                     }
                 }
-
-                Spacer(modifier = Modifier.height(36.dp))
-
-                Box(
-                    modifier = Modifier
-                        .size(120.dp)
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(
-                        progress = {
-                            if (currentZekr.repeatCount == 0) 1f
-                            else (currentZekr.repeatCount - countRemaining).toFloat() / currentZekr.repeatCount
-                        },
-                        modifier = Modifier.size(120.dp),
-                        color = MaterialTheme.colorScheme.primary,
-                        strokeWidth = 4.dp
-                    )
-                    Text(
-                        "$countRemaining",
-                        modifier = Modifier.testTag("dhikr-counter"),
-                        fontSize = 40.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(18.dp))
-                Text(
-                    "اضغط على البطاقة أو الزر للمتابعة",
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f)
-                )
-                Spacer(modifier = Modifier.height(14.dp))
-                Button(
-                    onClick = onDecrement,
-                    modifier = Modifier.fillMaxWidth().height(54.dp),
-                    shape = RoundedCornerShape(18.dp)
-                ) {
-                    Text(
-                        if (countRemaining > 1) "سبّح • متبقي $countRemaining" else "تمّ الذكر",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
             }
+
+            Spacer(Modifier.height(18.dp))
+            Text(
+                "اضغط على القوس أو الزر للمتابعة",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(14.dp))
+            BaqiyatButton(
+                text = if (countRemaining > 1) "سبّح • متبقي $countRemaining" else "تمّ الذكر",
+                onClick = onDecrement,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(Modifier.height(12.dp))
         }
 
         if (showBottomSheet) {

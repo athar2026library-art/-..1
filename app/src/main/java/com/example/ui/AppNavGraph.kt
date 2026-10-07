@@ -1,5 +1,7 @@
 package com.example.ui
 
+import androidx.compose.animation.core.EaseOutCubic
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -19,6 +21,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.Color
+import com.example.ui.components.BaqiyatNavItem
+import com.example.ui.components.FloatingNavBar
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -71,36 +77,24 @@ fun AppNavGraph(
     val showBottomBar = currentDestination?.route in bottomNavItems.map { it.route }
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = Color.Transparent,
         bottomBar = {
             if (showBottomBar) {
-                NavigationBar(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    contentColor = MaterialTheme.colorScheme.onSurface
-                ) {
-                    bottomNavItems.forEach { screen ->
-                        val selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
-                        NavigationBarItem(
-                            icon = { Icon(screen.icon, contentDescription = screen.title) },
-                            label = {
-                                Text(
-                                    screen.title,
-                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
-                                )
-                            },
-                            selected = selected,
-                            onClick = {
-                                navController.navigate(screen.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
-                                    }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            }
-                        )
+                val navItems = remember { bottomNavItems.map { BaqiyatNavItem(it.title, it.icon) } }
+                val selectedIndex = bottomNavItems.indexOfFirst { screen ->
+                    currentDestination?.hierarchy?.any { it.route == screen.route } == true
+                }.coerceAtLeast(0)
+                FloatingNavBar(
+                    items = navItems,
+                    selectedIndex = selectedIndex,
+                    onSelect = { index ->
+                        navController.navigate(bottomNavItems[index].route) {
+                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
                     }
-                }
+                )
             }
         }
     ) { innerPadding ->
@@ -108,10 +102,10 @@ fun AppNavGraph(
             navController = navController,
             startDestination = startDestination,
             modifier = modifier.padding(innerPadding),
-            enterTransition = { fadeIn() + slideInHorizontally { it / 8 } },
-            exitTransition = { fadeOut() + slideOutHorizontally { -it / 8 } },
-            popEnterTransition = { fadeIn() },
-            popExitTransition = { fadeOut() }
+            enterTransition = { fadeIn(tween(280)) + slideInHorizontally(tween(280, easing = EaseOutCubic)) { it / 10 } },
+            exitTransition = { fadeOut(tween(200)) + slideOutHorizontally(tween(280, easing = EaseOutCubic)) { -it / 10 } },
+            popEnterTransition = { fadeIn(tween(280)) },
+            popExitTransition = { fadeOut(tween(200)) }
         ) {
             composable("home") {
                 HomeScreen(

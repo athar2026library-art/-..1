@@ -1,11 +1,21 @@
 package com.example.ui.screens
 
 import android.icu.util.IslamicCalendar
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -16,20 +26,33 @@ import androidx.compose.material.icons.filled.NightsStay
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SelfImprovement
 import androidx.compose.material.icons.filled.WbSunny
-import androidx.compose.material3.*
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.AzkarData
 import com.example.ui.AppViewModel
+import com.example.ui.components.BaqiyatButton
+import com.example.ui.components.BaqiyatChip
+import com.example.ui.components.GlassCard
+import com.example.ui.components.ProgressRing
+import com.example.ui.theme.Baqiyat
+import com.example.ui.theme.ZekrTextStyle
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -55,14 +78,16 @@ fun HomeScreen(
     val masaaDone = todayProgress?.completedMasaa == true
     val tasbeehToday = todayProgress?.totalTasbeeh ?: 0
     val totalTasbeeh = remember(recentProgress) { recentProgress.sumOf { it.totalTasbeeh } }
+    val p = Baqiyat.colors
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = Color.Transparent,
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = onNavigateToSearch,
                 icon = { Icon(Icons.Default.Search, contentDescription = null) },
                 text = { Text("بحث") },
+                shape = CircleShape,
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary
             )
@@ -82,33 +107,18 @@ fun HomeScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text("السلام عليكم ورحمة الله", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                    Text("السلام عليكم ورحمة الله", style = MaterialTheme.typography.headlineSmall)
                     Spacer(Modifier.height(4.dp))
-                    Text(gregorian, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(hijri, color = MaterialTheme.colorScheme.primary, fontSize = 13.sp)
+                    Text(gregorian, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(hijri, style = MaterialTheme.typography.bodySmall, color = p.accent)
                 }
                 IconButton(onClick = onNavigateToSearch) {
-                    Icon(Icons.Default.Search, contentDescription = "بحث في الأذكار", tint = MaterialTheme.colorScheme.primary)
+                    Icon(Icons.Default.Search, contentDescription = "بحث في الأذكار", tint = p.primary)
                 }
             }
-            Spacer(Modifier.height(18.dp))
+            Spacer(Modifier.height(20.dp))
 
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(28.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
-            ) {
-                Box(Modifier.fillMaxWidth().padding(22.dp)) {
-                    Column(Modifier.fillMaxWidth(0.78f)) {
-                        Text("وَاذْكُرْ رَبَّكَ إِذَا نَسِيتَ", color = MaterialTheme.colorScheme.onPrimary.copy(alpha = .9f), fontSize = 14.sp)
-                        Spacer(Modifier.height(10.dp))
-                        Text("اجعل لليوم نصيباً من الذكر", color = MaterialTheme.colorScheme.onPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold, lineHeight = 30.sp)
-                        Spacer(Modifier.height(6.dp))
-                        Text("دقائق قليلة تصنع فرقاً كبيراً في قلبك.", color = MaterialTheme.colorScheme.onPrimary.copy(alpha = .8f), fontSize = 14.sp)
-                    }
-                    Icon(Icons.Default.SelfImprovement, null, Modifier.align(Alignment.TopEnd).size(58.dp), tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = .25f))
-                }
-            }
+            HeroCard()
 
             Spacer(Modifier.height(18.dp))
             DailyChallengeCard(
@@ -121,39 +131,41 @@ fun HomeScreen(
 
             if (isWirdActive) {
                 Spacer(Modifier.height(16.dp))
-                Card(
-                    modifier = Modifier.fillMaxWidth().clickable { onNavigateToAzkar(lastReadCategory) },
-                    shape = RoundedCornerShape(22.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = .28f))
+                GlassCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = { onNavigateToAzkar(lastReadCategory) },
+                    clickLabel = "متابعة الورد"
                 ) {
-                    Column(Modifier.padding(20.dp)) {
-                        Text("متابعة من حيث توقفت", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                        Spacer(Modifier.height(6.dp))
-                        Text(
-                            "${AzkarData.titleFor(lastReadCategory)} · الذكر ${lastReadIndex + 1} من $categorySize",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontSize = 13.sp
-                        )
-                        Spacer(Modifier.height(12.dp))
-                        LinearProgressIndicator(
-                            progress = { (lastReadIndex.toFloat() / categorySize).coerceIn(0f, 1f) },
-                            Modifier.fillMaxWidth().height(10.dp).clip(RoundedCornerShape(8.dp)),
-                            color = MaterialTheme.colorScheme.primary,
-                            trackColor = MaterialTheme.colorScheme.primary.copy(alpha = .12f)
-                        )
-                        Spacer(Modifier.height(12.dp))
-                        Button(
-                            onClick = { onNavigateToAzkar(lastReadCategory) },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(14.dp)
-                        ) { Text("أكمل الورد الآن") }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        ProgressRing(
+                            progress = lastReadIndex.toFloat() / categorySize,
+                            size = 64.dp,
+                            stroke = 5.dp
+                        ) {
+                            Text("${lastReadIndex + 1}", style = MaterialTheme.typography.titleMedium, color = p.primary)
+                        }
+                        Spacer(Modifier.width(16.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text("متابعة من حيث توقفت", style = MaterialTheme.typography.titleMedium, color = p.primary)
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                "${AzkarData.titleFor(lastReadCategory)} · الذكر ${lastReadIndex + 1} من $categorySize",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
+                    Spacer(Modifier.height(14.dp))
+                    BaqiyatButton(
+                        text = "أكمل الورد الآن",
+                        onClick = { onNavigateToAzkar(lastReadCategory) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             }
 
-            Spacer(Modifier.height(26.dp))
-            Text("وردك اليومي", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(28.dp))
+            Text("وردك اليومي", style = MaterialTheme.typography.titleLarge)
             Spacer(Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 WirdCard(Modifier.weight(1f), "الصباح", "ابدأ يومك بنور", Icons.Default.WbSunny) { onNavigateToAzkar("sabah") }
@@ -165,14 +177,48 @@ fun HomeScreen(
                 WirdCard(Modifier.weight(1f), "السفر", "حفظ وأمان", Icons.Default.DirectionsCar) { onNavigateToAzkar("travel") }
             }
 
-            Spacer(Modifier.height(26.dp))
-            Text("لمحة عن إنجازك", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(28.dp))
+            Text("لمحة عن إنجازك", style = MaterialTheme.typography.titleLarge)
             Spacer(Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 StatCard(Modifier.weight(1f), "$totalTasbeeh", "تسبيحة", Icons.Default.AutoAwesome)
                 StatCard(Modifier.weight(1f), if (completedToday) "مكتمل" else "ابدأ الآن", "ورد اليوم", Icons.Default.SelfImprovement)
             }
-            Spacer(Modifier.height(88.dp))
+            // مساحة للشريط العائم وزر البحث
+            Spacer(Modifier.height(96.dp))
+        }
+    }
+}
+
+@Composable
+private fun HeroCard() {
+    val p = Baqiyat.colors
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(28.dp))
+            .background(Brush.linearGradient(listOf(p.buttonFrom, p.buttonTo)))
+            .padding(24.dp)
+    ) {
+        Icon(
+            Icons.Default.SelfImprovement, null,
+            Modifier.align(Alignment.TopEnd).size(64.dp),
+            tint = p.onButton.copy(alpha = .22f)
+        )
+        Column(Modifier.fillMaxWidth(0.8f)) {
+            Text(
+                "وَاذْكُرْ رَبَّكَ إِذَا نَسِيتَ",
+                style = ZekrTextStyle.copy(fontSize = 22.sp, lineHeight = 40.sp),
+                color = p.onButton
+            )
+            Spacer(Modifier.height(8.dp))
+            Text("اجعل لليوم نصيباً من الذكر", style = MaterialTheme.typography.titleMedium, color = p.onButton)
+            Spacer(Modifier.height(2.dp))
+            Text(
+                "دقائق قليلة تصنع فرقاً كبيراً في قلبك.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = p.onButton.copy(alpha = .82f)
+            )
         }
     }
 }
@@ -186,62 +232,62 @@ private fun DailyChallengeCard(
     onOpenMasaa: () -> Unit
 ) {
     val both = sabahDone && masaaDone
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = .25f))
+    GlassCard(Modifier.fillMaxWidth()) {
+        Text("تحدي اليوم", style = MaterialTheme.typography.titleMedium, color = Baqiyat.colors.primary)
+        Spacer(Modifier.height(4.dp))
+        Text(
+            if (both) "أحسنت — أكملت ورد الصباح والمساء." else "أكمل أذكار الصباح والمساء لتحصل على نجمة اليوم.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(14.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            BaqiyatChip(if (sabahDone) "الصباح ✓" else "الصباح", selected = sabahDone, onClick = onOpenSabah)
+            BaqiyatChip(if (masaaDone) "المساء ✓" else "المساء", selected = masaaDone, onClick = onOpenMasaa)
+            BaqiyatChip("$tasbeehToday تسبيحة", enabled = false)
+        }
+    }
+}
+
+@Composable
+private fun WirdCard(modifier: Modifier, title: String, subtitle: String, icon: ImageVector, onClick: () -> Unit) {
+    val p = Baqiyat.colors
+    GlassCard(
+        modifier = modifier,
+        shape = RoundedCornerShape(24.dp),
+        onClick = onClick,
+        clickLabel = title,
+        contentPadding = PaddingValues(18.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Column(Modifier.padding(18.dp)) {
-            Text("تحدي اليوم", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MaterialTheme.colorScheme.primary)
-            Spacer(Modifier.height(4.dp))
-            Text(
-                if (both) "أحسنت — أكملت ورد الصباح والمساء." else "أكمل أذكار الصباح والمساء لتحصل على نجمة اليوم.",
-                fontSize = 13.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                AssistChip(
-                    onClick = onOpenSabah,
-                    label = { Text(if (sabahDone) "الصباح ✓" else "الصباح") }
-                )
-                AssistChip(
-                    onClick = onOpenMasaa,
-                    label = { Text(if (masaaDone) "المساء ✓" else "المساء") }
-                )
-                AssistChip(
-                    onClick = {},
-                    enabled = false,
-                    label = { Text("$tasbeehToday تسبيحة") }
-                )
-            }
+        Box(
+            Modifier.size(52.dp).clip(CircleShape).background(p.accent.copy(alpha = .14f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, null, Modifier.size(28.dp), tint = p.primary)
         }
+        Spacer(Modifier.height(12.dp))
+        Text(title, style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(2.dp))
+        Text(
+            subtitle,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
     }
 }
 
 @Composable
-private fun WirdCard(modifier: Modifier, title: String, subtitle: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
-    Card(modifier.clickable(onClick = onClick), shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = .25f))) {
-        Column(Modifier.padding(18.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(icon, null, Modifier.size(32.dp), tint = MaterialTheme.colorScheme.primary)
-            Spacer(Modifier.height(12.dp))
-            Text(title, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-            Spacer(Modifier.height(3.dp))
-            Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, textAlign = TextAlign.Center)
-        }
-    }
-}
-
-@Composable
-private fun StatCard(modifier: Modifier, value: String, label: String, icon: androidx.compose.ui.graphics.vector.ImageVector) {
-    Card(modifier, shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
-        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, null, Modifier.size(26.dp), tint = MaterialTheme.colorScheme.primary)
+private fun StatCard(modifier: Modifier, value: String, label: String, icon: ImageVector) {
+    val p = Baqiyat.colors
+    GlassCard(modifier, shape = RoundedCornerShape(24.dp), contentPadding = PaddingValues(16.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, null, Modifier.size(26.dp), tint = p.accent)
             Spacer(Modifier.width(12.dp))
             Column {
-                Text(value, fontWeight = FontWeight.Bold, fontSize = 20.sp, color = MaterialTheme.colorScheme.primary)
-                Text(label, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(value, style = MaterialTheme.typography.titleMedium, color = p.primary)
+                Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
