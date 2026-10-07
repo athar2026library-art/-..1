@@ -19,6 +19,7 @@ class BaqiyatUiTest {
     @Test
     fun googleSignInButton_isVisibleAndEnabled() {
         finishOnboardingIfNeeded()
+        composeRule.onNodeWithText("المزيد").performClick()
         composeRule.onNodeWithText("الإعدادات").performClick()
         composeRule.onNodeWithTag("google-sign-in-button")
             .assertIsDisplayed()

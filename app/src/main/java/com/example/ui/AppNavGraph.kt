@@ -8,25 +8,18 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.automirrored.outlined.Chat
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.Icon
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.Spa
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.graphics.Color
-import com.example.ui.components.BaqiyatNavItem
-import com.example.ui.components.FloatingNavBar
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.Color
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
@@ -34,34 +27,31 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.example.ui.components.BaqiyatNavItem
+import com.example.ui.components.FloatingNavBar
 import com.example.ui.screens.AiServicesScreen
 import com.example.ui.screens.AzkarScreen
 import com.example.ui.screens.FeedbackScreen
 import com.example.ui.screens.HomeScreen
+import com.example.ui.screens.MoreScreen
 import com.example.ui.screens.SearchScreen
 import com.example.ui.screens.SettingsScreen
 import com.example.ui.screens.StatsScreen
+import com.example.ui.screens.TasbihScreen
 
 sealed class Screen(
     val route: String,
     val title: String,
     val icon: androidx.compose.ui.graphics.vector.ImageVector
 ) {
-    object Home : Screen("home", "الأذكار", Icons.AutoMirrored.Filled.List)
-    object AiServices : Screen("ai_services", "المساعد", Icons.AutoMirrored.Outlined.Chat)
-    /** أيقونة مختلفة عن المساعد لتجنب الالتباس في شريط التنقل. */
-    object Feedback : Screen("feedback", "تواصل معنا", Icons.Default.Email)
-    object Stats : Screen("stats", "الإحصائيات", Icons.Default.Star)
-    object Settings : Screen("settings", "الإعدادات", Icons.Default.Settings)
+    object Home : Screen("home", "الرئيسية", Icons.Default.Home)
+    object Tasbih : Screen("tasbih", "المسبحة", Icons.Default.AutoAwesome)
+    /** المسار القديم "stats" محفوظ حتى لا ينكسر أي رابط داخلي. */
+    object Journey : Screen("stats", "رحلتي", Icons.Default.Spa)
+    object More : Screen("more", "المزيد", Icons.Default.MoreHoriz)
 }
 
-val bottomNavItems = listOf(
-    Screen.Home,
-    Screen.AiServices,
-    Screen.Feedback,
-    Screen.Stats,
-    Screen.Settings
-)
+val bottomNavItems = listOf(Screen.Home, Screen.Tasbih, Screen.Journey, Screen.More)
 
 @androidx.compose.material3.ExperimentalMaterial3Api
 @Composable
@@ -73,27 +63,32 @@ fun AppNavGraph(
 ) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
+    val unreadFeedback by viewModel.unreadFeedbackCount.collectAsStateWithLifecycle()
 
     val showBottomBar = currentDestination?.route in bottomNavItems.map { it.route }
+
+    fun openTab(route: String) {
+        navController.navigate(route) {
+            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
 
     Scaffold(
         containerColor = Color.Transparent,
         bottomBar = {
             if (showBottomBar) {
-                val navItems = remember { bottomNavItems.map { BaqiyatNavItem(it.title, it.icon) } }
+                val navItems = remember(unreadFeedback) {
+                    bottomNavItems.map { BaqiyatNavItem(it.title, it.icon, badge = it == Screen.More && unreadFeedback > 0) }
+                }
                 val selectedIndex = bottomNavItems.indexOfFirst { screen ->
                     currentDestination?.hierarchy?.any { it.route == screen.route } == true
                 }.coerceAtLeast(0)
                 FloatingNavBar(
                     items = navItems,
                     selectedIndex = selectedIndex,
-                    onSelect = { index ->
-                        navController.navigate(bottomNavItems[index].route) {
-                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    }
+                    onSelect = { index -> openTab(bottomNavItems[index].route) }
                 )
             }
         }
@@ -110,19 +105,31 @@ fun AppNavGraph(
             composable("home") {
                 HomeScreen(
                     viewModel = viewModel,
-                    onNavigateToAzkar = { category ->
-                        navController.navigate("azkar/$category")
-                    },
-                    onNavigateToSearch = { navController.navigate("search") }
+                    onNavigateToAzkar = { category -> navController.navigate("azkar/$category") },
+                    onNavigateToSearch = { navController.navigate("search") },
+                    onNavigateToTasbih = { openTab("tasbih") },
+                    onNavigateToAssistant = { navController.navigate("ai_services") },
+                    onNavigateToJourney = { openTab("stats") }
+                )
+            }
+
+            composable("tasbih") { TasbihScreen(viewModel = viewModel) }
+
+            composable("stats") { StatsScreen(viewModel = viewModel) }
+
+            composable("more") {
+                MoreScreen(
+                    viewModel = viewModel,
+                    onOpenAssistant = { navController.navigate("ai_services") },
+                    onOpenFeedback = { navController.navigate("feedback") },
+                    onOpenSettings = { navController.navigate("settings") }
                 )
             }
 
             composable("search") {
                 SearchScreen(
                     onNavigateBack = { navController.popBackStack() },
-                    onOpenCategory = { category ->
-                        navController.navigate("azkar/$category")
-                    }
+                    onOpenCategory = { category -> navController.navigate("azkar/$category") }
                 )
             }
 
@@ -135,18 +142,16 @@ fun AppNavGraph(
                 )
             }
 
-            composable("feedback") { FeedbackScreen(viewModel = viewModel) }
-
-            composable("stats") {
-                StatsScreen(viewModel = viewModel)
+            composable("feedback") {
+                FeedbackScreen(viewModel = viewModel, onNavigateBack = { navController.popBackStack() })
             }
 
             composable("settings") {
-                SettingsScreen(viewModel = viewModel)
+                SettingsScreen(viewModel = viewModel, onNavigateBack = { navController.popBackStack() })
             }
 
             composable("ai_services") {
-                AiServicesScreen(viewModel = viewModel)
+                AiServicesScreen(viewModel = viewModel, onNavigateBack = { navController.popBackStack() })
             }
         }
     }
