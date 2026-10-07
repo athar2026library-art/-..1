@@ -32,8 +32,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -69,9 +73,6 @@ import com.example.ui.theme.Baqiyat
 import com.example.ui.theme.MihrabShape
 import com.example.ui.theme.rememberMotionEnabled
 
-// ───────────────────────── الحركة ─────────────────────────
-
-/** انكماش خفيف عند الضغط (ربيعي). يُعطَّل عند تفعيل «تقليل الحركة». */
 fun Modifier.pressScale(source: MutableInteractionSource, pressedScale: Float = 0.975f): Modifier = composed {
     val motion = rememberMotionEnabled()
     val pressed by source.collectIsPressedAsState()
@@ -80,18 +81,9 @@ fun Modifier.pressScale(source: MutableInteractionSource, pressedScale: Float = 
         animationSpec = spring(dampingRatio = 0.62f, stiffness = Spring.StiffnessMedium),
         label = "pressScale"
     )
-    graphicsLayer {
-        scaleX = scale
-        scaleY = scale
-    }
+    graphicsLayer { scaleX = scale; scaleY = scale }
 }
 
-// ───────────────────────── الخلفية ─────────────────────────
-
-/**
- * خلفية التطبيق: تدرج رأسي، وهج علوي، ونقش هندسي (نجمة من مربعين) بشفافية منخفضة جداً.
- * تُوضع مرة واحدة في جذر التطبيق، وتجعل الشاشات شفافة فوقها.
- */
 @Composable
 fun BaqiyatBackground(modifier: Modifier = Modifier, content: @Composable BoxScope.() -> Unit) {
     val p = Baqiyat.colors
@@ -136,9 +128,6 @@ fun BaqiyatBackground(modifier: Modifier = Modifier, content: @Composable BoxSco
     )
 }
 
-// ───────────────────────── البطاقات ─────────────────────────
-
-/** بطاقة زجاجية: سطح شبه شفاف مع حد متدرج (أفتح من الأعلى). */
 @Composable
 fun GlassCard(
     modifier: Modifier = Modifier,
@@ -174,7 +163,6 @@ fun GlassCard(
     )
 }
 
-/** بطاقة المحراب: لبطاقة الذكر فقط. المحتوى يضع الهوامش بنفسه (يترك أعلى القوس فارغاً). */
 @Composable
 fun MihrabCard(
     modifier: Modifier = Modifier,
@@ -194,7 +182,6 @@ fun MihrabCard(
             )
             .border(1.5.dp, Brush.verticalGradient(listOf(p.accent, p.accent.copy(alpha = 0.35f))), shape)
             .drawBehind {
-                // قوس داخلي رفيع يعطي عمق المحراب
                 val inset = 14.dp.toPx()
                 val inner = MihrabShape(20f).createOutline(
                     Size(size.width - inset * 2, size.height - inset * 2), layoutDirection, this
@@ -217,9 +204,8 @@ fun MihrabCard(
     )
 }
 
-// ───────────────────────── الأزرار ─────────────────────────
-
-enum class BaqiyatButtonStyle { Primary, Glass, Text }
+/** OnHero: زر فوق البطاقة المتدرجة (خلفية فاتحة بنص بلون التدرج). */
+enum class BaqiyatButtonStyle { Primary, Glass, Text, OnHero }
 
 @Composable
 fun BaqiyatButton(
@@ -238,6 +224,7 @@ fun BaqiyatButton(
         BaqiyatButtonStyle.Primary -> p.onButton
         BaqiyatButtonStyle.Glass -> p.ink
         BaqiyatButtonStyle.Text -> p.primary
+        BaqiyatButtonStyle.OnHero -> p.buttonFrom
     }
     val look = when (style) {
         BaqiyatButtonStyle.Primary -> Modifier
@@ -247,6 +234,7 @@ fun BaqiyatButton(
             .background(p.glass)
             .border(1.dp, p.accent, shape)
         BaqiyatButtonStyle.Text -> Modifier
+        BaqiyatButtonStyle.OnHero -> Modifier.background(p.onButton)
     }
     Row(
         modifier = modifier
@@ -301,9 +289,6 @@ fun BaqiyatChip(
     }
 }
 
-// ───────────────────────── الحلقة ─────────────────────────
-
-/** حلقة تقدم. تتحرك دائماً حتى مع «تقليل الحركة» لأنها تنقل معلومة (العدّاد). */
 @Composable
 fun ProgressRing(
     progress: Float,
@@ -348,11 +333,8 @@ fun ProgressRing(
     }
 }
 
-// ───────────────────────── الشريط السفلي العائم ─────────────────────────
+data class BaqiyatNavItem(val label: String, val icon: ImageVector, val badge: Boolean = false)
 
-data class BaqiyatNavItem(val label: String, val icon: ImageVector)
-
-/** شريط تنقل عائم بمؤشر يتحرك بين العناصر. */
 @Composable
 fun FloatingNavBar(
     items: List<BaqiyatNavItem>,
@@ -417,7 +399,18 @@ fun FloatingNavBar(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center
                     ) {
-                        Icon(item.icon, contentDescription = null, tint = tint, modifier = Modifier.size(22.dp))
+                        Box {
+                            Icon(item.icon, contentDescription = null, tint = tint, modifier = Modifier.size(22.dp))
+                            if (item.badge) {
+                                Box(
+                                    Modifier
+                                        .align(Alignment.TopEnd)
+                                        .size(9.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.error)
+                                )
+                            }
+                        }
                         Text(
                             item.label,
                             color = tint,
@@ -428,5 +421,12 @@ fun FloatingNavBar(
                 }
             }
         }
+    }
+}
+
+@Composable
+fun BaqiyatBackButton(onClick: () -> Unit) {
+    IconButton(onClick = onClick) {
+        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "رجوع", tint = Baqiyat.colors.primary)
     }
 }
