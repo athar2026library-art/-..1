@@ -10,11 +10,11 @@
     travel: "السفر",
   };
 
-  const CATEGORIES = [
-    { id: "sabah", icon: "☀", name: "أذكار الصباح", desc: "ورد الصباح" },
-    { id: "masaa", icon: "☾", name: "أذكار المساء", desc: "ورد المساء" },
-    { id: "sleep", icon: "☾", name: "أذكار النوم", desc: "طمأنينة قبل النوم" },
-    { id: "travel", icon: "✈", name: "أذكار السفر", desc: "حفظ وأمان" },
+  const BUILTIN_CATEGORIES = [
+    { id: "sabah", icon: "☀", name: "أذكار الصباح", desc: "ورد الصباح", builtin: true },
+    { id: "masaa", icon: "☾", name: "أذكار المساء", desc: "ورد المساء", builtin: true },
+    { id: "sleep", icon: "☾", name: "أذكار النوم", desc: "طمأنينة قبل النوم", builtin: true },
+    { id: "travel", icon: "✈", name: "أذكار السفر", desc: "حفظ وأمان", builtin: true },
   ];
 
   let db = null;
@@ -22,12 +22,15 @@
   let currentUser = null;
   let adminRole = "";
   let azkar = [];
+  let categories = [...BUILTIN_CATEGORIES];
   let feedbackItems = [];
   let selectedFeedbackId = null;
   let editingId = null;
+  let editingCategoryId = null;
   let lastNotifyAt = 0;
   let unsubAzkar = null;
   let unsubFeedback = null;
+  let unsubCategories = null;
 
   function escapeHtml(value) {
     return String(value ?? "")
@@ -63,6 +66,10 @@
 
   function itemsCol() {
     return db.collection("content").doc("azkar").collection("items");
+  }
+
+  function categoriesCol() {
+    return db.collection("content").doc("categories").collection("items");
   }
 
   function setSessionUi(loggedIn) {
@@ -104,18 +111,170 @@
     }
   }
 
+  function mergeCategories(remote) {
+    const map = new Map();
+    BUILTIN_CATEGORIES.forEach((c) => map.set(c.id, { ...c }));
+    (remote || []).forEach((c) => {
+      if (!c || !c.id) return;
+      map.set(c.id, {
+        id: c.id,
+        icon: c.icon || "📖",
+        name: c.name || c.id,
+        desc: c.desc || "",
+        order: c.order ?? 100,
+        published: c.published !== false,
+        builtin: !!c.builtin || BUILTIN_CATEGORIES.some((b) => b.id === c.id),
+      });
+    });
+    categories = Array.from(map.values()).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    // refresh label map for table
+    categories.forEach((c) => {
+      CATEGORY_LABEL[c.id] = c.name;
+    });
+  }
+
   function renderCategories() {
     const grid = $("#category-grid");
     if (!grid) return;
-    grid.innerHTML = CATEGORIES.map((c) => {
-      const count = azkar.filter((z) => z.category === c.id).length;
-      return `<article class="category-card">
-        <div class="symbol">${c.icon}</div>
+    grid.innerHTML = categories
+      .map((c) => {
+        const count = azkar.filter((z) => z.category === c.id).length;
+        const badge = c.builtin ? '<span class="pill">مدمج</span>' : '<span class="pill status-published">ديناميكي</span>';
+        return `<article class="category-card" data-cat-id="${escapeHtml(c.id)}">
+        <div class="symbol">${escapeHtml(c.icon || "📖")}</div>
         <h3>${escapeHtml(c.name)}</h3>
-        <p>${escapeHtml(c.desc)}</p>
-        <p style="margin-top:16px;color:var(--green)">${count} أذكار</p>
+        <p>${escapeHtml(c.desc || "")}</p>
+        <p style="margin-top:12px;color:var(--green)">${count} أذكار · ${badge}</p>
+        <div class="modal-actions" style="margin-top:12px">
+          <button class="icon-btn" data-edit-cat="${escapeHtml(c.id)}">تعديل</button>
+          ${c.builtin ? "" : `<button class="icon-btn" data-del-cat="${escapeHtml(c.id)}">حذف</button>`}
+        </div>
       </article>`;
-    }).join("");
+      })
+      .join("");
+
+    $$("[data-edit-cat]").forEach((btn) =>
+      btn.addEventListener("click", () => openCategoryEditor(btn.dataset.editCat))
+    );
+    $$("[data-del-cat]").forEach((btn) =>
+      btn.addEventListener("click", () => deleteCategory(btn.dataset.delCat))
+    );
+
+    // update select options in azkar editor
+    const sel = $("#field-category");
+    if (sel) {
+      const current = sel.value;
+      sel.innerHTML = categories
+        .map((c) => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`)
+        .join("");
+      if (categories.some((c) => c.id === current)) sel.value = current;
+    }
+    const filter = $("#filter");
+    if (filter) {
+      const cur = filter.value;
+      filter.innerHTML =
+        '<option value="all">الكل</option>' +
+        categories.map((c) => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`).join("");
+      if (cur === "all" || categories.some((c) => c.id === cur)) filter.value = cur;
+    }
+  }
+
+  function openCategoryEditor(id) {
+    editingCategoryId = id || null;
+    const c = id ? categories.find((x) => x.id === id) : null;
+    $("#cat-modal-title").textContent = c ? "تعديل التصنيف" : "إضافة تصنيف";
+    $("#cat-field-id").value = c?.id || "";
+    $("#cat-field-id").disabled = !!c;
+    $("#cat-field-name").value = c?.name || "";
+    $("#cat-field-icon").value = c?.icon || "📖";
+    $("#cat-field-desc").value = c?.desc || "";
+    $("#cat-field-order").value = c?.order ?? 100;
+    $("#cat-field-published").checked = c ? c.published !== false : true;
+    const modal = $("#category-modal");
+    modal?.classList.add("open");
+    modal?.setAttribute("aria-hidden", "false");
+  }
+
+  function closeCategoryEditor() {
+    const modal = $("#category-modal");
+    modal?.classList.remove("open");
+    modal?.setAttribute("aria-hidden", "true");
+    editingCategoryId = null;
+  }
+
+  async function saveCategory() {
+    const idRaw = $("#cat-field-id")?.value.trim();
+    const name = $("#cat-field-name")?.value.trim();
+    if (!idRaw || !name) {
+      toast("أدخل المعرّف والاسم");
+      return;
+    }
+    const id = idRaw.replace(/[^a-zA-Z0-9_\u0600-\u06FF-]/g, "_").slice(0, 40);
+    if (!id) {
+      toast("معرّف غير صالح");
+      return;
+    }
+    const payload = {
+      id,
+      name,
+      icon: $("#cat-field-icon")?.value.trim() || "📖",
+      desc: $("#cat-field-desc")?.value.trim() || "",
+      order: Number($("#cat-field-order")?.value) || 100,
+      published: !!$("#cat-field-published")?.checked,
+      builtin: BUILTIN_CATEGORIES.some((b) => b.id === id),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    };
+    if (editingCategoryId) {
+      await categoriesCol().doc(editingCategoryId).set(payload, { merge: true });
+      toast("تم حفظ التصنيف");
+    } else {
+      const exists = categories.some((c) => c.id === id);
+      if (exists) {
+        toast("المعرّف موجود مسبقاً");
+        return;
+      }
+      await categoriesCol().doc(id).set({
+        ...payload,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+      toast("تمت إضافة التصنيف");
+    }
+    closeCategoryEditor();
+  }
+
+  async function deleteCategory(id) {
+    if (!id || BUILTIN_CATEGORIES.some((b) => b.id === id)) {
+      toast("لا يمكن حذف التصنيفات المدمجة");
+      return;
+    }
+    const count = azkar.filter((z) => z.category === id).length;
+    if (count > 0) {
+      toast(`لا يمكن الحذف: يوجد ${count} ذكر مرتبط");
+      return;
+    }
+    if (!confirm("حذف هذا التصنيف؟")) return;
+    await categoriesCol().doc(id).delete();
+    toast("تم حذف التصنيف");
+  }
+
+  function listenCategories() {
+    if (unsubCategories) unsubCategories();
+    unsubCategories = categoriesCol().onSnapshot(
+      (snap) => {
+        const remote = snap.docs.map((doc) => {
+          const d = doc.data() || {};
+          return { id: doc.id, ...d };
+        });
+        mergeCategories(remote);
+        renderCategories();
+        renderTable();
+      },
+      (err) => {
+        console.warn("categories listen", err);
+        mergeCategories([]);
+        renderCategories();
+      }
+    );
   }
 
   function renderTable() {
@@ -518,57 +677,56 @@
     setSessionUi(true);
     listenAzkar();
     listenFeedback();
+    listenCategories();
     renderCategories();
   }
 
   function stopSession() {
     currentUser = null;
-    adminRole = "";
-    azkar = [];
-    feedbackItems = [];
     if (unsubAzkar) unsubAzkar();
     if (unsubFeedback) unsubFeedback();
+    if (unsubCategories) unsubCategories();
+    unsubAzkar = unsubFeedback = unsubCategories = null;
     setSessionUi(false);
   }
 
-  document.addEventListener("DOMContentLoaded", () => {
-    if (!window.AZKAR_FIREBASE_CONFIG) {
-      $("#auth-message").textContent = "ملف إعداد Firebase غير موجود.";
-      return;
-    }
-    firebase.initializeApp(window.AZKAR_FIREBASE_CONFIG);
-    auth = firebase.auth();
-    db = firebase.firestore();
-
-    auth.onAuthStateChanged((user) => {
-      if (user) startSession(user).catch((e) => {
-        $("#auth-message").textContent = e.message || "تعذر التحقق من صلاحية المشرف";
-        setSessionUi(false);
+  function bindUi() {
+    $$(".nav-item").forEach((btn) =>
+      btn.addEventListener("click", () => go(btn.dataset.view))
+    );
+    $("#btn-logout")?.addEventListener("click", () => auth.signOut());
+    $("#btn-google")?.addEventListener("click", () => {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      auth.signInWithPopup(provider).catch((e) => {
+        $("#auth-message").textContent = e.message;
       });
-      else stopSession();
     });
-
-    $("#google-login-btn")?.addEventListener("click", async () => {
-      try {
-        const provider = new firebase.auth.GoogleAuthProvider();
-        await auth.signInWithPopup(provider);
-      } catch (e) {
-        $("#auth-message").textContent = e.message || "فشل تسجيل الدخول";
-      }
-    });
-
-    $("#logout-btn")?.addEventListener("click", () => auth.signOut());
-    $$("[data-view]").forEach((el) => el.addEventListener("click", () => go(el.dataset.view)));
     $("#search")?.addEventListener("input", renderTable);
     $("#filter")?.addEventListener("change", renderTable);
     $("#status-filter")?.addEventListener("change", renderTable);
-    $("#add-zekr")?.addEventListener("click", () => openEditor());
-    $("#save-zekr")?.addEventListener("click", () => saveEditor().catch((e) => toast(e.message)));
-    $("#close-modal")?.addEventListener("click", closeEditor);
-    $("#cancel-modal")?.addEventListener("click", closeEditor);
-    $("#preview-btn")?.addEventListener("click", () => openPreview());
+    $("#btn-add")?.addEventListener("click", () => openEditor(null));
+    $("#btn-add-category")?.addEventListener("click", () => openCategoryEditor(null));
+    $("#save-editor")?.addEventListener("click", () => saveEditor().catch((e) => toast(e.message)));
+    $("#close-editor")?.addEventListener("click", closeEditor);
+    $("#save-category")?.addEventListener("click", () => saveCategory().catch((e) => toast(e.message)));
+    $("#close-category")?.addEventListener("click", closeCategoryEditor);
     $("#close-preview")?.addEventListener("click", closePreview);
     $("#export-json")?.addEventListener("click", exportJson);
     $("#send-notify")?.addEventListener("click", () => sendNotify().catch((e) => toast(e.message)));
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    if (!window.firebase || !window.firebaseConfig) {
+      console.error("Firebase not loaded");
+      return;
+    }
+    firebase.initializeApp(window.firebaseConfig);
+    db = firebase.firestore();
+    auth = firebase.auth();
+    bindUi();
+    auth.onAuthStateChanged((user) => {
+      if (user) startSession(user).catch((e) => toast(e.message));
+      else stopSession();
+    });
   });
 })();
