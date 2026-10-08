@@ -44,10 +44,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.AzkarData
+import com.example.data.CategoryDefaults
+import com.example.data.CustomWirds
+import com.example.data.Zekr
 import com.example.ui.AppViewModel
 import com.example.ui.AudioPlayer
 import com.example.ui.ShareHelper
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -57,11 +62,31 @@ fun AzkarScreen(
     viewModel: AppViewModel,
     onNavigateBack: () -> Unit
 ) {
-    val fallbackAzkar = AzkarData.forCategory(category)
-    val liveAzkar by remember(category) { viewModel.observePublishedAzkar(category) }
-        .collectAsStateWithLifecycle(initialValue = emptyList())
-    val azkarList = liveAzkar.takeIf { it.isNotEmpty() } ?: fallbackAzkar
-    val title = AzkarData.titleFor(category)
+    val customWirds by viewModel.customWirds.collectAsStateWithLifecycle()
+    val categories by viewModel.categories.collectAsStateWithLifecycle()
+    val isCustomWird = category.startsWith("wird_")
+    val isSnapshotMode = category == "favorites" || isCustomWird
+    val customWird = if (isCustomWird) customWirds.firstOrNull { "wird_${it.id}" == category } else null
+    val fallbackAzkar = remember(category, customWirds) {
+        when {
+            category == "favorites" -> AzkarData.byIds(viewModel.favorites.value)
+            isCustomWird -> customWirds.firstOrNull { "wird_${it.id}" == category }
+                ?.let { CustomWirds.resolve(it, AzkarData.all()) }.orEmpty()
+            else -> AzkarData.builtInOrEmpty(category)
+        }
+    }
+    val liveAzkar by remember(category) {
+        if (isSnapshotMode) flowOf<List<Zekr>?>(null)
+        else viewModel.observePublishedAzkar(category).map<List<Zekr>, List<Zekr>?> { it }
+    }.collectAsStateWithLifecycle(initialValue = null)
+    val azkarList = liveAzkar?.takeIf { it.isNotEmpty() } ?: fallbackAzkar
+    val isLoadingContent = liveAzkar == null && !isSnapshotMode && fallbackAzkar.isEmpty()
+    val title = when {
+        category == "favorites" -> "المفضلة"
+        isCustomWird -> customWird?.name ?: "وردي"
+        CategoryDefaults.isBuiltIn(category) -> AzkarData.titleFor(category)
+        else -> categories.firstOrNull { it.id == category }?.title ?: "الأذكار"
+    }
 
     val lastReadCategory by viewModel.lastReadCategory.collectAsStateWithLifecycle()
     val lastReadIndex by viewModel.lastReadIndex.collectAsStateWithLifecycle()
@@ -111,8 +136,8 @@ fun AzkarScreen(
         }
     }
 
-    LaunchedEffect(Unit) {
-        if (lastReadCategory == category && lastReadIndex < azkarList.size) {
+    LaunchedEffect(azkarList, category) {
+        if (!isSnapshotMode && lastReadCategory == category && lastReadIndex < azkarList.size) {
             currentIndex = lastReadIndex
             countRemaining = lastReadRemaining
         } else {
@@ -125,7 +150,7 @@ fun AzkarScreen(
     val latestCountRemaining by rememberUpdatedState(countRemaining)
     DisposableEffect(category, currentIndex, isInitialized) {
         onDispose {
-            if (isInitialized && currentIndex < azkarList.size) {
+            if (isInitialized && !isSnapshotMode && currentIndex < azkarList.size) {
                 viewModel.saveLastReadState(category, currentIndex, latestCountRemaining)
             }
         }
@@ -133,12 +158,60 @@ fun AzkarScreen(
 
     if (!isInitialized) return
 
+    if (isLoadingContent) {
+        Scaffold(containerColor = androidx.compose.ui.graphics.Color.Transparent) { padding ->
+            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        }
+        return
+    }
+
+    if (azkarList.isEmpty()) {
+        Scaffold(
+            containerColor = androidx.compose.ui.graphics.Color.Transparent,
+            topBar = {
+                TopAppBar(
+                    title = { Text(title) },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "رجوع")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
+                )
+            }
+        ) { padding ->
+            Column(
+                Modifier.fillMaxSize().padding(padding).padding(32.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("لا أذكار بعد", style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    if (isCustomWird) "هذا الورد فارغ أو حُذفت أذكاره."
+                    else "لم تُنشر أذكار لهذا التصنيف بعد.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(Modifier.height(20.dp))
+                BaqiyatButton(text = "العودة", onClick = onNavigateBack)
+            }
+        }
+        return
+    }
+
     if (currentIndex >= azkarList.size) {
         LaunchedEffect(Unit) {
             viewModel.flushPendingTasbeeh()
-            if (category == "sabah") viewModel.completeSabah()
-            else if (category == "masaa") viewModel.completeMasaa()
-            viewModel.clearLastReadState()
+            if (!isSnapshotMode) {
+                if (category == "sabah") viewModel.completeSabah()
+                else if (category == "masaa") viewModel.completeMasaa()
+                else if (category == "sleep") viewModel.completeSleep()
+                viewModel.clearLastReadState()
+            }
         }
         Scaffold(containerColor = androidx.compose.ui.graphics.Color.Transparent) { padding ->
             Column(
@@ -405,9 +478,7 @@ fun AzkarScreen(
                                         currentZekr.text,
                                         currentZekr.source
                                     )
-                                } catch (_: Exception) {
-                                    // ignore
-                                }
+                                } catch (_: Exception) { }
                                 showBottomSheet = false
                             },
                             modifier = Modifier.weight(1f),
@@ -415,7 +486,7 @@ fun AzkarScreen(
                         ) {
                             Icon(Icons.Default.Share, null, Modifier.size(18.dp))
                             Spacer(Modifier.width(7.dp))
-                            Text("مشاركة صورة")
+                            Text("مشاركة")
                         }
                     }
                 }
@@ -425,33 +496,37 @@ fun AzkarScreen(
 }
 
 private fun vibrateLight(context: Context) {
-    val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
-    } else {
-        @Suppress("DEPRECATION")
-        context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-    }
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        vibrator.vibrate(VibrationEffect.createOneShot(30, VibrationEffect.DEFAULT_AMPLITUDE))
-    } else {
-        @Suppress("DEPRECATION")
-        vibrator.vibrate(30)
-    }
+    try {
+        val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            vibrator.vibrate(VibrationEffect.createOneShot(30, VibrationEffect.DEFAULT_AMPLITUDE))
+        } else {
+            @Suppress("DEPRECATION")
+            vibrator.vibrate(30)
+        }
+    } catch (_: Exception) { }
 }
 
 private fun vibrateCompletion(context: Context) {
-    val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
-    } else {
-        @Suppress("DEPRECATION")
-        context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-    }
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        vibrator.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 40, 60, 40), -1))
-    } else {
-        @Suppress("DEPRECATION")
-        vibrator.vibrate(longArrayOf(0, 40, 60, 40), -1)
-    }
+    try {
+        val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            vibrator.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 40, 40, 40), -1))
+        } else {
+            @Suppress("DEPRECATION")
+            vibrator.vibrate(longArrayOf(0, 40, 40, 40), -1)
+        }
+    } catch (_: Exception) { }
 }
 
 private fun copyText(context: Context, text: String) {
