@@ -161,8 +161,9 @@
           <div>
             <p class="eyebrow">تنظيم المحتوى</p>
             <h2>التصنيفات</h2>
-            <p>الفئات المعتمدة في التطبيق. لا تُنشأ فئات حرة من هنا.</p>
+            <p>الأربعة الأساسية ثابتة، وما تضيفه هنا يظهر في التطبيق مباشرة دون إصدار جديد.</p>
           </div>
+          <button class="primary" id="add-category">＋ تصنيف جديد</button>
         </div>
         <div class="category-grid" id="category-grid"></div>
       </section>
@@ -219,6 +220,36 @@
       <div class="modal-actions">
         <button class="ghost" id="cancel-modal" type="button">إلغاء</button>
         <button class="primary" id="save-zekr" type="button">حفظ</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="category-modal" aria-hidden="true">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div><p class="eyebrow">تنظيم المحتوى</p><h2 id="cat-modal-title">تصنيف جديد</h2></div>
+        <button class="close" id="close-cat-modal" type="button">×</button>
+      </div>
+      <label>المعرّف (إنجليزي صغير، لا يتغير لاحقاً)
+        <input id="cat-id" placeholder="مثال: home" pattern="[a-z0-9_-]{2,30}" dir="ltr" />
+      </label>
+      <label>العنوان الظاهر في التطبيق<input id="cat-title" maxlength="40" placeholder="أذكار المنزل" /></label>
+      <label>وصف قصير<input id="cat-subtitle" maxlength="80" placeholder="عند الدخول والخروج" /></label>
+      <label>الأيقونة
+        <select id="cat-icon">
+          <option value="star">نجمة</option><option value="sun">شمس</option><option value="moon">قمر</option>
+          <option value="bed">سرير</option><option value="car">سيارة</option><option value="heart">قلب</option>
+          <option value="book">كتاب</option><option value="home">بيت</option><option value="food">طعام</option>
+          <option value="rain">مطر</option><option value="shield">حماية</option><option value="mosque">مسجد</option>
+        </select>
+      </label>
+      <label class="publish-toggle">
+        <span><strong>ظاهر في التطبيق</strong></span>
+        <input id="cat-published" type="checkbox" checked />
+      </label>
+      <div class="modal-actions">
+        <button class="ghost" id="cancel-cat-modal" type="button">إلغاء</button>
+        <button class="primary" id="save-category" type="button">حفظ</button>
       </div>
     </div>
   </div>
