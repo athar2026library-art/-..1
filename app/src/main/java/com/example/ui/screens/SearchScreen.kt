@@ -16,10 +16,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.AzkarData
 import com.example.data.Zekr
+import com.example.ui.AppViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
+    viewModel: AppViewModel? = null,
     onNavigateBack: () -> Unit,
     onOpenCategory: (String) -> Unit
 ) {
@@ -84,7 +86,7 @@ private fun SearchResultCard(zekr: Zekr, onClick: () -> Unit) {
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
-        Column(Modifier.padding(16.dp)) {
+        Column(modifier.padding(16.dp)) {
             Text(
                 AzkarData.titleFor(zekr.category),
                 fontSize = 12.sp,

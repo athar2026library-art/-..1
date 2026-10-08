@@ -13,6 +13,7 @@ import com.example.data.ProgressRepository
 import com.example.data.SettingsRepository
 import com.example.data.UserProgress
 import com.example.data.Zekr
+import com.example.ui.theme.ReaderFont
 import com.google.firebase.functions.FirebaseFunctions
 import com.google.firebase.functions.FirebaseFunctionsException
 import kotlinx.coroutines.CancellationException
@@ -70,6 +71,20 @@ class AppViewModel(
 
     val autoPlayEnabled: StateFlow<Boolean> = settingsRepository.autoPlayFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    /** الأذكار المفضلة (معرّفات). Eagerly كي تكون جاهزة عند فتح القارئ. */
+    val favorites: StateFlow<Set<Int>> = settingsRepository.favoritesFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
+
+    val readerFont: StateFlow<ReaderFont> = settingsRepository.readerFontFlow
+        .map { ReaderFont.from(it) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ReaderFont.AMIRI)
+
+    val dailyTasbeehGoal: StateFlow<Int> = settingsRepository.dailyGoalFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 100)
+
+    val tasbihTarget: StateFlow<Int> = settingsRepository.tasbihTargetFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 33)
 
     val lastReadCategory: StateFlow<String> = settingsRepository.lastReadCategoryFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
@@ -193,13 +208,28 @@ class AppViewModel(
     fun setNotificationsEnabled(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.setNotificationsEnabled(enabled)
-            // ضروري لوصول بث لوحة الإدارة (فلتر notificationsEnabled في Functions)
             firestoreRepository.updateNotificationPrefs(enabled)
         }
     }
 
     fun setAutoPlay(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setAutoPlay(enabled) }
+    }
+
+    fun toggleFavorite(id: Int) {
+        viewModelScope.launch { settingsRepository.toggleFavorite(id) }
+    }
+
+    fun setReaderFont(key: String) {
+        viewModelScope.launch { settingsRepository.setReaderFont(key) }
+    }
+
+    fun setDailyTasbeehGoal(goal: Int) {
+        viewModelScope.launch { settingsRepository.setDailyGoal(goal) }
+    }
+
+    fun setTasbihTarget(target: Int) {
+        viewModelScope.launch { settingsRepository.setTasbihTarget(target) }
     }
 
     fun sendChatMessage(text: String) {
