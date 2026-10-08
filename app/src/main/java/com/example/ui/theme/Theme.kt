@@ -112,9 +112,10 @@ private fun BaqiyatPalette.toColorScheme(): ColorScheme {
 }
 
 @Composable
-fun BaqiyatTheme(mode: TimeMode, content: @Composable () -> Unit) {
-    val palette = animatedPalette(paletteFor(mode))
+fun BaqiyatTheme(mode: TimeMode, accent: AccentTheme = AccentTheme.GOLD, content: @Composable () -> Unit) {
+    val palette = animatedPalette(paletteFor(mode).withAccent(accent))
     val scheme = remember(palette) { palette.toColorScheme() }
+    // التطبيق عربي بالكامل: نثبّت الاتجاه من اليمين لليسار كي تبقى الأسهم والتخطيط صحيحة مهما كانت لغة الجهاز.
     CompositionLocalProvider(
         LocalBaqiyat provides palette,
         LocalLayoutDirection provides LayoutDirection.Rtl
