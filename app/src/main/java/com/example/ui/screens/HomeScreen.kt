@@ -64,7 +64,8 @@ fun HomeScreen(
     onNavigateToSearch: () -> Unit = {},
     onNavigateToTasbih: () -> Unit = {},
     onNavigateToAssistant: () -> Unit = {},
-    onNavigateToJourney: () -> Unit = {}
+    onNavigateToJourney: () -> Unit = {},
+    onNavigateToFavorites: () -> Unit = {}
 ) {
     val lastReadCategory by viewModel.lastReadCategory.collectAsStateWithLifecycle()
     val lastReadIndex by viewModel.lastReadIndex.collectAsStateWithLifecycle()
@@ -123,7 +124,7 @@ fun HomeScreen(
 
             HeroCard()
 
-            Spacer(Modifier.height(18.dp))
+            Spacer(modifier.height(18.dp))
             DailyChallengeCard(
                 sabahDone = sabahDone,
                 masaaDone = masaaDone,
@@ -167,7 +168,7 @@ fun HomeScreen(
                 }
             }
 
-            Spacer(Modifier.height(28.dp))
+            Spacer(modifier.height(28.dp))
             Text("وردك اليومي", style = MaterialTheme.typography.titleLarge)
             Spacer(Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -187,7 +188,7 @@ fun HomeScreen(
                 StatCard(Modifier.weight(1f), "$totalTasbeeh", "تسبيحة", Icons.Default.AutoAwesome)
                 StatCard(Modifier.weight(1f), if (completedToday) "مكتمل" else "ابدأ الآن", "ورد اليوم", Icons.Default.SelfImprovement)
             }
-            Spacer(Modifier.height(96.dp))
+            Spacer(modifier.height(96.dp))
         }
     }
 }
