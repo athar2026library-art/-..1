@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.map
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
 class SettingsRepository(private val dataStore: DataStore<Preferences>) {
+
     private val FONT_SIZE = floatPreferencesKey("font_size")
     private val DARK_MODE = booleanPreferencesKey("dark_mode")
     private val VIBRATION = booleanPreferencesKey("vibration")
@@ -29,6 +30,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     private val ONBOARDING_COMPLETE = booleanPreferencesKey("onboarding_complete")
     private val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
     private val AUTO_PLAY = booleanPreferencesKey("auto_play")
+    private val CUSTOM_WIRDS = stringPreferencesKey("custom_wirds")
     private val WEEKLY_GOAL = intPreferencesKey("weekly_days_goal")
     private val ACCENT = stringPreferencesKey("accent_theme")
     private val READER_FONT = stringPreferencesKey("reader_font")
@@ -46,6 +48,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     val onboardingCompleteFlow: Flow<Boolean> = dataStore.data.map { it[ONBOARDING_COMPLETE] ?: false }
     val notificationsEnabledFlow: Flow<Boolean> = dataStore.data.map { it[NOTIFICATIONS_ENABLED] ?: true }
     val autoPlayFlow: Flow<Boolean> = dataStore.data.map { it[AUTO_PLAY] ?: false }
+    val customWirdsFlow: Flow<List<CustomWird>> = dataStore.data.map { CustomWirds.decode(it[CUSTOM_WIRDS]) }
     val weeklyGoalFlow: Flow<Int> = dataStore.data.map { it[WEEKLY_GOAL] ?: 5 }
     val accentFlow: Flow<String> = dataStore.data.map { it[ACCENT] ?: "gold" }
     val readerFontFlow: Flow<String> = dataStore.data.map { it[READER_FONT] ?: "amiri" }
@@ -87,6 +90,20 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         dataStore.edit { it[NOTIFICATIONS_ENABLED] = enabled }
     }
     suspend fun setAutoPlay(enabled: Boolean) { dataStore.edit { it[AUTO_PLAY] = enabled } }
+    suspend fun saveCustomWird(wird: CustomWird) {
+        dataStore.edit { prefs ->
+            val current = CustomWirds.decode(prefs[CUSTOM_WIRDS])
+            prefs[CUSTOM_WIRDS] = CustomWirds.encode(CustomWirds.upsert(current, wird))
+        }
+    }
+
+    suspend fun deleteCustomWird(id: String) {
+        dataStore.edit { prefs ->
+            val current = CustomWirds.decode(prefs[CUSTOM_WIRDS])
+            prefs[CUSTOM_WIRDS] = CustomWirds.encode(current.filterNot { it.id == id })
+        }
+    }
+
     suspend fun setWeeklyGoal(days: Int) { dataStore.edit { it[WEEKLY_GOAL] = days.coerceIn(1, 7) } }
     suspend fun setAccent(key: String) { dataStore.edit { it[ACCENT] = key } }
     suspend fun setReaderFont(key: String) { dataStore.edit { it[READER_FONT] = key } }

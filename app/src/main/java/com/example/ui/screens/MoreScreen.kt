@@ -19,10 +19,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.outlined.Chat
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -44,14 +44,14 @@ import com.example.ui.AppViewModel
 import com.example.ui.components.GlassCard
 import com.example.ui.theme.Baqiyat
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MoreScreen(
     viewModel: AppViewModel,
     onOpenAssistant: () -> Unit,
     onOpenFeedback: () -> Unit,
     onOpenSettings: () -> Unit,
-    onOpenFavorites: () -> Unit
+    onOpenFavorites: () -> Unit,
+    onOpenWirds: () -> Unit
 ) {
     val unread by viewModel.unreadFeedbackCount.collectAsStateWithLifecycle()
     Scaffold(
@@ -72,6 +72,7 @@ fun MoreScreen(
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             MoreRow(Icons.Default.Favorite, "المفضلة", "أذكارك المحفوظة", 0, onOpenFavorites)
+            MoreRow(Icons.Default.AutoAwesome, "أوردي", "أنشئ وردك الخاص من أذكار التطبيق", 0, onOpenWirds)
             MoreRow(Icons.AutoMirrored.Outlined.Chat, "المساعد الذكي", "اسأل عن ذكر أو صف شعورك", 0, onOpenAssistant)
             MoreRow(Icons.Default.Email, "تواصل معنا", "اقتراحاتك وملاحظاتك وردود الفريق", unread, onOpenFeedback)
             MoreRow(Icons.Default.Settings, "الإعدادات", "المظهر والقراءة والتذكيرات والحساب", 0, onOpenSettings)
