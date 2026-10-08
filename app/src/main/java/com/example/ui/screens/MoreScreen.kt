@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.outlined.Chat
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -47,7 +48,8 @@ fun MoreScreen(
     viewModel: AppViewModel,
     onOpenAssistant: () -> Unit,
     onOpenFeedback: () -> Unit,
-    onOpenSettings: () -> Unit
+    onOpenSettings: () -> Unit,
+    onOpenFavorites: () -> Unit
 ) {
     val unread by viewModel.unreadFeedbackCount.collectAsStateWithLifecycle()
     Scaffold(
@@ -67,6 +69,7 @@ fun MoreScreen(
                 .padding(horizontal = 20.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
+            MoreRow(Icons.Default.Favorite, "المفضلة", "أذكارك المحفوظة", 0, onOpenFavorites)
             MoreRow(Icons.AutoMirrored.Outlined.Chat, "المساعد الذكي", "اسأل عن ذكر أو صف شعورك", 0, onOpenAssistant)
             MoreRow(Icons.Default.Email, "تواصل معنا", "اقتراحاتك وملاحظاتك وردود الفريق", unread, onOpenFeedback)
             MoreRow(Icons.Default.Settings, "الإعدادات", "المظهر والقراءة والتذكيرات والحساب", 0, onOpenSettings)
