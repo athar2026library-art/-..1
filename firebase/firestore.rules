@@ -52,7 +52,30 @@ service cloud.firestore {
       return d.keys().hasAll(['text', 'category', 'published'])
         && d.text is string
         && d.text.size() > 0
-        && d.category is string;
+        && d.text.size() < 4000
+        && (d.category in ['sabah', 'masaa', 'sleep', 'travel']
+          || (d.category is string
+              && exists(/databases/$(database)/documents/content/categories/items/$(d.category))))
+        && (d.get('repeat', 1) is int || d.get('repeat', 1) is float)
+        && d.get('repeat', 1) >= 1
+        && d.get('repeat', 1) <= 1000;
+    }
+
+    // تصنيفات ديناميكية يديرها المشرف: content/categories/items/{id}
+    function validCategory(categoryId) {
+      let d = request.resource.data;
+      return categoryId.matches('^[a-z0-9_-]{2,30}$')
+        && !categoryId.matches('^wird_.*')
+        && !(categoryId in ['sabah', 'masaa', 'sleep', 'travel', 'favorites'])
+        && d.keys().hasOnly(['title', 'subtitle', 'icon', 'order', 'published', 'createdAt', 'updatedAt'])
+        && d.title is string
+        && d.title.size() > 0
+        && d.title.size() <= 40
+        && d.get('subtitle', '') is string
+        && d.get('subtitle', '').size() <= 80
+        && d.get('icon', 'star') in ['sun', 'moon', 'bed', 'car', 'heart', 'book', 'star', 'home', 'food', 'rain', 'shield', 'mosque']
+        && (d.get('order', 0) is int || d.get('order', 0) is float)
+        && d.get('published', true) is bool;
     }
 
     match /users/{userId} {
@@ -77,6 +100,16 @@ service cloud.firestore {
       match /items/{itemId} {
         allow read: if isAdmin() || resource.data.published == true;
         allow create, update: if isAdmin() && validZekr();
+        allow delete: if isAdmin();
+      }
+    }
+
+    match /content/categories {
+      allow read: if true;
+
+      match /items/{categoryId} {
+        allow read: if isAdmin() || resource.data.get('published', true) == true;
+        allow create, update: if isAdmin() && validCategory(categoryId);
         allow delete: if isAdmin();
       }
     }
