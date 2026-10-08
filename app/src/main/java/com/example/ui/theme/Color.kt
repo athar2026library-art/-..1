@@ -141,6 +141,51 @@ fun paletteFor(mode: TimeMode): BaqiyatPalette = when (mode) {
     TimeMode.NIGHT -> NightPalette
 }
 
+/**
+ * ثيمات لون تُفتح بالشارات. الذهبي افتراضي ومفتوح دائماً.
+ * unlockBadge = معرّف الشارة في Journey.kt.
+ */
+enum class AccentTheme(val key: String, val label: String, val unlockBadge: String?, val unlockHint: String) {
+    GOLD("gold", "ذهبي", null, ""),
+    ROSE("rose", "وردي", "week", "تُفتح بشارة «أسبوع ثابت»"),
+    SKY("sky", "سماوي", "tasbih1k", "تُفتح بشارة «ألف تسبيحة»"),
+    VIOLET("violet", "بنفسجي", "month", "تُفتح بشارة «شهر من النور»");
+
+    companion object {
+        fun from(key: String): AccentTheme = entries.firstOrNull { it.key == key } ?: GOLD
+    }
+}
+
+private class AccentSpec(
+    val dark: Color, val darkTo: Color,
+    val dayPrimary: Color, val dayTo: Color, val dayAccent: Color, val dayMint: Color
+)
+
+/** يستبدل ألوان التمييز (الأساسي والذهبي والأزرار) بلون الثيم، ويترك الخلفيات والنصوص. */
+fun BaqiyatPalette.withAccent(theme: AccentTheme): BaqiyatPalette {
+    val s = when (theme) {
+        AccentTheme.GOLD -> return this
+        AccentTheme.ROSE -> AccentSpec(Color(0xFFF2B6B0), Color(0xFFDC8C86), Color(0xFF8A3F46), Color(0xFFB05A60), Color(0xFFB8645F), Color(0xFFF5DEDC))
+        AccentTheme.SKY -> AccentSpec(Color(0xFF9FD0F0), Color(0xFF6FB1DA), Color(0xFF1F5F8B), Color(0xFF3F82AD), Color(0xFF2F6F9A), Color(0xFFDCEBF5))
+        AccentTheme.VIOLET -> AccentSpec(Color(0xFFC9B6F0), Color(0xFFA78BE0), Color(0xFF4B3A8C), Color(0xFF6A58B0), Color(0xFF6A58B0), Color(0xFFE6DFF5))
+    }
+    return if (isLight) {
+        copy(
+            primary = s.dayPrimary, accent = s.dayAccent,
+            buttonFrom = s.dayPrimary, buttonTo = s.dayTo,
+            mint = s.dayMint,
+            line = s.dayPrimary.copy(alpha = 0.16f), glow = s.dayAccent.copy(alpha = 0.28f)
+        )
+    } else {
+        copy(
+            primary = s.dark, accent = s.dark,
+            buttonFrom = s.dark, buttonTo = s.darkTo,
+            mint = s.dark,
+            line = s.dark.copy(alpha = 0.22f), glow = s.dark.copy(alpha = 0.2f)
+        )
+    }
+}
+
 val LocalBaqiyat = staticCompositionLocalOf { NightPalette }
 
 /** وصول مختصر: `Baqiyat.colors.accent` */

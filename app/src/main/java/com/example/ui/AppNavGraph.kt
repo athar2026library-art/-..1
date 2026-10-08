@@ -34,10 +34,10 @@ import com.example.ui.screens.AzkarScreen
 import com.example.ui.screens.FavoritesScreen
 import com.example.ui.screens.FeedbackScreen
 import com.example.ui.screens.HomeScreen
+import com.example.ui.screens.JourneyScreen
 import com.example.ui.screens.MoreScreen
 import com.example.ui.screens.SearchScreen
 import com.example.ui.screens.SettingsScreen
-import com.example.ui.screens.StatsScreen
 import com.example.ui.screens.TasbihScreen
 
 sealed class Screen(
@@ -117,7 +117,7 @@ fun AppNavGraph(
 
             composable("tasbih") { TasbihScreen(viewModel = viewModel) }
 
-            composable("stats") { StatsScreen(viewModel = viewModel) }
+            composable("stats") { JourneyScreen(viewModel = viewModel) }
 
             composable("more") {
                 MoreScreen(
