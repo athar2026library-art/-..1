@@ -104,7 +104,7 @@ fun HomeScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp),
         ) {
-            Spacer(Modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(20.dp))
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -149,7 +149,7 @@ fun HomeScreen(
                             Text("${lastReadIndex + 1}", style = MaterialTheme.typography.titleMedium, color = p.primary)
                         }
                         Spacer(modifier = Modifier.width(16.dp))
-                        Column(modifier.weight(1f)) {
+                        Column(Modifier.weight(1f)) {
                             Text("متابعة من حيث توقفت", style = MaterialTheme.typography.titleMedium, color = p.primary)
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
@@ -235,7 +235,7 @@ private fun DailyChallengeCard(
     onOpenMasaa: () -> Unit
 ) {
     val both = sabahDone && masaaDone
-    GlassCard(modifier.fillMaxWidth()) {
+    GlassCard(Modifier.fillMaxWidth()) {
         Text("تحدي اليوم", style = MaterialTheme.typography.titleMedium, color = Baqiyat.colors.primary)
         Spacer(modifier = Modifier.height(4.dp))
         Text(

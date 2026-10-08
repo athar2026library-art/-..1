@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -52,6 +53,7 @@ import com.example.ui.theme.Baqiyat
  * مسبحة رقمية بسيطة: عدّاد كبير وهدف (33 / 99 / 100 / حر) وجولات.
  * (الأهداف المحفوظة والسجل والاهتزاز المميز تأتي في المرحلة 3)
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TasbihScreen(viewModel: AppViewModel) {
     val vibration by viewModel.isVibrationEnabled.collectAsStateWithLifecycle()

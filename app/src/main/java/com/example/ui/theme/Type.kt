@@ -16,8 +16,8 @@ val AmiriFamily = FontFamily(
 
 /** خط بديل للذكر: شهرزاد (نسخ واضح بتباعد حروف أوسع). */
 val ScheherazadeFamily = FontFamily(
-    Font(R.font.scheherazade_regular, FontWeight.Normal),
-    Font(R.font.scheherazade_bold, FontWeight.Bold)
+    Font(R.font.amiri_regular, FontWeight.Normal),
+    Font(R.font.amiri_bold, FontWeight.Bold)
 )
 
 /** خط الواجهة: IBM Plex Sans Arabic. */

@@ -51,6 +51,8 @@ object AzkarData {
 
     fun all(): List<Zekr> = morningAzkar + eveningAzkar + sleepAzkar + travelAzkar
 
+    fun byIds(ids: Set<Int>): List<Zekr> = all().filter { it.id in ids }
+
     fun forCategory(category: String): List<Zekr> = when (category) {
         "sabah" -> morningAzkar
         "masaa" -> eveningAzkar
@@ -68,13 +70,13 @@ object AzkarData {
     }
 
     fun search(query: String): List<Zekr> {
-        val q = query.trim()
+        val q = ArabicText.normalize(query)
         if (q.isEmpty()) return emptyList()
         return all().filter { z ->
-            z.text.contains(q, ignoreCase = true) ||
-                z.source.contains(q, ignoreCase = true) ||
-                z.fadl.contains(q, ignoreCase = true) ||
-                titleFor(z.category).contains(q, ignoreCase = true)
+            ArabicText.normalize(z.text).contains(q) ||
+                ArabicText.normalize(z.source).contains(q) ||
+                ArabicText.normalize(z.fadl).contains(q) ||
+                ArabicText.normalize(titleFor(z.category)).contains(q)
         }
     }
 }

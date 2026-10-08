@@ -86,7 +86,7 @@ private fun SearchResultCard(zekr: Zekr, onClick: () -> Unit) {
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
-        Column(modifier.padding(16.dp)) {
+        Column(Modifier.padding(16.dp)) {
             Text(
                 AzkarData.titleFor(zekr.category),
                 fontSize = 12.sp,
