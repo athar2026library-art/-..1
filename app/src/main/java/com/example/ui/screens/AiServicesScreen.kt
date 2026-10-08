@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import com.example.ui.components.BaqiyatBackButton
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -16,13 +17,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.horizontalScroll
 import com.example.ui.AppViewModel
 import com.example.ui.ChatMessage
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AiServicesScreen(
-    viewModel: AppViewModel
+    viewModel: AppViewModel,
+    onNavigateBack: (() -> Unit)? = null
 ) {
     val messages by viewModel.chatMessages.collectAsState()
     val isLoadingAi by viewModel.isLoadingAi.collectAsState()
@@ -39,6 +42,7 @@ fun AiServicesScreen(
         topBar = {
             TopAppBar(
                 title = { Text("المساعد الذكي", fontWeight = FontWeight.Bold) },
+                navigationIcon = { if (onNavigateBack != null) BaqiyatBackButton(onNavigateBack) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = androidx.compose.ui.graphics.Color.Transparent
                 )
@@ -101,6 +105,45 @@ fun AiServicesScreen(
             items(messages) { message ->
                 ChatBubble(message)
             }
+            if (messages.size <= 1 && !isLoadingAi) {
+                item { MoodChips(onPick = { viewModel.sendChatMessage(it) }) }
+            }
+        }
+    }
+}
+
+private val MOODS = listOf(
+    "قلق" to "أشعر بالقلق",
+    "حزن" to "أشعر بالحزن",
+    "ضيق" to "أشعر بضيق في صدري",
+    "خوف" to "أشعر بالخوف",
+    "شكر" to "أريد أن أشكر الله",
+    "فرح" to "أشعر بالفرح والسرور",
+    "سفر" to "أنا مسافر الآن",
+    "استخارة" to "أريد أن أستخير الله في أمر",
+    "مرض" to "أنا أو أحد أحبابي مريض",
+    "توبة" to "أريد التوبة والاستغفار"
+)
+
+/** رقائق شعور سريعة قبل الكتابة: تُرسل طلباً جاهزاً للمساعد. */
+@Composable
+private fun MoodChips(onPick: (String) -> Unit) {
+    Column {
+        Text("كيف تشعر الآن؟", style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(10.dp))
+        MOODS.chunked(5).forEach { row ->
+            Row(
+                Modifier.horizontalScroll(androidx.compose.foundation.rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                row.forEach { (label, phrase) ->
+                    com.example.ui.components.BaqiyatChip(
+                        text = label,
+                        onClick = { onPick("$phrase. اقترح لي ذكراً أو دعاءً مناسباً من الأحاديث الصحيحة مع مصدره.") }
+                    )
+                }
+            }
+            Spacer(Modifier.height(8.dp))
         }
     }
 }
