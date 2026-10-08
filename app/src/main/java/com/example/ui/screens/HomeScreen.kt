@@ -104,7 +104,7 @@ fun HomeScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp),
         ) {
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier = Modifier.height(20.dp))
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -112,7 +112,7 @@ fun HomeScreen(
             ) {
                 Column(Modifier.weight(1f)) {
                     Text("السلام عليكم ورحمة الله", style = MaterialTheme.typography.headlineSmall)
-                    Spacer(Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(gregorian, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(hijri, style = MaterialTheme.typography.bodySmall, color = p.accent)
                 }
@@ -120,11 +120,11 @@ fun HomeScreen(
                     Icon(Icons.Default.Search, contentDescription = "بحث في الأذكار", tint = p.primary)
                 }
             }
-            Spacer(Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
             HeroCard()
 
-            Spacer(modifier.height(18.dp))
+            Spacer(modifier = Modifier.height(18.dp))
             DailyChallengeCard(
                 sabahDone = sabahDone,
                 masaaDone = masaaDone,
@@ -134,7 +134,7 @@ fun HomeScreen(
             )
 
             if (isWirdActive) {
-                Spacer(Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(16.dp))
                 GlassCard(
                     modifier = Modifier.fillMaxWidth(),
                     onClick = { onNavigateToAzkar(lastReadCategory) },
@@ -148,10 +148,10 @@ fun HomeScreen(
                         ) {
                             Text("${lastReadIndex + 1}", style = MaterialTheme.typography.titleMedium, color = p.primary)
                         }
-                        Spacer(Modifier.width(16.dp))
-                        Column(Modifier.weight(1f)) {
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column(modifier.weight(1f)) {
                             Text("متابعة من حيث توقفت", style = MaterialTheme.typography.titleMedium, color = p.primary)
-                            Spacer(Modifier.height(2.dp))
+                            Spacer(modifier = Modifier.height(2.dp))
                             Text(
                                 "${AzkarData.titleFor(lastReadCategory)} · الذكر ${lastReadIndex + 1} من $categorySize",
                                 style = MaterialTheme.typography.bodySmall,
@@ -159,7 +159,7 @@ fun HomeScreen(
                             )
                         }
                     }
-                    Spacer(Modifier.height(14.dp))
+                    Spacer(modifier = Modifier.height(14.dp))
                     BaqiyatButton(
                         text = "أكمل الورد الآن",
                         onClick = { onNavigateToAzkar(lastReadCategory) },
@@ -168,27 +168,27 @@ fun HomeScreen(
                 }
             }
 
-            Spacer(modifier.height(28.dp))
+            Spacer(modifier = Modifier.height(28.dp))
             Text("وردك اليومي", style = MaterialTheme.typography.titleLarge)
-            Spacer(Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 WirdCard(Modifier.weight(1f), "الصباح", "ابدأ يومك بنور", Icons.Default.WbSunny) { onNavigateToAzkar("sabah") }
                 WirdCard(Modifier.weight(1f), "المساء", "اختم يومك بسكينة", Icons.Default.NightsStay) { onNavigateToAzkar("masaa") }
             }
-            Spacer(Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 WirdCard(Modifier.weight(1f), "النوم", "طمأنينة قبل النوم", Icons.Default.AirlineSeatFlat) { onNavigateToAzkar("sleep") }
                 WirdCard(Modifier.weight(1f), "السفر", "حفظ وأمان", Icons.Default.DirectionsCar) { onNavigateToAzkar("travel") }
             }
 
-            Spacer(Modifier.height(28.dp))
+            Spacer(modifier = Modifier.height(28.dp))
             Text("لمحة عن إنجازك", style = MaterialTheme.typography.titleLarge)
-            Spacer(Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 StatCard(Modifier.weight(1f), "$totalTasbeeh", "تسبيحة", Icons.Default.AutoAwesome)
                 StatCard(Modifier.weight(1f), if (completedToday) "مكتمل" else "ابدأ الآن", "ورد اليوم", Icons.Default.SelfImprovement)
             }
-            Spacer(modifier.height(96.dp))
+            Spacer(modifier = Modifier.height(96.dp))
         }
     }
 }
@@ -214,9 +214,9 @@ private fun HeroCard() {
                 style = ZekrTextStyle.copy(fontSize = 22.sp, lineHeight = 40.sp),
                 color = p.onButton
             )
-            Spacer(Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             Text("اجعل لليوم نصيباً من الذكر", style = MaterialTheme.typography.titleMedium, color = p.onButton)
-            Spacer(Modifier.height(2.dp))
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
                 "دقائق قليلة تصنع فرقاً كبيراً في قلبك.",
                 style = MaterialTheme.typography.bodyMedium,
@@ -235,15 +235,15 @@ private fun DailyChallengeCard(
     onOpenMasaa: () -> Unit
 ) {
     val both = sabahDone && masaaDone
-    GlassCard(Modifier.fillMaxWidth()) {
+    GlassCard(modifier.fillMaxWidth()) {
         Text("تحدي اليوم", style = MaterialTheme.typography.titleMedium, color = Baqiyat.colors.primary)
-        Spacer(Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(4.dp))
         Text(
             if (both) "أحسنت — أكملت ورد الصباح والمساء." else "أكمل أذكار الصباح والمساء لتحصل على نجمة اليوم.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        Spacer(Modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(14.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             BaqiyatChip(if (sabahDone) "الصباح ✓" else "الصباح", selected = sabahDone, onClick = onOpenSabah)
             BaqiyatChip(if (masaaDone) "المساء ✓" else "المساء", selected = masaaDone, onClick = onOpenMasaa)
@@ -269,9 +269,9 @@ private fun WirdCard(modifier: Modifier, title: String, subtitle: String, icon: 
         ) {
             Icon(icon, null, Modifier.size(28.dp), tint = p.primary)
         }
-        Spacer(Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(12.dp))
         Text(title, style = MaterialTheme.typography.titleMedium)
-        Spacer(Modifier.height(2.dp))
+        Spacer(modifier = Modifier.height(2.dp))
         Text(
             subtitle,
             style = MaterialTheme.typography.bodySmall,
@@ -287,7 +287,7 @@ private fun StatCard(modifier: Modifier, value: String, label: String, icon: Ima
     GlassCard(modifier, shape = RoundedCornerShape(24.dp), contentPadding = PaddingValues(16.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Icon(icon, null, Modifier.size(26.dp), tint = p.accent)
-            Spacer(Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(12.dp))
             Column {
                 Text(value, style = MaterialTheme.typography.titleMedium, color = p.primary)
                 Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
