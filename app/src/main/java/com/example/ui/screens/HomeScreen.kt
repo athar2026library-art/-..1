@@ -19,13 +19,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AirlineSeatFlat
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.DirectionsCar
-import androidx.compose.material.icons.filled.NightsStay
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SelfImprovement
-import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -47,6 +43,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.AzkarData
 import com.example.ui.AppViewModel
+import com.example.ui.categoryIcon
 import com.example.ui.components.BaqiyatButton
 import com.example.ui.components.BaqiyatChip
 import com.example.ui.components.GlassCard
@@ -71,6 +68,7 @@ fun HomeScreen(
     val lastReadIndex by viewModel.lastReadIndex.collectAsStateWithLifecycle()
     val recentProgress by viewModel.recentProgress.collectAsStateWithLifecycle()
     val todayProgress by viewModel.todayProgress.collectAsStateWithLifecycle()
+    val categories by viewModel.categories.collectAsStateWithLifecycle()
     val categorySize = AzkarData.forCategory(lastReadCategory).size.coerceAtLeast(1)
     val isWirdActive = lastReadCategory.isNotEmpty() && lastReadIndex < categorySize
     val gregorian = remember {
@@ -169,19 +167,24 @@ fun HomeScreen(
             }
 
             Spacer(modifier = Modifier.height(28.dp))
-            Text("وردك اليومي", style = MaterialTheme.typography.titleLarge)
+            Text("أقسام الأذكار", style = MaterialTheme.typography.titleLarge)
             Spacer(modifier = Modifier.height(12.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                WirdCard(Modifier.weight(1f), "الصباح", "ابدأ يومك بنور", Icons.Default.WbSunny) { onNavigateToAzkar("sabah") }
-                WirdCard(Modifier.weight(1f), "المساء", "اختم يومك بسكينة", Icons.Default.NightsStay) { onNavigateToAzkar("masaa") }
-            }
-            Spacer(modifier = Modifier.height(12.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                WirdCard(Modifier.weight(1f), "النوم", "طمأنينة قبل النوم", Icons.Default.AirlineSeatFlat) { onNavigateToAzkar("sleep") }
-                WirdCard(Modifier.weight(1f), "السفر", "حفظ وأمان", Icons.Default.DirectionsCar) { onNavigateToAzkar("travel") }
+            categories.chunked(2).forEach { pair ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    pair.forEach { c ->
+                        WirdCard(
+                            Modifier.weight(1f),
+                            c.title,
+                            c.subtitle,
+                            categoryIcon(c.iconKey)
+                        ) { onNavigateToAzkar(c.id) }
+                    }
+                    if (pair.size == 1) Spacer(Modifier.weight(1f))
+                }
+                Spacer(modifier = Modifier.height(12.dp))
             }
 
-            Spacer(modifier = Modifier.height(28.dp))
+            Spacer(modifier = Modifier.height(16.dp))
             Text("لمحة عن إنجازك", style = MaterialTheme.typography.titleLarge)
             Spacer(modifier = Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
