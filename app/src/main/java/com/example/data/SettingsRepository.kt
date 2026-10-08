@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -15,7 +16,6 @@ import kotlinx.coroutines.flow.map
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
 class SettingsRepository(private val dataStore: DataStore<Preferences>) {
-
     private val FONT_SIZE = floatPreferencesKey("font_size")
     private val DARK_MODE = booleanPreferencesKey("dark_mode")
     private val VIBRATION = booleanPreferencesKey("vibration")
@@ -29,6 +29,10 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     private val ONBOARDING_COMPLETE = booleanPreferencesKey("onboarding_complete")
     private val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
     private val AUTO_PLAY = booleanPreferencesKey("auto_play")
+    private val READER_FONT = stringPreferencesKey("reader_font")
+    private val DAILY_GOAL = intPreferencesKey("daily_tasbeeh_goal")
+    private val TASBIH_TARGET = intPreferencesKey("tasbih_target")
+    private val FAVORITES = stringSetPreferencesKey("favorite_zekr_ids")
 
     val fontSizeFlow: Flow<Float> = dataStore.data.map { it[FONT_SIZE] ?: 24f }
     val darkModeFlow: Flow<Boolean> = dataStore.data.map { it[DARK_MODE] ?: true }
@@ -40,6 +44,12 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     val onboardingCompleteFlow: Flow<Boolean> = dataStore.data.map { it[ONBOARDING_COMPLETE] ?: false }
     val notificationsEnabledFlow: Flow<Boolean> = dataStore.data.map { it[NOTIFICATIONS_ENABLED] ?: true }
     val autoPlayFlow: Flow<Boolean> = dataStore.data.map { it[AUTO_PLAY] ?: false }
+    val readerFontFlow: Flow<String> = dataStore.data.map { it[READER_FONT] ?: "amiri" }
+    val dailyGoalFlow: Flow<Int> = dataStore.data.map { it[DAILY_GOAL] ?: 100 }
+    val tasbihTargetFlow: Flow<Int> = dataStore.data.map { it[TASBIH_TARGET] ?: 33 }
+    val favoritesFlow: Flow<Set<Int>> = dataStore.data.map { prefs ->
+        prefs[FAVORITES]?.mapNotNull { it.toIntOrNull() }?.toSet() ?: emptySet()
+    }
 
     val lastReadCategoryFlow: Flow<String> = dataStore.data.map { it[LAST_READ_CATEGORY] ?: "" }
     val lastReadIndexFlow: Flow<Int> = dataStore.data.map { it[LAST_READ_INDEX] ?: 0 }
@@ -73,4 +83,14 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         dataStore.edit { it[NOTIFICATIONS_ENABLED] = enabled }
     }
     suspend fun setAutoPlay(enabled: Boolean) { dataStore.edit { it[AUTO_PLAY] = enabled } }
+    suspend fun setReaderFont(key: String) { dataStore.edit { it[READER_FONT] = key } }
+    suspend fun setDailyGoal(goal: Int) { dataStore.edit { it[DAILY_GOAL] = goal.coerceIn(10, 100_000) } }
+    suspend fun setTasbihTarget(target: Int) { dataStore.edit { it[TASBIH_TARGET] = target.coerceIn(0, 100_000) } }
+    suspend fun toggleFavorite(id: Int) {
+        dataStore.edit { prefs ->
+            val current = prefs[FAVORITES] ?: emptySet()
+            val key = id.toString()
+            prefs[FAVORITES] = if (key in current) current - key else current + key
+        }
+    }
 }

@@ -14,6 +14,12 @@ val AmiriFamily = FontFamily(
     Font(R.font.amiri_bold, FontWeight.Bold)
 )
 
+/** خط بديل للذكر: شهرزاد (نسخ واضح بتباعد حروف أوسع). */
+val ScheherazadeFamily = FontFamily(
+    Font(R.font.scheherazade_regular, FontWeight.Normal),
+    Font(R.font.scheherazade_bold, FontWeight.Bold)
+)
+
 /** خط الواجهة: IBM Plex Sans Arabic. */
 val PlexArabicFamily = FontFamily(
     Font(R.font.plex_arabic_regular, FontWeight.Normal),
@@ -28,6 +34,24 @@ val ZekrTextStyle = TextStyle(
     fontWeight = FontWeight.Normal,
     fontSize = 28.sp,
     lineHeight = 54.sp
+)
+
+/** خيارات خط القراءة. المفتاح هو القيمة المحفوظة في الإعدادات. */
+enum class ReaderFont(val key: String, val label: String, val family: FontFamily, val lineRatio: Float) {
+    AMIRI("amiri", "أميري", AmiriFamily, 1.95f),
+    SCHEHERAZADE("scheherazade", "شهرزاد", ScheherazadeFamily, 1.95f),
+    PLEX("plex", "حديث", PlexArabicFamily, 1.75f);
+
+    companion object {
+        fun from(key: String): ReaderFont = entries.firstOrNull { it.key == key } ?: AMIRI
+    }
+}
+
+/** نمط نص الذكر حسب الخط والحجم المختارين. */
+fun zekrStyle(font: ReaderFont, size: Float): TextStyle = ZekrTextStyle.copy(
+    fontFamily = font.family,
+    fontSize = size.sp,
+    lineHeight = (size * font.lineRatio).sp
 )
 
 private val Base = M3Typography()
