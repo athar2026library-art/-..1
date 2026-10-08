@@ -1,35 +1,43 @@
-# المرحلة 5 — حالة الرفع على `feature/private-admin-panel`
+# المرحلة 5 — مكتمل تقريباً على `feature/private-admin-panel`
 
-## تم رفعه
+## تم رفعه بالكامل
 
-- `Categories.kt` / `CustomWirds.kt` / `CategoryIcons.kt`
-- `CategoriesAndWirdsTest.kt`
-- `firestore.rules` (`validCategory` + `content/categories/items`)
-- `SettingsRepository` (أوراد مخصصة)
-- `AppViewModel` (`customWirds`, `categories`, حفظ/حذف الورد)
-- `FirestoreRepository.observeCategories` + `completedSleep` في النسخ الاحتياطي
-- `AppNavGraph` (wirds / wird_edit / azkar/wird_*)
-- `WirdsScreen` / `WirdEditorScreen`
-- `MoreScreen` (رابط أوردي)
-- `AiServicesScreen` (رقائق الشعور)
-- `AzkarData.builtInOrEmpty` + عنوان المفضلة
-- `HomeScreen` (أقسام ديناميكية من `viewModel.categories`)
-- `JourneyScreen` (رحلتي)
+| المكوّن | الحالة |
+|---------|--------|
+| Categories / CustomWirds / CategoryIcons | ✅ |
+| firestore.rules (validCategory + items) | ✅ |
+| rules.test.mjs (اختبارات التصنيفات) | ✅ |
+| SettingsRepository (أوراد) | ✅ |
+| AppViewModel (categories + customWirds) | ✅ |
+| FirestoreRepository.observeCategories | ✅ |
+| AppNavGraph (wirds / wird_edit) | ✅ |
+| WirdsScreen / WirdEditorScreen | ✅ |
+| MoreScreen | ✅ |
+| AiServicesScreen (رقائق الشعور) | ✅ |
+| AzkarData.builtInOrEmpty | ✅ |
+| HomeScreen (تصنيفات ديناميكية) | ✅ |
+| AzkarScreen (wird_ / favorites / فارغ / تحميل) | ✅ |
+| JourneyScreen | ✅ |
+| admin-panel/index.html (مودال التصنيف) | ✅ |
 
-## انسخ يدوياً من `baqiyat-phase5-full-project.zip` إن احتجت النسخة الكاملة
+## ملف واحد انسخه يدوياً من الـ zip
 
-```text
-admin-panel/app.js
-admin-panel/index.html
-app/src/main/java/com/example/ui/screens/AzkarScreen.kt   # wird_ + حالات فارغ/تحميل
-firebase/tests/rules.test.mjs
+```bash
+# من baqiyat-phase5-full-project.zip
+cp admin-panel/app.js  <repo>/admin-panel/app.js
+git add admin-panel/app.js && git commit -m "feat(phase5): admin-panel dynamic categories CRUD"
 ```
+
+السبب: حجم `app.js` (~27KB) يتجاوز حد استدعاء الرفع الآمن في هذه الجلسة؛ باقي اللوحة (`index.html`) مرفوع.
+
+## بعد السحب
 
 ```bash
 git pull origin feature/private-admin-panel
+# انسخ app.js إن لم يكن محدّثاً
 firebase deploy --only firestore:rules
-# انشر اللوحة بعد نسخ admin-panel
+# ثم Hosting للوحة إن لزم
 ./gradlew :app:assembleDebug test
 ```
 
-**قبل إضافة تصنيف من اللوحة:** انشر القواعد أولاً.
+**شرط الخروج:** مشرف يضيف تصنيفاً وأذكاره من اللوحة → تظهر في التطبيق بلا إصدار.
