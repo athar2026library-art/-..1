@@ -11,5 +11,6 @@ data class UserProgress(
     @PrimaryKey val date: String = "",
     val completedSabah: Boolean = false,
     val completedMasaa: Boolean = false,
-    val totalTasbeeh: Int = 0
+    val totalTasbeeh: Int = 0,
+    val completedSleep: Boolean = false
 )

@@ -17,6 +17,9 @@ interface ProgressDao {
     @Query("SELECT * FROM user_progress ORDER BY date DESC LIMIT 30")
     fun getRecentProgress(): Flow<List<UserProgress>>
 
+    @Query("SELECT * FROM user_progress ORDER BY date DESC")
+    fun getAllProgressFlow(): Flow<List<UserProgress>>
+
     @Query("SELECT * FROM user_progress ORDER BY date ASC")
     suspend fun getAllProgressSync(): List<UserProgress>
 
@@ -32,6 +35,9 @@ interface ProgressDao {
 
     @Query("UPDATE user_progress SET completedMasaa = :completed WHERE date = :date")
     suspend fun updateMasaa(date: String, completed: Boolean)
+
+    @Query("UPDATE user_progress SET completedSleep = :completed WHERE date = :date")
+    suspend fun updateSleep(date: String, completed: Boolean)
 
     @Query("UPDATE user_progress SET totalTasbeeh = totalTasbeeh + :count WHERE date = :date")
     suspend fun addTasbeeh(date: String, count: Int)
