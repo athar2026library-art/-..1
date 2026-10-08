@@ -31,6 +31,7 @@ import com.example.ui.components.BaqiyatNavItem
 import com.example.ui.components.FloatingNavBar
 import com.example.ui.screens.AiServicesScreen
 import com.example.ui.screens.AzkarScreen
+import com.example.ui.screens.FavoritesScreen
 import com.example.ui.screens.FeedbackScreen
 import com.example.ui.screens.HomeScreen
 import com.example.ui.screens.MoreScreen
@@ -109,7 +110,8 @@ fun AppNavGraph(
                     onNavigateToSearch = { navController.navigate("search") },
                     onNavigateToTasbih = { openTab("tasbih") },
                     onNavigateToAssistant = { navController.navigate("ai_services") },
-                    onNavigateToJourney = { openTab("stats") }
+                    onNavigateToJourney = { openTab("stats") },
+                    onNavigateToFavorites = { navController.navigate("favorites") }
                 )
             }
 
@@ -122,12 +124,22 @@ fun AppNavGraph(
                     viewModel = viewModel,
                     onOpenAssistant = { navController.navigate("ai_services") },
                     onOpenFeedback = { navController.navigate("feedback") },
-                    onOpenSettings = { navController.navigate("settings") }
+                    onOpenSettings = { navController.navigate("settings") },
+                    onOpenFavorites = { navController.navigate("favorites") }
+                )
+            }
+
+            composable("favorites") {
+                FavoritesScreen(
+                    viewModel = viewModel,
+                    onNavigateBack = { navController.popBackStack() },
+                    onRead = { navController.navigate("azkar/favorites") }
                 )
             }
 
             composable("search") {
                 SearchScreen(
+                    viewModel = viewModel,
                     onNavigateBack = { navController.popBackStack() },
                     onOpenCategory = { category -> navController.navigate("azkar/$category") }
                 )
