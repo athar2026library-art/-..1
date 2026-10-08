@@ -29,6 +29,8 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     private val ONBOARDING_COMPLETE = booleanPreferencesKey("onboarding_complete")
     private val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
     private val AUTO_PLAY = booleanPreferencesKey("auto_play")
+    private val WEEKLY_GOAL = intPreferencesKey("weekly_days_goal")
+    private val ACCENT = stringPreferencesKey("accent_theme")
     private val READER_FONT = stringPreferencesKey("reader_font")
     private val DAILY_GOAL = intPreferencesKey("daily_tasbeeh_goal")
     private val TASBIH_TARGET = intPreferencesKey("tasbih_target")
@@ -44,6 +46,8 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     val onboardingCompleteFlow: Flow<Boolean> = dataStore.data.map { it[ONBOARDING_COMPLETE] ?: false }
     val notificationsEnabledFlow: Flow<Boolean> = dataStore.data.map { it[NOTIFICATIONS_ENABLED] ?: true }
     val autoPlayFlow: Flow<Boolean> = dataStore.data.map { it[AUTO_PLAY] ?: false }
+    val weeklyGoalFlow: Flow<Int> = dataStore.data.map { it[WEEKLY_GOAL] ?: 5 }
+    val accentFlow: Flow<String> = dataStore.data.map { it[ACCENT] ?: "gold" }
     val readerFontFlow: Flow<String> = dataStore.data.map { it[READER_FONT] ?: "amiri" }
     val dailyGoalFlow: Flow<Int> = dataStore.data.map { it[DAILY_GOAL] ?: 100 }
     val tasbihTargetFlow: Flow<Int> = dataStore.data.map { it[TASBIH_TARGET] ?: 33 }
@@ -83,6 +87,8 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         dataStore.edit { it[NOTIFICATIONS_ENABLED] = enabled }
     }
     suspend fun setAutoPlay(enabled: Boolean) { dataStore.edit { it[AUTO_PLAY] = enabled } }
+    suspend fun setWeeklyGoal(days: Int) { dataStore.edit { it[WEEKLY_GOAL] = days.coerceIn(1, 7) } }
+    suspend fun setAccent(key: String) { dataStore.edit { it[ACCENT] = key } }
     suspend fun setReaderFont(key: String) { dataStore.edit { it[READER_FONT] = key } }
     suspend fun setDailyGoal(goal: Int) { dataStore.edit { it[DAILY_GOAL] = goal.coerceIn(10, 100_000) } }
     suspend fun setTasbihTarget(target: Int) { dataStore.edit { it[TASBIH_TARGET] = target.coerceIn(0, 100_000) } }
