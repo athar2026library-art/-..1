@@ -33,6 +33,8 @@ class ProgressRepository(private val progressDao: ProgressDao) {
     suspend fun getTodayProgressSync(date: String = getTodayDateStr()): UserProgress? =
         progressDao.getProgressByDateSync(date)
 
+    fun getAllProgressFlow(): Flow<List<UserProgress>> = progressDao.getAllProgressFlow()
+
     suspend fun getAllProgress(): List<UserProgress> = progressDao.getAllProgressSync()
 
     /** يضمن وجود صف اليوم قبل أي تحديث (مهم بعد منتصف الليل والتطبيق مفتوح). */
@@ -54,6 +56,10 @@ class ProgressRepository(private val progressDao: ProgressDao) {
         progressDao.updateMasaa(ensureToday(), true)
     }
 
+    suspend fun completeSleep() {
+        progressDao.updateSleep(ensureToday(), true)
+    }
+
     suspend fun addTasbeeh(count: Int) {
         progressDao.addTasbeeh(ensureToday(), count)
     }
@@ -72,6 +78,7 @@ class ProgressRepository(private val progressDao: ProgressDao) {
                 val merged = local.copy(
                     completedSabah = local.completedSabah || remote.completedSabah,
                     completedMasaa = local.completedMasaa || remote.completedMasaa,
+                    completedSleep = local.completedSleep || remote.completedSleep,
                     totalTasbeeh = maxOf(local.totalTasbeeh, remote.totalTasbeeh)
                 )
                 progressDao.insertProgress(merged)

@@ -9,7 +9,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import java.io.File
 
-@Database(entities = [UserProgress::class], version = 2, exportSchema = false)
+@Database(entities = [UserProgress::class], version = 3, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun progressDao(): ProgressDao
 
@@ -27,6 +27,13 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /** المرحلة 4: تتبع إتمام أذكار النوم. الصفوف القديمة تأخذ القيمة false. */
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE user_progress ADD COLUMN completedSleep INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
@@ -36,7 +43,7 @@ abstract class AppDatabase : RoomDatabase() {
                     val app = context.applicationContext
                     migrateLegacyDatabaseIfNeeded(app)
                     Room.databaseBuilder(app, AppDatabase::class.java, DB_NAME)
-                        .addMigrations(MIGRATION_1_2)
+                        .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                         .build()
                         .also { INSTANCE = it }
                 }
