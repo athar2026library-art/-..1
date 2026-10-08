@@ -13,6 +13,7 @@ import com.example.data.ProgressRepository
 import com.example.data.SettingsRepository
 import com.example.data.UserProgress
 import com.example.data.Zekr
+import com.example.ui.theme.AccentTheme
 import com.example.ui.theme.ReaderFont
 import com.google.firebase.functions.FirebaseFunctions
 import com.google.firebase.functions.FirebaseFunctionsException
@@ -79,6 +80,17 @@ class AppViewModel(
     val readerFont: StateFlow<ReaderFont> = settingsRepository.readerFontFlow
         .map { ReaderFont.from(it) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ReaderFont.AMIRI)
+
+    /** كل الصفوف (الأحدث أولاً) لشاشة «رحلتي». */
+    val allProgress: StateFlow<List<UserProgress>> = progressRepository.getAllProgressFlow()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val weeklyDaysGoal: StateFlow<Int> = settingsRepository.weeklyGoalFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 5)
+
+    val accentTheme: StateFlow<AccentTheme> = settingsRepository.accentFlow
+        .map { AccentTheme.from(it) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, AccentTheme.GOLD)
 
     val dailyTasbeehGoal: StateFlow<Int> = settingsRepository.dailyGoalFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 100)
@@ -167,6 +179,10 @@ class AppViewModel(
         viewModelScope.launch { progressRepository.completeMasaa() }
     }
 
+    fun completeSleep() {
+        viewModelScope.launch { progressRepository.completeSleep() }
+    }
+
     fun saveLastReadState(category: String, index: Int, remaining: Int) {
         viewModelScope.launch {
             settingsRepository.saveLastReadState(category, index, remaining)
@@ -214,6 +230,14 @@ class AppViewModel(
 
     fun setAutoPlay(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setAutoPlay(enabled) }
+    }
+
+    fun setWeeklyDaysGoal(days: Int) {
+        viewModelScope.launch { settingsRepository.setWeeklyGoal(days) }
+    }
+
+    fun setAccentTheme(key: String) {
+        viewModelScope.launch { settingsRepository.setAccent(key) }
     }
 
     fun toggleFavorite(id: Int) {

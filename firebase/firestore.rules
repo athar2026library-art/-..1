@@ -6,118 +6,67 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
     function isAdmin() {
-      return signedIn() && (
-        request.auth.token.admin == true
-        || exists(/databases/$(database)/documents/admins/$(request.auth.uid))
-      );
-    }
-
-    function isSuperAdmin() {
-      return signedIn() && (
-        request.auth.token.admin == true
-        || (
-          exists(/databases/$(database)/documents/admins/$(request.auth.uid))
-          && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.get('role', '') == 'super_admin'
-        )
-      );
-    }
-
-    function isOwner(userId) {
-      return signedIn() && request.auth.uid == userId;
-    }
-
-    function noPrivilegeKeys(data) {
-      return !data.keys().hasAny(['role', 'admin', 'isAdmin', 'permissions', 'super_admin']);
-    }
-
-    function validZekr() {
-      let d = request.resource.data;
-      return d.keys().hasAll(['text', 'category'])
-        && d.text is string
-        && d.text.size() > 0
-        && d.text.size() < 4000
-        && d.category in ['sabah', 'masaa', 'sleep', 'travel']
-        && (d.get('repeat', 1) is int || d.get('repeat', 1) is float)
-        && d.get('repeat', 1) >= 1
-        && d.get('repeat', 1) <= 1000
-        && d.get('published', false) is bool
-        && d.get('fadl', '') is string
-        && d.get('source', '') is string
-        && d.get('fadl', '').size() < 4000
-        && d.get('source', '').size() < 500;
-    }
-
-    function validFeedbackCreate() {
-      let d = request.resource.data;
-      return d.userId == request.auth.uid
-        && d.keys().hasOnly(['userId', 'message', 'title', 'type', 'status', 'adminReply', 'replyUnread', 'createdAt', 'updatedAt', 'attachmentUrl', 'priority'])
-        && d.message is string
-        && d.message.size() > 0
-        && d.message.size() <= 1000
-        && d.get('title', '') is string
-        && d.get('title', '').size() < 200
-        && d.get('type', 'suggestion') in ['suggestion', 'complaint', 'technical', 'bug', 'other']
-        && d.get('status', 'new') == 'new'
-        && d.get('adminReply', '') == ''
-        && d.get('replyUnread', false) == false
-        && noPrivilegeKeys(d);
-    }
-
-    function userFeedbackUpdate() {
-      return request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['replyUnread', 'updatedAt'])
-        && request.resource.data.userId == resource.data.userId
-        && request.resource.data.replyUnread is bool;
-    }
-
-    function adminFeedbackUpdate() {
-      return request.resource.data.userId == resource.data.userId
-        && request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['adminReply', 'status', 'replyUnread', 'updatedAt', 'priority', 'aiSummary', 'aiCategory']);
+      return signedIn() && request.auth.token.admin == true;
     }
 
     function validProgress(date) {
       let d = request.resource.data;
       return date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
-        && d.keys().hasOnly(['date', 'completedSabah', 'completedMasaa', 'totalTasbeeh'])
+        && d.keys().hasOnly(['date', 'completedSabah', 'completedMasaa', 'completedSleep', 'totalTasbeeh'])
         && d.date == date
         && d.completedSabah is bool
         && d.completedMasaa is bool
+        && (!('completedSleep' in d) || d.completedSleep is bool)
         && d.totalTasbeeh is int
         && d.totalTasbeeh >= 0
         && d.totalTasbeeh < 1000000;
     }
 
-    match /admins/{adminId} {
-      allow read: if isAdmin() || isOwner(adminId);
-      allow create, update, delete: if isSuperAdmin();
+    function validFeedbackCreate() {
+      let d = request.resource.data;
+      return d.keys().hasAll(['userId', 'type', 'message', 'status'])
+        && d.userId == request.auth.uid
+        && d.type in ['bug', 'feature', 'content', 'other']
+        && d.message is string
+        && d.message.size() > 0
+        && d.message.size() < 2000
+        && d.status == 'open';
+    }
+
+    function userFeedbackUpdate() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+        .hasOnly(['replyUnread', 'updatedAt']);
+    }
+
+    function adminFeedbackUpdate() {
+      return true;
+    }
+
+    function validZekr() {
+      let d = request.resource.data;
+      return d.keys().hasAll(['text', 'category', 'published'])
+        && d.text is string
+        && d.text.size() > 0
+        && d.category is string;
     }
 
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
-      allow create, update: if isOwner(userId)
-        && noPrivilegeKeys(request.resource.data)
-        && request.resource.data.keys().size() < 30;
-      allow delete: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId)
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['fcmTokens', 'updatedAt', 'notificationsEnabled', 'notificationAudience', 'displayName', 'email']);
+      allow delete: if isOwner(userId) || isAdmin();
 
       match /progress/{date} {
         allow read: if isOwner(userId) || isAdmin();
         allow create, update: if isOwner(userId) && validProgress(date);
-        allow delete: if isOwner(userId);
-      }
-
-      match /feedback/{feedbackId} {
-        allow read: if isOwner(userId) || isAdmin();
-        allow create: if isOwner(userId) && validFeedbackCreate();
-        allow update: if (isOwner(userId) && userFeedbackUpdate())
-          || (isAdmin() && adminFeedbackUpdate());
-        allow delete: if isAdmin();
-      }
-
-      match /notifications/{notificationId} {
-        allow read: if isOwner(userId);
-        allow create, update, delete: if false;
+        allow delete: if isOwner(userId) || isAdmin();
       }
     }
 
