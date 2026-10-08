@@ -61,11 +61,16 @@ object AzkarData {
         else -> morningAzkar
     }
 
+    /** الأذكار المضمّنة لتصنيف، أو فارغة لتصنيف ديناميكي (يأتي من الشبكة). */
+    fun builtInOrEmpty(category: String): List<Zekr> =
+        if (CategoryDefaults.isBuiltIn(category)) forCategory(category) else emptyList()
+
     fun titleFor(category: String): String = when (category) {
         "sabah" -> "أذكار الصباح"
         "masaa" -> "أذكار المساء"
         "sleep" -> "أذكار النوم"
         "travel" -> "أذكار السفر"
+        "favorites" -> "المفضلة"
         else -> "الأذكار"
     }
 
