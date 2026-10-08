@@ -35,6 +35,7 @@ class FirestoreRepository {
                             "date" to p.date,
                             "completedSabah" to p.completedSabah,
                             "completedMasaa" to p.completedMasaa,
+                            "completedSleep" to p.completedSleep,
                             "totalTasbeeh" to p.totalTasbeeh
                         )
                     )
@@ -141,6 +142,38 @@ class FirestoreRepository {
             emptyList()
         }
     }
+
+    /** التصنيفات الديناميكية المنشورة. تصل فوراً دون إصدار جديد للتطبيق. */
+    fun observeCategories(): Flow<List<AzkarCategory>> = callbackFlow {
+        val db = firestore
+        if (db == null) {
+            trySend(emptyList())
+            close()
+            return@callbackFlow
+        }
+        var lastGood: List<AzkarCategory> = emptyList()
+        val registration = db.collection("content").document("categories").collection("items")
+            .whereEqualTo("published", true)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Log.e("FirestoreRepository", "Categories listener failed", error)
+                    trySend(lastGood)
+                    return@addSnapshotListener
+                }
+                val items = snapshot?.documents.orEmpty().map { doc ->
+                    AzkarCategory(
+                        id = doc.id,
+                        title = doc.getString("title").orEmpty(),
+                        subtitle = doc.getString("subtitle").orEmpty(),
+                        iconKey = doc.getString("icon") ?: "star",
+                        order = (doc.getLong("order") ?: 0L).toInt()
+                    )
+                }
+                lastGood = items
+                trySend(items)
+            }
+        awaitClose { registration.remove() }
+    }.distinctUntilChanged()
 
     fun observePublishedAzkar(category: String): Flow<List<Zekr>> = callbackFlow {
         val db = firestore

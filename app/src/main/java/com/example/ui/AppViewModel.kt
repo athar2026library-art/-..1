@@ -6,6 +6,9 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.data.AiRepository
 import com.example.data.AuthRepository
+import com.example.data.AzkarCategory
+import com.example.data.CategoryDefaults
+import com.example.data.CustomWird
 import com.example.data.FeedbackDraft
 import com.example.data.FeedbackItem
 import com.example.data.FirestoreRepository
@@ -106,6 +109,14 @@ class AppViewModel(
 
     val lastReadRemaining: StateFlow<Int> = settingsRepository.lastReadRemainingFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    val customWirds: StateFlow<List<CustomWird>> = settingsRepository.customWirdsFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    /** تصنيفات مدمجة: الأساسية + الديناميكية من Firestore. */
+    val categories: StateFlow<List<AzkarCategory>> = firestoreRepository.observeCategories()
+        .map { CategoryDefaults.merge(it) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), CategoryDefaults.builtIn)
 
     private val _statusMessage = MutableStateFlow("")
     val statusMessage: StateFlow<String> = _statusMessage.asStateFlow()
@@ -254,6 +265,14 @@ class AppViewModel(
 
     fun setTasbihTarget(target: Int) {
         viewModelScope.launch { settingsRepository.setTasbihTarget(target) }
+    }
+
+    fun saveCustomWird(wird: CustomWird) {
+        viewModelScope.launch { settingsRepository.saveCustomWird(wird) }
+    }
+
+    fun deleteCustomWird(id: String) {
+        viewModelScope.launch { settingsRepository.deleteCustomWird(id) }
     }
 
     fun sendChatMessage(text: String) {
