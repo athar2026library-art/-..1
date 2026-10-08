@@ -37,7 +37,9 @@ import com.example.ui.screens.HomeScreen
 import com.example.ui.screens.MoreScreen
 import com.example.ui.screens.SearchScreen
 import com.example.ui.screens.SettingsScreen
-import com.example.ui.screens.StatsScreen
+import com.example.ui.screens.WirdEditorScreen
+import com.example.ui.screens.WirdsScreen
+import com.example.ui.screens.JourneyScreen
 import com.example.ui.screens.TasbihScreen
 
 sealed class Screen(
@@ -117,7 +119,7 @@ fun AppNavGraph(
 
             composable("tasbih") { TasbihScreen(viewModel = viewModel) }
 
-            composable("stats") { StatsScreen(viewModel = viewModel) }
+            composable("stats") { JourneyScreen(viewModel = viewModel) }
 
             composable("more") {
                 MoreScreen(
@@ -125,7 +127,26 @@ fun AppNavGraph(
                     onOpenAssistant = { navController.navigate("ai_services") },
                     onOpenFeedback = { navController.navigate("feedback") },
                     onOpenSettings = { navController.navigate("settings") },
-                    onOpenFavorites = { navController.navigate("favorites") }
+                    onOpenFavorites = { navController.navigate("favorites") },
+                    onOpenWirds = { navController.navigate("wirds") }
+                )
+            }
+
+            composable("wirds") {
+                WirdsScreen(
+                    viewModel = viewModel,
+                    onNavigateBack = { navController.popBackStack() },
+                    onRead = { id -> navController.navigate("azkar/wird_$id") },
+                    onEdit = { id -> navController.navigate("wird_edit/${id ?: "new"}") }
+                )
+            }
+
+            composable("wird_edit/{id}") { backStackEntry ->
+                val id = backStackEntry.arguments?.getString("id")?.takeIf { it != "new" }
+                WirdEditorScreen(
+                    viewModel = viewModel,
+                    wirdId = id,
+                    onDone = { navController.popBackStack() }
                 )
             }
 
@@ -155,15 +176,15 @@ fun AppNavGraph(
             }
 
             composable("feedback") {
-                FeedbackScreen(viewModel = viewModel)
+                FeedbackScreen(viewModel = viewModel, onNavigateBack = { navController.popBackStack() })
             }
 
             composable("settings") {
-                SettingsScreen(viewModel = viewModel)
+                SettingsScreen(viewModel = viewModel, onNavigateBack = { navController.popBackStack() })
             }
 
             composable("ai_services") {
-                AiServicesScreen(viewModel = viewModel)
+                AiServicesScreen(viewModel = viewModel, onNavigateBack = { navController.popBackStack() })
             }
         }
     }
