@@ -135,12 +135,48 @@ describe('content / azkar', () => {
     await assertSucceeds(getDoc(doc(staff(), 'content', 'azkar', 'items', 'draft1')));
   });
 
-  it('مشرف لا يضيف تصنيفاً حراً', async () => {
+  it('مشرف لا يضيف تصنيفاً بلا مستند تصنيف', async () => {
     await assertFails(setDoc(doc(staff(), 'content', 'azkar', 'items', 'bad'), { ...ZEK_PUB, category: 'free' }));
   });
 
   it('مشرف لا يضيف نصاً فارغاً', async () => {
     await assertFails(setDoc(doc(staff(), 'content', 'azkar', 'items', 'bad'), { ...ZEK_PUB, text: '' }));
+  });
+});
+
+describe('content / categories (ديناميكية)', () => {
+  const CAT = { title: 'أذكار المنزل', subtitle: 'عند الدخول والخروج', icon: 'home', order: 5, published: true };
+
+  it('زائر يقرأ تصنيفاً منشوراً', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'content', 'categories', 'items', 'home'), CAT);
+    });
+    await assertSucceeds(getDoc(doc(unauth(), 'content', 'categories', 'items', 'home')));
+  });
+
+  it('مشرف ينشئ تصنيفاً صالحاً', async () => {
+    await assertSucceeds(setDoc(doc(staff(), 'content', 'categories', 'items', 'home'), CAT));
+  });
+
+  it('مستخدم عادي لا ينشئ تصنيفاً', async () => {
+    await assertFails(setDoc(doc(user(), 'content', 'categories', 'items', 'home'), CAT));
+  });
+
+  it('معرّفات محجوزة ومخالفة مرفوضة', async () => {
+    for (const id of ['sabah', 'favorites', 'wird_x', 'ABC', 'a']) {
+      await assertFails(setDoc(doc(staff(), 'content', 'categories', 'items', id), CAT));
+    }
+  });
+
+  it('أيقونة أو حقل غير معروف مرفوض', async () => {
+    await assertFails(setDoc(doc(staff(), 'content', 'categories', 'items', 'home'), { ...CAT, icon: 'rocket' }));
+    await assertFails(setDoc(doc(staff(), 'content', 'categories', 'items', 'home'), { ...CAT, extra: 1 }));
+  });
+
+  it('ذكر في تصنيف ديناميكي ينجح فقط إن وُجد التصنيف', async () => {
+    await assertFails(setDoc(doc(staff(), 'content', 'azkar', 'items', 'z-home'), { ...ZEK_PUB, category: 'home' }));
+    await assertSucceeds(setDoc(doc(staff(), 'content', 'categories', 'items', 'home'), CAT));
+    await assertSucceeds(setDoc(doc(staff(), 'content', 'azkar', 'items', 'z-home'), { ...ZEK_PUB, category: 'home' }));
   });
 });
 
