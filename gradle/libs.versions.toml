@@ -97,6 +97,9 @@ firebase-appcheck-recaptcha = { group = "com.google.firebase", name = "firebase-
 firebase-appcheck-debug = { group = "com.google.firebase", name = "firebase-appcheck-debug" }
 firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore" }
 firebase-auth = { group = "com.google.firebase", name = "firebase-auth" }
+firebase-functions = { group = "com.google.firebase", name = "firebase-functions" }
+firebase-storage = { group = "com.google.firebase", name = "firebase-storage" }
+kotlinx-coroutines-play-services = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-play-services", version.ref = "kotlinxCoroutinesAndroid" }
 firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging" }
 firebase-appcheck-playintegrity = { group = "com.google.firebase", name = "firebase-appcheck-playintegrity" }
 androidx-credentials = { group = "androidx.credentials", name = "credentials", version.ref = "credentials" }
