@@ -1,9 +1,6 @@
-window.AZKAR_FIREBASE_CONFIG = {
-  apiKey: "AIzaSyBQPLs_e9XwL3-WAbjtUPRSxGK75Ig_sF8",
-  authDomain: "svrpmtt.firebaseapp.com",
-  projectId: "svrpmtt",
-  storageBucket: "svrpmtt.firebasestorage.app",
-  messagingSenderId: "372887186106",
-  appId: "1:372887186106:web:4506ec501cc157feed7083",
-  measurementId: "G-01ZMN1MKQW"
-};
+// Prefer Firebase Hosting auto-config when available.
+// Local/dev override: set window.firebaseConfig before this file loads.
+window.firebaseConfig = window.firebaseConfig || null;
+
+// Keep legacy alias used by older app.js snippets.
+window.AZKAR_FIREBASE_CONFIG = window.firebaseConfig;
