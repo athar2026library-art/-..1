@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>لوحة المالك — أذكار</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div id="app">
+    <header class="header">
+      <h1>لوحة المالك</h1>
+      <p class="subtitle">إدارة تطبيق الأذكار</p>
+    </header>
+
+    <section id="auth-section" class="card">
+      <h2>تسجيل الدخول</h2>
+      <p id="auth-message">سجّل الدخول بحساب Google المصرّح له.</p>
+      <button id="btn-sign-in" type="button">تسجيل الدخول بـ Google</button>
+      <button id="btn-sign-out" type="button" hidden>تسجيل الخروج</button>
+    </section>
+
+    <section id="admin-section" class="card" hidden>
+      <h2>لوحة التحكم</h2>
+      <p id="admin-status"></p>
+      <div id="admin-content"></div>
+    </section>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+
+  <script src="./firebase-config.js"></script>
+
+  <script>
+    window.firebaseHostingConfigPromise =
+      fetch('/__/firebase/init.json', { cache: 'no-store' })
+        .then((response) =>
+          response.ok ? response.json() : null
+        )
+        .catch(() => null);
+  </script>
+
+  <script src="./app.js"></script>
+</body>
+</html>
