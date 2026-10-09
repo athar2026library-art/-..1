@@ -11,5 +11,19 @@
       "source": "functions",
       "codebase": "default"
     }
-  ]
+  ],
+  "hosting": {
+    "public": "../admin-panel",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
 }

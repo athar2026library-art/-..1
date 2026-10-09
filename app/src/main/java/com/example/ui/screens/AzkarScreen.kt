@@ -21,8 +21,14 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,6 +40,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.AppViewModel
+import com.example.ui.AudioPlayer
 import com.example.data.AzkarData
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -60,11 +67,17 @@ fun AzkarScreen(
     var isInitialized by remember { mutableStateOf(false) }
     var showBottomSheet by remember { mutableStateOf(false) }
 
-    val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
+    val audioPlayer = remember { AudioPlayer(context) }
+    val isPlaying by audioPlayer.isPlaying.collectAsState()
+    val coroutineScope = rememberCoroutineScope()
+
+    DisposableEffect(Unit) {
+        onDispose { audioPlayer.shutdown() }
+    }
+
     val view = LocalView.current
 
-    // Cache vibrator to avoid I/O blocking or delay on clicks
     val vibrator = remember(context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
@@ -75,7 +88,6 @@ fun AzkarScreen(
         }
     }
 
-    // Screen On Logic
     DisposableEffect(keepScreenOn) {
         if (keepScreenOn) {
             view.keepScreenOn = true
@@ -85,7 +97,6 @@ fun AzkarScreen(
         }
     }
 
-    // Auto DND Logic
     DisposableEffect(autoDnd) {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         var originalFilter = -1
@@ -113,11 +124,9 @@ fun AzkarScreen(
         isInitialized = true
     }
 
-    // Update state variables for DisposableEffect safely
     val currentIdx by rememberUpdatedState(currentIndex)
     val currentRem by rememberUpdatedState(countRemaining)
     
-    // Save progress ONLY when leaving the screen or changing category
     DisposableEffect(category) {
         onDispose {
             if (isInitialized && currentIdx < azkarList.size) {
@@ -126,7 +135,6 @@ fun AzkarScreen(
         }
     }
 
-    // Save progress ONLY when changing the Zekr (currentIndex changes)
     LaunchedEffect(currentIndex) {
         if (isInitialized && currentIndex < azkarList.size) {
             viewModel.saveLastReadState(category, currentIndex, azkarList[currentIndex].repeatCount)
@@ -175,9 +183,6 @@ fun AzkarScreen(
     val onDecrement = {
         if (countRemaining > 0) {
             countRemaining--
-            // We removed viewModel.addTasbeeh(1) from here to avoid Room DB writes on every single click, which causes lag.
-            // We can batch tasbeeh or ignore it if not critical, or send it asynchronously.
-            // Let's launch it async so it doesn't block the UI state update.
             coroutineScope.launch {
                 viewModel.addTasbeeh(1)
             }
@@ -218,7 +223,6 @@ fun AzkarScreen(
                         containerColor = MaterialTheme.colorScheme.background
                     )
                 )
-                // Thin Progress Bar
                 LinearProgressIndicator(
                     progress = { (currentIndex.toFloat() / azkarList.size).coerceIn(0f, 1f) },
                     modifier = Modifier.fillMaxWidth().height(2.dp),
@@ -238,45 +242,119 @@ fun AzkarScreen(
             }
         },
         bottomBar = {
-            Surface(
-                color = MaterialTheme.colorScheme.background,
-                tonalElevation = 0.dp
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 8.dp)
+                    .navigationBarsPadding(),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f)
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 24.dp)
-                        .navigationBarsPadding(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                Column(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(9.dp)
                 ) {
-                    // Previous
-                    IconButton(
-                        onClick = { if (currentIndex > 0) currentIndex-- },
-                        enabled = currentIndex > 0
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Previous") // ArrowForward is RTL "Previous"
-                    }
-                    
-                    // Reset
-                    IconButton(
-                        onClick = { countRemaining = currentZekr.repeatCount }
-                    ) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Reset")
-                    }
-                    
-                    // Info / Virtues
-                    IconButton(
-                        onClick = { showBottomSheet = true }
-                    ) {
-                        Icon(Icons.Default.Info, contentDescription = "Info", tint = MaterialTheme.colorScheme.primary)
+                        Button(
+                            onClick = {
+                                if (isPlaying) {
+                                    audioPlayer.stop()
+                                } else {
+                                    coroutineScope.launch {
+                                        audioPlayer.playAndWait(currentZekr.text)
+                                    }
+                                }
+                            },
+                            modifier = Modifier.weight(1.45f),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Icon(
+                                if (isPlaying) Icons.Default.Stop else Icons.Default.VolumeUp,
+                                contentDescription = null
+                            )
+                            Spacer(Modifier.width(7.dp))
+                            Text(if (isPlaying) "إيقاف القراءة" else "استماع")
+                        }
+
+                        OutlinedButton(
+                            onClick = { audioPlayer.playLoop(currentZekr.text, 3) },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Icon(Icons.Default.Repeat, contentDescription = null)
+                            Spacer(Modifier.width(5.dp))
+                            Text("٣", fontWeight = FontWeight.Bold)
+                        }
+
+                        OutlinedButton(
+                            onClick = { audioPlayer.playLoop(currentZekr.text, 5) },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Icon(Icons.Default.RepeatOne, contentDescription = null)
+                            Spacer(Modifier.width(5.dp))
+                            Text("٥", fontWeight = FontWeight.Bold)
+                        }
                     }
 
-                    // Next
-                    IconButton(
-                        onClick = { if (currentIndex < azkarList.size - 1) currentIndex++ }
+                    HorizontalDivider(
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.10f)
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Next") // ArrowBack is RTL "Next"
+                        IconButton(
+                            onClick = { if (currentIndex > 0) currentIndex-- },
+                            enabled = currentIndex > 0
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Previous")
+                        }
+
+                        IconButton(onClick = { countRemaining = currentZekr.repeatCount }) {
+                            Icon(Icons.Default.Refresh, contentDescription = "Reset")
+                        }
+
+                        IconButton(onClick = { showBottomSheet = true }) {
+                            Icon(Icons.Default.Info, contentDescription = "Info", tint = MaterialTheme.colorScheme.primary)
+                        }
+
+                        IconButton(onClick = { if (currentIndex < azkarList.size - 1) currentIndex++ }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Next")
+                        }
+                    }
+
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 11.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "المتبقي $countRemaining",
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(Modifier.width(12.dp))
+                            Text(
+                                "اضغط على بطاقة الذكر للعدّ والمتابعة",
+                                modifier = Modifier.weight(1f),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
             }
@@ -300,7 +378,6 @@ fun AzkarScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                // Main Zekr Card
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -334,7 +411,6 @@ fun AzkarScreen(
                 
                 Spacer(modifier = Modifier.height(48.dp))
                 
-                // Big Counter Circle
                 Box(
                     modifier = Modifier
                         .size(120.dp)
