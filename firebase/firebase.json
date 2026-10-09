@@ -18,5 +18,19 @@
     "ui": {
       "enabled": false
     }
+  },
+  "hosting": {
+    "public": "../admin-panel",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
   }
 }
