@@ -106,8 +106,8 @@ dependencies {
   implementation(libs.firebase.auth)
   implementation(libs.firebase.messaging)
 
-  implementation("com.google.firebase:firebase-functions")
-  implementation("com.google.firebase:firebase-storage")
+  implementation(libs.firebase.functions)
+  implementation(libs.firebase.storage)
 
   implementation(libs.androidx.credentials)
   implementation(libs.androidx.credentials.play.services)
@@ -117,6 +117,7 @@ dependencies {
   releaseImplementation(libs.firebase.appcheck.playintegrity)
 
   implementation(libs.kotlinx.coroutines.android)
+  implementation(libs.kotlinx.coroutines.play.services)
   implementation(libs.kotlinx.coroutines.core)
   implementation(libs.logging.interceptor)
   implementation(libs.moshi.kotlin)
