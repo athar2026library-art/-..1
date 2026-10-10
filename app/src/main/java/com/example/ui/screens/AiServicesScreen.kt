@@ -12,6 +12,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -174,17 +179,66 @@ fun ChatBubble(message: ChatMessage) {
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 if (message.isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        color = MaterialTheme.colorScheme.primary,
-                        strokeWidth = 2.dp
-                    )
+                    ThinkingIndicator()
                 } else {
                     Text(
                         text = message.text,
                         color = textColor,
                         fontSize = 16.sp,
                         lineHeight = 24.sp
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ThinkingIndicator() {
+    val transition = rememberInfiniteTransition(label = "ai-thinking")
+    val pulse by transition.animateFloat(
+        initialValue = 0.35f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 720),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "ai-thinking-pulse"
+    )
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(28.dp),
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.22f + pulse * 0.35f),
+                strokeWidth = 2.5.dp
+            )
+            Text(
+                text = "✦",
+                color = MaterialTheme.colorScheme.primary.copy(alpha = pulse),
+                fontSize = 12.sp
+            )
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(
+                text = "جاري التحضير...",
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                repeat(3) { index ->
+                    Box(
+                        modifier = Modifier
+                            .size(5.dp)
+                            .background(
+                                MaterialTheme.colorScheme.primary.copy(
+                                    alpha = (0.35f + pulse * 0.5f) - index * 0.08f
+                                ),
+                                CircleShape
+                            )
                     )
                 }
             }
