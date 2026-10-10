@@ -44,6 +44,7 @@ import com.example.ui.AppViewModel
 import com.example.ui.components.GlassCard
 import com.example.ui.theme.Baqiyat
 
+@androidx.compose.material3.ExperimentalMaterial3Api
 @Composable
 fun MoreScreen(
     viewModel: AppViewModel,

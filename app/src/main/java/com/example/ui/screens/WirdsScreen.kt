@@ -44,6 +44,7 @@ import com.example.ui.components.GlassCard
 import com.example.ui.theme.Baqiyat
 
 /** «أوردي»: أوراد يرتبها المستخدم من أذكار التطبيق ويقرؤها كوردٍ واحد. */
+@androidx.compose.material3.ExperimentalMaterial3Api
 @Composable
 fun WirdsScreen(
     viewModel: AppViewModel,

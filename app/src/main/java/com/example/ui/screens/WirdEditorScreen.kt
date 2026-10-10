@@ -49,6 +49,7 @@ import com.example.ui.theme.ReaderFont
 import com.example.ui.theme.zekrStyle
 
 /** محرر الورد: اسم واختيار أذكار بالترتيب الذي تُضغط به. wirdId = null لورد جديد. */
+@androidx.compose.material3.ExperimentalMaterial3Api
 @Composable
 fun WirdEditorScreen(viewModel: AppViewModel, wirdId: String?, onDone: () -> Unit) {
     val existing = remember(wirdId) { viewModel.customWirds.value.firstOrNull { it.id == wirdId } }

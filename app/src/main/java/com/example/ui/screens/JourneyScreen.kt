@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -75,7 +76,36 @@ import com.example.ui.todayKey
 import com.example.ui.unlockedAccents
 import com.example.ui.weeklySummary
 
+@Composable
+private fun WeekBars(data: List<Pair<String, Int>>) {
+    val maxValue = data.maxOfOrNull { it.second }?.coerceAtLeast(1) ?: 1
+    Row(
+        modifier = Modifier.fillMaxWidth().height(150.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.Bottom
+    ) {
+        data.forEach { (label, value) ->
+            Column(
+                modifier = Modifier.weight(1f).fillMaxHeight(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Bottom
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height((96f * value / maxValue).coerceAtLeast(6f).dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Baqiyat.colors.accent)
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(label, style = MaterialTheme.typography.labelSmall)
+            }
+        }
+    }
+}
+
 /** «رحلتي»: السلسلة وأيام العفو، هدف الأسبوع، الخريطة الحرارية، الشارات، ثيمات اللون، وملخص قابل للمشاركة. */
+@androidx.compose.material3.ExperimentalMaterial3Api
 @Composable
 fun JourneyScreen(viewModel: AppViewModel) {
     val all by viewModel.allProgress.collectAsStateWithLifecycle()

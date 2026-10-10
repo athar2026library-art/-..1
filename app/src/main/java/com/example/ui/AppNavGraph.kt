@@ -176,11 +176,11 @@ fun AppNavGraph(
             }
 
             composable("feedback") {
-                FeedbackScreen(viewModel = viewModel, onNavigateBack = { navController.popBackStack() })
+                FeedbackScreen(viewModel = viewModel)
             }
 
             composable("settings") {
-                SettingsScreen(viewModel = viewModel, onNavigateBack = { navController.popBackStack() })
+                SettingsScreen(viewModel = viewModel)
             }
 
             composable("ai_services") {
