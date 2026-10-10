@@ -70,24 +70,30 @@ fun AiServicesScreen(
                         shape = RoundedCornerShape(20.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    IconButton(
-                        onClick = {
-                            val t = inputText.trim()
-                            if (t.isNotEmpty()) {
-                                viewModel.sendChatMessage(t)
-                                inputText = ""
-                            }
-                        },
-                        modifier = Modifier
-                            .background(MaterialTheme.colorScheme.primary, CircleShape)
-                            .padding(4.dp),
-                        enabled = inputText.isNotBlank() && !isLoadingAi
-                    ) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.Send,
-                            contentDescription = "إرسال",
-                            tint = MaterialTheme.colorScheme.onPrimary
-                        )
+                    if (isLoadingAi) {
+                        TextButton(onClick = viewModel::cancelAiRequest) {
+                            Text("إلغاء")
+                        }
+                    } else {
+                        IconButton(
+                            onClick = {
+                                val t = inputText.trim()
+                                if (t.isNotEmpty()) {
+                                    viewModel.sendChatMessage(t)
+                                    inputText = ""
+                                }
+                            },
+                            modifier = Modifier
+                                .background(MaterialTheme.colorScheme.primary, CircleShape)
+                                .padding(4.dp),
+                            enabled = inputText.isNotBlank()
+                        ) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.Send,
+                                contentDescription = "إرسال",
+                                tint = MaterialTheme.colorScheme.onPrimary
+                            )
+                        }
                     }
                 }
             }

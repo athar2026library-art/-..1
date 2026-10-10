@@ -124,6 +124,10 @@ class AppViewModel(
     private val _isLoadingAi = MutableStateFlow(false)
     val isLoadingAi: StateFlow<Boolean> = _isLoadingAi.asStateFlow()
 
+    private var aiJob: Job? = null
+    private val _lastAiLatencyMs = MutableStateFlow<Long?>(null)
+    val lastAiLatencyMs: StateFlow<Long?> = _lastAiLatencyMs.asStateFlow()
+
     private val _chatMessages = MutableStateFlow(
         listOf(
             ChatMessage(
@@ -283,19 +287,35 @@ class AppViewModel(
             it + ChatMessage(message, isUser = true) +
                 ChatMessage("جاري البحث...", isUser = false, isLoading = true)
         }
-        viewModelScope.launch {
-            val reply = try {
-                aiRepository.ask(message)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Exception) {
-                "تعذر الاتصال. يرجى التأكد من اتصالك بالإنترنت للميزات الذكية 🌐"
+        aiJob = viewModelScope.launch {
+            val startedAt = android.os.SystemClock.elapsedRealtime()
+            try {
+                val reply = try {
+                    aiRepository.ask(message)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    "تعذر الاتصال. يرجى التأكد من اتصالك بالإنترنت للميزات الذكية 🌐"
+                }
+                _lastAiLatencyMs.value = android.os.SystemClock.elapsedRealtime() - startedAt
+                _chatMessages.update { list ->
+                    list.filterNot { it.isLoading } + ChatMessage(reply, isUser = false)
+                }
+            } finally {
+                _isLoadingAi.value = false
+                aiJob = null
             }
-            _chatMessages.update { list ->
-                list.filterNot { it.isLoading } + ChatMessage(reply, isUser = false)
-            }
-            _isLoadingAi.value = false
         }
+    }
+
+    fun cancelAiRequest() {
+        if (!_isLoadingAi.value) return
+        aiJob?.cancel()
+        _chatMessages.update { list ->
+            list.filterNot { it.isLoading } + ChatMessage("تم إلغاء الطلب.", isUser = false)
+        }
+        _isLoadingAi.value = false
+        aiJob = null
     }
 
     fun clearStatusMessage() { _statusMessage.value = "" }

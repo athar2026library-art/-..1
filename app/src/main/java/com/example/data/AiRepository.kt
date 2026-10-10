@@ -4,6 +4,8 @@ import android.util.Log
 import com.example.BuildConfig
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.job
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.IOException
@@ -39,6 +41,10 @@ class AiRepository {
         }
 
         var connection: HttpURLConnection? = null
+        val startedAt = android.os.SystemClock.elapsedRealtime()
+        val cancellationHandle = currentCoroutineContext().job.invokeOnCompletion {
+            connection?.disconnect()
+        }
         try {
             val endpoint = URL(
                 "https://generativelanguage.googleapis.com/v1beta/models/" +
@@ -63,6 +69,7 @@ class AiRepository {
 
             connection.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
             val status = connection.responseCode
+            Log.d("AiRepository", "Gemini HTTP response in ${android.os.SystemClock.elapsedRealtime() - startedAt}ms (status=$status)")
             val stream = if (status in 200..299) connection.inputStream else connection.errorStream
             val responseText = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
 
@@ -99,12 +106,13 @@ class AiRepository {
             Log.e("AiRepository", "Gemini request failed", e)
             "حدث خطأ غير متوقع أثناء الاتصال بالمساعد."
         } finally {
+            cancellationHandle.dispose()
             connection?.disconnect()
         }
     }
 
     private companion object {
-        const val MODEL = "gemini-1.5-flash"
+        const val MODEL = "gemini-3.8-flash"
         const val MAX_INPUT_CHARS = 500
         const val TIMEOUT_MS = 20_000
     }
