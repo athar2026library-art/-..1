@@ -52,7 +52,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     val onboardingCompleteFlow: Flow<Boolean> = dataStore.data.map { it[ONBOARDING_COMPLETE] ?: false }
     val notificationsEnabledFlow: Flow<Boolean> = dataStore.data.map { it[NOTIFICATIONS_ENABLED] ?: true }
     val autoPlayFlow: Flow<Boolean> = dataStore.data.map { it[AUTO_PLAY] ?: false }
-    val audioSpeedFlow: Flow<Float> = dataStore.data.map { it[AUDIO_SPEED] ?: 1.0f }
+    val audioSpeedFlow: Flow<Float> = dataStore.data.map { it[AUDIO_SPEED] ?: 0.75f }
     val customWirdsFlow: Flow<List<CustomWird>> = dataStore.data.map { CustomWirds.decode(it[CUSTOM_WIRDS]) }
     val weeklyGoalFlow: Flow<Int> = dataStore.data.map { it[WEEKLY_GOAL] ?: 5 }
     val accentFlow: Flow<String> = dataStore.data.map { it[ACCENT] ?: "gold" }
