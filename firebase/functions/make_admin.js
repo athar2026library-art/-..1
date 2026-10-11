@@ -2,13 +2,14 @@ const { initializeApp } = require("firebase-admin/app");
 const { getAuth } = require("firebase-admin/auth");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 
-const email = (process.argv[2] || "mgedh.9ali@gmail.com").trim().toLowerCase();
-if (!email || !email.includes("@")) {
-  console.error("Usage: node make_admin.js owner@example.com");
+const email = (process.argv[2] || "").trim().toLowerCase();
+const projectId = (process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT || "").trim();
+if (!email || !email.includes("@") || !projectId) {
+  console.error("Usage: GCLOUD_PROJECT=your-firebase-project node make_admin.js owner@example.com");
   process.exit(2);
 }
 
-initializeApp({ projectId: process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT || "svrpmtt" });
+initializeApp({ projectId });
 
 (async () => {
   const auth = getAuth();
