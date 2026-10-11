@@ -18,6 +18,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -34,6 +35,8 @@ fun AiServicesScreen(
 ) {
     val messages by viewModel.chatMessages.collectAsState()
     val isLoadingAi by viewModel.isLoadingAi.collectAsState()
+    val userSignedIn by viewModel.userSignedIn.collectAsState()
+    val context = LocalContext.current
 
     var inputText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
@@ -59,45 +62,66 @@ fun AiServicesScreen(
                 tonalElevation = 2.dp,
                 shadowElevation = 8.dp
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                        .navigationBarsPadding(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    OutlinedTextField(
-                        value = inputText,
-                        onValueChange = { inputText = it.take(500) },
-                        modifier = Modifier.weight(1f),
-                        placeholder = { Text("اسأل عن ذكر أو صف شعورك...") },
-                        maxLines = 3,
-                        shape = RoundedCornerShape(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    if (isLoadingAi) {
-                        TextButton(onClick = viewModel::cancelAiRequest) {
-                            Text("إلغاء")
-                        }
-                    } else {
-                        IconButton(
-                            onClick = {
-                                val t = inputText.trim()
-                                if (t.isNotEmpty()) {
-                                    viewModel.sendChatMessage(t)
-                                    inputText = ""
-                                }
-                            },
-                            modifier = Modifier
-                                .background(MaterialTheme.colorScheme.primary, CircleShape)
-                                .padding(4.dp),
-                            enabled = inputText.isNotBlank()
+                if (!userSignedIn) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                            .navigationBarsPadding(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            "يحتاج المساعد إلى تسجيل الدخول لحماية الاستخدام وتحديد الحصة اليومية.",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Button(
+                            onClick = { viewModel.signIn(context) },
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.Send,
-                                contentDescription = "إرسال",
-                                tint = MaterialTheme.colorScheme.onPrimary
-                            )
+                            Text("تسجيل الدخول باستخدام Google")
+                        }
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                            .navigationBarsPadding(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedTextField(
+                            value = inputText,
+                            onValueChange = { inputText = it.take(500) },
+                            modifier = Modifier.weight(1f),
+                            placeholder = { Text("اسأل عن ذكر أو صف شعورك...") },
+                            maxLines = 3,
+                            shape = RoundedCornerShape(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        if (isLoadingAi) {
+                            TextButton(onClick = viewModel::cancelAiRequest) {
+                                Text("إلغاء")
+                            }
+                        } else {
+                            IconButton(
+                                onClick = {
+                                    val t = inputText.trim()
+                                    if (t.isNotEmpty()) {
+                                        viewModel.sendChatMessage(t)
+                                        inputText = ""
+                                    }
+                                },
+                                modifier = Modifier
+                                    .background(MaterialTheme.colorScheme.primary, CircleShape)
+                                    .padding(4.dp),
+                                enabled = inputText.isNotBlank()
+                            ) {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.Send,
+                                    contentDescription = "إرسال",
+                                    tint = MaterialTheme.colorScheme.onPrimary
+                                )
+                            }
                         }
                     }
                 }
@@ -116,7 +140,20 @@ fun AiServicesScreen(
             items(messages) { message ->
                 ChatBubble(message)
             }
-            if (messages.size <= 1 && !isLoadingAi) {
+            if (!userSignedIn) {
+                item {
+                    Card(
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                    ) {
+                        Text(
+                            "بعد تسجيل الدخول ستتمكن من طرح أسئلة عن الأذكار والحصول على الإجابات مع المراجع المتاحة.",
+                            modifier = Modifier.padding(18.dp),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            } else if (messages.size <= 1 && !isLoadingAi) {
                 item { MoodChips(onPick = { viewModel.sendChatMessage(it) }) }
             }
         }
