@@ -49,6 +49,7 @@ import com.example.data.AzkarData
 import com.example.data.CategoryDefaults
 import com.example.data.CustomWirds
 import com.example.data.Zekr
+import com.example.data.TopicAzkarData
 import com.example.ui.AppViewModel
 import com.example.ui.AudioPlayer
 import com.example.ui.ShareHelper
@@ -77,8 +78,9 @@ fun AzkarScreen(
             else -> AzkarData.builtInOrEmpty(category)
         }
     }
+    val isTopicOnlyCategory = category in TopicAzkarData.topicOnlyCategories
     val liveAzkar by remember(category) {
-        if (isSnapshotMode) flowOf<List<Zekr>?>(null)
+        if (isSnapshotMode || isTopicOnlyCategory) flowOf<List<Zekr>?>(null)
         else viewModel.observePublishedAzkar(category).map<List<Zekr>, List<Zekr>?> { it }
     }.collectAsStateWithLifecycle(initialValue = null)
     val azkarList = liveAzkar?.takeIf { it.isNotEmpty() } ?: fallbackAzkar
