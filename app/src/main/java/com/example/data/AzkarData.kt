@@ -49,7 +49,8 @@ object AzkarData {
         Zekr(43, "آئِبُونَ تَائِبُونَ عَابِدُونَ لِرَبِّنَا حَامِدُونَ.", "رواه البخاري ومسلم", "عند الرجوع من السفر.", 1, "travel")
     )
 
-    fun all(): List<Zekr> = morningAzkar + eveningAzkar + sleepAzkar + travelAzkar
+    fun all(): List<Zekr> =
+        morningAzkar + eveningAzkar + sleepAzkar + travelAzkar + TopicAzkarData.items
 
     fun byIds(ids: Set<Int>): List<Zekr> = all().filter { it.id in ids }
 
@@ -58,7 +59,7 @@ object AzkarData {
         "masaa" -> eveningAzkar
         "sleep" -> sleepAzkar
         "travel" -> travelAzkar
-        else -> morningAzkar
+        else -> TopicAzkarData.items.filter { it.category == category }
     }
 
     /** الأذكار المضمّنة لتصنيف، أو فارغة لتصنيف ديناميكي (يأتي من الشبكة). */
@@ -70,18 +71,42 @@ object AzkarData {
         "masaa" -> "أذكار المساء"
         "sleep" -> "أذكار النوم"
         "travel" -> "أذكار السفر"
+        "worry" -> "الهم والقلق"
+        "rizq" -> "أذكار الرزق"
+        "illness" -> "أذكار المرض والشفاء"
+        "waking" -> "أذكار الاستيقاظ"
         "favorites" -> "المفضلة"
         else -> "الأذكار"
     }
 
+    private fun hasAnyTopic(query: String, vararg aliases: String): Boolean =
+        aliases.any { alias -> query.contains(ArabicText.normalize(alias)) }
+
+    /**
+     * Offline topic matching complements literal text search. The result still
+     * includes the original text, repetition count, and source stored on each Zekr.
+     */
     fun search(query: String): List<Zekr> {
         val q = ArabicText.normalize(query)
         if (q.isEmpty()) return emptyList()
-        return all().filter { z ->
-            ArabicText.normalize(z.text).contains(q) ||
-                ArabicText.normalize(z.source).contains(q) ||
-                ArabicText.normalize(z.fadl).contains(q) ||
-                ArabicText.normalize(titleFor(z.category)).contains(q)
+
+        val topics = buildSet {
+            if (hasAnyTopic(q, "الصباح", "صبح", "نهار", "morning")) add("sabah")
+            if (hasAnyTopic(q, "المساء", "مساء", "مغرب", "evening")) add("masaa")
+            if (hasAnyTopic(q, "النوم", "نوم", "الفراش", "sleep", "bed")) add("sleep")
+            if (hasAnyTopic(q, "السفر", "سفر", "مسافر", "رحلة", "طريق", "سيارة", "travel", "trip")) add("travel")
+            if (hasAnyTopic(q, "هم", "الهم", "قلق", "خوف", "فزع", "ضيق", "كرب", "حزن", "fear", "worry", "anxiety")) add("worry")
+            if (hasAnyTopic(q, "رزق", "الرزق", "معيشة", "عمل", "مال", "بركة", "rizq", "provision")) add("rizq")
+            if (hasAnyTopic(q, "مرض", "مريض", "شفاء", "وجع", "صحة", "illness", "sick", "healing")) add("illness")
+            if (hasAnyTopic(q, "استيقاظ", "استيقظ", "يقظة", "صحوت", "waking", "wake up")) add("waking")
+        }
+
+        return all().filter { zekr ->
+            zekr.category in topics ||
+                ArabicText.normalize(zekr.text).contains(q) ||
+                ArabicText.normalize(zekr.source).contains(q) ||
+                ArabicText.normalize(zekr.fadl).contains(q) ||
+                ArabicText.normalize(titleFor(zekr.category)).contains(q)
         }
     }
 }
