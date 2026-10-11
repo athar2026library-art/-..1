@@ -8,27 +8,37 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
 class SettingsRepository(private val dataStore: DataStore<Preferences>) {
-    
     private val FONT_SIZE = floatPreferencesKey("font_size")
     private val DARK_MODE = booleanPreferencesKey("dark_mode")
     private val VIBRATION = booleanPreferencesKey("vibration")
-    
     private val KEEP_SCREEN_ON = booleanPreferencesKey("keep_screen_on")
     private val HIDE_VIRTUES = booleanPreferencesKey("hide_virtues")
     private val HIDE_SOURCES = booleanPreferencesKey("hide_sources")
-    
     private val LAST_READ_CATEGORY = stringPreferencesKey("last_read_category")
     private val LAST_READ_INDEX = intPreferencesKey("last_read_index")
     private val LAST_READ_REMAINING = intPreferencesKey("last_read_remaining")
-
     private val AUTO_DND = booleanPreferencesKey("auto_dnd")
+    private val AUDIO_SPEED = floatPreferencesKey("audio_speed")
+    private val RECITER_ID = stringPreferencesKey("reciter_id")
+    private val MY_AZKAR = stringSetPreferencesKey("my_azkar")
+    private val REMIND_SABAH = booleanPreferencesKey("remind_sabah")
+    private val REMIND_MASAA = booleanPreferencesKey("remind_masaa")
+    private val REMIND_SLEEP = booleanPreferencesKey("remind_sleep")
+    private val REMIND_FRIDAY = booleanPreferencesKey("remind_friday")
+    private val REMINDER_SABAH_TIME = stringPreferencesKey("reminder_sabah_time")
+    private val REMINDER_MASAA_TIME = stringPreferencesKey("reminder_masaa_time")
+    private val REMINDER_SLEEP_TIME = stringPreferencesKey("reminder_sleep_time")
 
     val fontSizeFlow: Flow<Float> = dataStore.data.map { it[FONT_SIZE] ?: 24f }
     val darkModeFlow: Flow<Boolean> = dataStore.data.map { it[DARK_MODE] ?: true }
@@ -37,52 +47,75 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     val autoDndFlow: Flow<Boolean> = dataStore.data.map { it[AUTO_DND] ?: false }
     val hideVirtuesFlow: Flow<Boolean> = dataStore.data.map { it[HIDE_VIRTUES] ?: false }
     val hideSourcesFlow: Flow<Boolean> = dataStore.data.map { it[HIDE_SOURCES] ?: false }
-    
     val lastReadCategoryFlow: Flow<String> = dataStore.data.map { it[LAST_READ_CATEGORY] ?: "" }
     val lastReadIndexFlow: Flow<Int> = dataStore.data.map { it[LAST_READ_INDEX] ?: 0 }
     val lastReadRemainingFlow: Flow<Int> = dataStore.data.map { it[LAST_READ_REMAINING] ?: 0 }
+    val audioSpeedFlow: Flow<Float> = dataStore.data.map { it[AUDIO_SPEED] ?: 0.75f }
+    val reciterIdFlow: Flow<String> = dataStore.data.map { it[RECITER_ID] ?: "mishary" }
+    val myAzkarFlow: Flow<List<String>> = dataStore.data.map { (it[MY_AZKAR] ?: emptySet()).toList().sorted() }
+    val remindSabahFlow: Flow<Boolean> = dataStore.data.map { it[REMIND_SABAH] ?: true }
+    val remindMasaaFlow: Flow<Boolean> = dataStore.data.map { it[REMIND_MASAA] ?: true }
+    val remindSleepFlow: Flow<Boolean> = dataStore.data.map { it[REMIND_SLEEP] ?: true }
+    val remindFridayFlow: Flow<Boolean> = dataStore.data.map { it[REMIND_FRIDAY] ?: false }
+    val reminderSabahTimeFlow: Flow<String> = dataStore.data.map { it[REMINDER_SABAH_TIME] ?: "07:00" }
+    val reminderMasaaTimeFlow: Flow<String> = dataStore.data.map { it[REMINDER_MASAA_TIME] ?: "18:00" }
+    val reminderSleepTimeFlow: Flow<String> = dataStore.data.map { it[REMINDER_SLEEP_TIME] ?: "22:00" }
 
-    suspend fun saveLastReadState(category: String, index: Int, remaining: Int) {
-        dataStore.edit {
-            it[LAST_READ_CATEGORY] = category
-            it[LAST_READ_INDEX] = index
-            it[LAST_READ_REMAINING] = remaining
+    suspend fun saveLastReadState(category: String, index: Int, remaining: Int) = dataStore.edit {
+        it[LAST_READ_CATEGORY] = category
+        it[LAST_READ_INDEX] = index
+        it[LAST_READ_REMAINING] = remaining
+    }
+
+    suspend fun clearLastReadState() = dataStore.edit {
+        it.remove(LAST_READ_CATEGORY)
+        it.remove(LAST_READ_INDEX)
+        it.remove(LAST_READ_REMAINING)
+    }
+
+    suspend fun setFontSize(size: Float) = dataStore.edit { it[FONT_SIZE] = size.coerceIn(16f, 48f) }
+    suspend fun setDarkMode(isDark: Boolean) = dataStore.edit { it[DARK_MODE] = isDark }
+    suspend fun setVibration(enabled: Boolean) = dataStore.edit { it[VIBRATION] = enabled }
+    suspend fun setKeepScreenOn(enabled: Boolean) = dataStore.edit { it[KEEP_SCREEN_ON] = enabled }
+    suspend fun setAutoDnd(enabled: Boolean) = dataStore.edit { it[AUTO_DND] = enabled }
+    suspend fun setHideVirtues(hide: Boolean) = dataStore.edit { it[HIDE_VIRTUES] = hide }
+    suspend fun setHideSources(hide: Boolean) = dataStore.edit { it[HIDE_SOURCES] = hide }
+    suspend fun setAudioSpeed(speed: Float) = dataStore.edit { it[AUDIO_SPEED] = speed.coerceIn(0.5f, 1.5f) }
+    suspend fun setReciterId(id: String) = dataStore.edit { it[RECITER_ID] = id.take(40) }
+    suspend fun setReminderEnabled(category: String, enabled: Boolean) = dataStore.edit {
+        when (category) {
+            "sabah" -> it[REMIND_SABAH] = enabled
+            "masaa" -> it[REMIND_MASAA] = enabled
+            "sleep" -> it[REMIND_SLEEP] = enabled
+            "friday" -> it[REMIND_FRIDAY] = enabled
         }
     }
-
-    suspend fun clearLastReadState() {
+    suspend fun setReminderTime(category: String, time: String) {
+        if (!time.matches(Regex("^([01]?[0-9]|2[0-3]):[0-5][0-9]$"))) return
+        val normalized = time.split(":").let { "${it[0].padStart(2, '0')}:${it[1]}" }
         dataStore.edit {
-            it.remove(LAST_READ_CATEGORY)
-            it.remove(LAST_READ_INDEX)
-            it.remove(LAST_READ_REMAINING)
+            when (category) {
+                "sabah" -> it[REMINDER_SABAH_TIME] = normalized
+                "masaa" -> it[REMINDER_MASAA_TIME] = normalized
+                "sleep" -> it[REMINDER_SLEEP_TIME] = normalized
+            }
         }
     }
+    suspend fun saveCustomZekr(text: String) = dataStore.edit {
+        val clean = text.trim().take(4000)
+        if (clean.isNotBlank()) it[MY_AZKAR] = (it[MY_AZKAR] ?: emptySet()) + clean
+    }
+    suspend fun removeCustomZekr(text: String) = dataStore.edit {
+        it[MY_AZKAR] = (it[MY_AZKAR] ?: emptySet()) - text
+    }
+    suspend fun markCategoryCompleted(category: String, date: String = todayKey()) = dataStore.edit {
+        val key = stringSetPreferencesKey("completed_categories_$date")
+        it[key] = (it[key] ?: emptySet()) + category
+    }
+    suspend fun isCategoryCompleted(category: String, date: String = todayKey()): Boolean =
+        dataStore.data.map { it[stringSetPreferencesKey("completed_categories_$date")]?.contains(category) == true }.let { flow ->
+            kotlinx.coroutines.flow.first(flow)
+        }
 
-    suspend fun setFontSize(size: Float) {
-        dataStore.edit { it[FONT_SIZE] = size }
-    }
-
-    suspend fun setDarkMode(isDark: Boolean) {
-        dataStore.edit { it[DARK_MODE] = isDark }
-    }
-    
-    suspend fun setVibration(enabled: Boolean) {
-        dataStore.edit { it[VIBRATION] = enabled }
-    }
-    
-    suspend fun setKeepScreenOn(enabled: Boolean) {
-        dataStore.edit { it[KEEP_SCREEN_ON] = enabled }
-    }
-
-    suspend fun setAutoDnd(enabled: Boolean) {
-        dataStore.edit { it[AUTO_DND] = enabled }
-    }
-
-    suspend fun setHideVirtues(hide: Boolean) {
-        dataStore.edit { it[HIDE_VIRTUES] = hide }
-    }
-
-    suspend fun setHideSources(hide: Boolean) {
-        dataStore.edit { it[HIDE_SOURCES] = hide }
-    }
+    private fun todayKey(): String = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
 }
