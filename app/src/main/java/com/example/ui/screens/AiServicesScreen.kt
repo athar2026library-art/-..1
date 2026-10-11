@@ -25,6 +25,11 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.horizontalScroll
 import com.example.ui.AppViewModel
 import com.example.ui.ChatMessage
+import com.example.ui.AudioPlayer
+import com.example.data.AssistantSupplicationParser
+import com.example.data.SavedSupplication
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,11 +37,20 @@ fun AiServicesScreen(
     viewModel: AppViewModel,
     onNavigateBack: (() -> Unit)? = null
 ) {
-    val messages by viewModel.chatMessages.collectAsState()
-    val isLoadingAi by viewModel.isLoadingAi.collectAsState()
+    val messages by viewModel.chatMessages.collectAsStateWithLifecycle()
+    val isLoadingAi by viewModel.isLoadingAi.collectAsStateWithLifecycle()
+    val savedSupplications by viewModel.savedAssistantAzkar.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val audioPlayer = remember(context) { AudioPlayer(context.applicationContext) }
+    val isAudioPlaying by audioPlayer.isPlaying.collectAsStateWithLifecycle()
+    val coroutineScope = rememberCoroutineScope()
 
     var inputText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
+
+    DisposableEffect(audioPlayer) {
+        onDispose { audioPlayer.shutdown() }
+    }
 
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) listState.animateScrollToItem(messages.lastIndex)
@@ -114,7 +128,34 @@ fun AiServicesScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             items(messages) { message ->
-                ChatBubble(message)
+                val supplication = remember(message.text, message.isUser, message.isLoading) {
+                    if (!message.isUser && !message.isLoading) {
+                        AssistantSupplicationParser.parse(message.text)
+                    } else {
+                        null
+                    }
+                }
+                val isSaved = supplication != null &&
+                    savedSupplications.any { it.text == supplication.text }
+
+                ChatBubble(
+                    message = message,
+                    supplication = supplication,
+                    isSaved = isSaved,
+                    isAudioPlaying = isAudioPlaying,
+                    onPlaySupplication = supplication?.let { item ->
+                        {
+                            if (isAudioPlaying) {
+                                audioPlayer.stop()
+                            } else {
+                                coroutineScope.launch { audioPlayer.playAndWait(item.text) }
+                            }
+                        }
+                    },
+                    onSaveSupplication = supplication?.let { item ->
+                        { viewModel.saveAssistantSupplication(item) }
+                    }
+                )
             }
             if (messages.size <= 1 && !isLoadingAi) {
                 item { MoodChips(onPick = { viewModel.sendChatMessage(it) }) }
@@ -160,7 +201,14 @@ private fun MoodChips(onPick: (String) -> Unit) {
 }
 
 @Composable
-fun ChatBubble(message: ChatMessage) {
+fun ChatBubble(
+    message: ChatMessage,
+    supplication: SavedSupplication? = null,
+    isSaved: Boolean = false,
+    isAudioPlaying: Boolean = false,
+    onPlaySupplication: (() -> Unit)? = null,
+    onSaveSupplication: (() -> Unit)? = null
+) {
     val alignment = if (message.isUser) Alignment.CenterStart else Alignment.CenterEnd
     val bubbleColor = if (message.isUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
     val textColor = if (message.isUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
@@ -187,6 +235,24 @@ fun ChatBubble(message: ChatMessage) {
                         fontSize = 16.sp,
                         lineHeight = 24.sp
                     )
+                    if (supplication != null && onPlaySupplication != null && onSaveSupplication != null) {
+                        Spacer(Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            TextButton(onClick = onPlaySupplication) {
+                                Text(if (isAudioPlaying) "إيقاف الصوت" else "استمع إلى الذكر")
+                            }
+                            TextButton(
+                                onClick = onSaveSupplication,
+                                enabled = !isSaved
+                            ) {
+                                Text(if (isSaved) "حُفظ في أذكاري" else "إضافة إلى أذكاري")
+                            }
+                        }
+                    }
                 }
             }
         }
