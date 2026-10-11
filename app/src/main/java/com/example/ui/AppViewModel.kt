@@ -78,7 +78,7 @@ class AppViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     val audioSpeed: StateFlow<Float> = settingsRepository.audioSpeedFlow
-        .stateIn(viewModelScope, SharingStarted.Eagerly, 1.0f)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, 0.75f)
 
     /** الأذكار المفضلة (معرّفات). Eagerly كي تكون جاهزة عند فتح القارئ. */
     val favorites: StateFlow<Set<Int>> = settingsRepository.favoritesFlow
