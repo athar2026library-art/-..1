@@ -100,11 +100,15 @@ fun AzkarScreen(
     val hideVirtues by viewModel.hideVirtues.collectAsStateWithLifecycle()
     val hideSources by viewModel.hideSources.collectAsStateWithLifecycle()
     val autoPlayEnabled by viewModel.autoPlayEnabled.collectAsStateWithLifecycle()
+    val audioSpeed by viewModel.audioSpeed.collectAsStateWithLifecycle()
+    val reciterId by viewModel.reciterId.collectAsStateWithLifecycle()
 
     var currentIndex by remember { mutableIntStateOf(0) }
     var countRemaining by remember { mutableIntStateOf(1) }
     var isInitialized by remember { mutableStateOf(false) }
     var showBottomSheet by remember { mutableStateOf(false) }
+    var isDownloadingAudio by remember { mutableStateOf(false) }
+    var audioStatus by remember { mutableStateOf("") }
 
     val context = LocalContext.current
     val view = LocalView.current
@@ -238,17 +242,45 @@ fun AzkarScreen(
     }
 
     val currentZekr = azkarList[currentIndex]
+    val selectedAudioUrl = currentZekr.audioUrlsByReciter[reciterId] ?: currentZekr.audioUrl
+    val playCurrentZekr: (Int, Boolean) -> Unit = { repetitions, autoAdvance ->
+        val itemIndex = currentIndex
+        val onComplete: (() -> Unit)? = if (autoAdvance) {
+            {
+                coroutineScope.launch {
+                    delay(450)
+                    if (currentIndex == itemIndex) currentIndex++
+                }
+            }
+        } else null
+
+        if (!selectedAudioUrl.isNullOrBlank() && selectedAudioUrl.startsWith("https://")) {
+            audioPlayer.playRecording(
+                url = selectedAudioUrl,
+                speed = audioSpeed,
+                repetitions = repetitions,
+                onCompletion = onComplete
+            )
+        } else {
+            audioPlayer.playLoop(
+                text = currentZekr.text,
+                times = repetitions,
+                rate = audioSpeed,
+                onCompletion = onComplete
+            )
+        }
+    }
     val completedItems = currentIndex +
         ((currentZekr.repeatCount - countRemaining).toFloat() / currentZekr.repeatCount.coerceAtLeast(1))
     val readingProgress = (completedItems / azkarList.size.coerceAtLeast(1)).coerceIn(0f, 1f)
 
-    LaunchedEffect(currentIndex) {
+    LaunchedEffect(currentIndex, autoPlayEnabled) {
         if (isInitialized) {
             countRemaining = currentZekr.repeatCount
             audioPlayer.stop()
             if (autoPlayEnabled) {
                 delay(350)
-                audioPlayer.playAndWait(currentZekr.text)
+                playCurrentZekr(1, true)
             }
         }
     }
