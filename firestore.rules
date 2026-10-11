@@ -31,13 +31,29 @@ service cloud.firestore {
       return !data.keys().hasAny(['role', 'admin', 'isAdmin', 'permissions', 'super_admin']);
     }
 
+    function validAudioUrl(url) {
+      return url is string
+        && url.size() < 2048
+        && (url == '' || url.matches('^https://.*'));
+    }
+
+    function validReciterAudio(data) {
+      let audio = data.get('audioUrlsByReciter', {});
+      return audio is map
+        && audio.keys().hasOnly(['mishary', 'abdulbasit', 'maher', 'yasser'])
+        && (!audio.keys().hasAny(['mishary']) || validAudioUrl(audio.mishary))
+        && (!audio.keys().hasAny(['abdulbasit']) || validAudioUrl(audio.abdulbasit))
+        && (!audio.keys().hasAny(['maher']) || validAudioUrl(audio.maher))
+        && (!audio.keys().hasAny(['yasser']) || validAudioUrl(audio.yasser));
+    }
+
     function validZekr() {
       let d = request.resource.data;
       return d.keys().hasAll(['text', 'category'])
         && d.text is string
         && d.text.size() > 0
         && d.text.size() < 4000
-        && d.category in ['sabah', 'masaa', 'sleep', 'travel']
+        && d.category in ['sabah', 'masaa', 'sleep', 'travel', 'worry', 'rizq', 'illness', 'waking']
         && (d.get('repeat', 1) is int || d.get('repeat', 1) is float)
         && d.get('repeat', 1) >= 1
         && d.get('repeat', 1) <= 1000
@@ -45,7 +61,9 @@ service cloud.firestore {
         && d.get('fadl', '') is string
         && d.get('source', '') is string
         && d.get('fadl', '').size() < 4000
-        && d.get('source', '').size() < 500;
+        && d.get('source', '').size() < 500
+        && validAudioUrl(d.get('audioUrl', ''))
+        && validReciterAudio(d);
     }
 
     function validFeedbackCreate() {
