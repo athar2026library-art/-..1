@@ -60,6 +60,27 @@ class AppViewModel(
     val lastReadRemaining: StateFlow<Int> = settingsRepository.lastReadRemainingFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
+    val audioSpeed: StateFlow<Float> = settingsRepository.audioSpeedFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.75f)
+    val reciterId: StateFlow<String> = settingsRepository.reciterIdFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "mishary")
+    val myAzkar: StateFlow<List<String>> = settingsRepository.myAzkarFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val remindSabah: StateFlow<Boolean> = settingsRepository.remindSabahFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+    val remindMasaa: StateFlow<Boolean> = settingsRepository.remindMasaaFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+    val remindSleep: StateFlow<Boolean> = settingsRepository.remindSleepFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+    val remindFriday: StateFlow<Boolean> = settingsRepository.remindFridayFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+    val reminderSabahTime: StateFlow<String> = settingsRepository.reminderSabahTimeFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "07:00")
+    val reminderMasaaTime: StateFlow<String> = settingsRepository.reminderMasaaTimeFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "18:00")
+    val reminderSleepTime: StateFlow<String> = settingsRepository.reminderSleepTimeFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "22:00")
+
     // AI response is only for actual AI replies
     private val _aiResponse = MutableStateFlow<String>("")
     val aiResponse: StateFlow<String> = _aiResponse.asStateFlow()
@@ -108,6 +129,34 @@ class AppViewModel(
         viewModelScope.launch {
             settingsRepository.clearLastReadState()
         }
+    }
+
+    fun setAudioSpeed(speed: Float) {
+        viewModelScope.launch { settingsRepository.setAudioSpeed(speed) }
+    }
+
+    fun setReciterId(id: String) {
+        viewModelScope.launch { settingsRepository.setReciterId(id) }
+    }
+
+    fun saveMyZekr(text: String) {
+        viewModelScope.launch { settingsRepository.saveCustomZekr(text) }
+    }
+
+    fun removeMyZekr(text: String) {
+        viewModelScope.launch { settingsRepository.removeCustomZekr(text) }
+    }
+
+    fun setReminderEnabled(category: String, enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setReminderEnabled(category, enabled) }
+    }
+
+    fun setReminderTime(category: String, time: String) {
+        viewModelScope.launch { settingsRepository.setReminderTime(category, time) }
+    }
+
+    fun markCategoryCompleted(category: String) {
+        viewModelScope.launch { settingsRepository.markCategoryCompleted(category) }
     }
     
     fun setFontSize(size: Float) {
