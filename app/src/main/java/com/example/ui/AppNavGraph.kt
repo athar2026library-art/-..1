@@ -112,6 +112,22 @@ fun AppNavGraph(
                     onNavigateBack = { navController.popBackStack() }
                 )
             }
+
+            composable("daily_wird/{category}") { backStackEntry ->
+                val category = backStackEntry.arguments?.getString("category") ?: "sabah"
+                AzkarScreen(
+                    category = category,
+                    viewModel = viewModel,
+                    isDailyWird = true,
+                    onNextWird = { navController.navigate("daily_wird/masaa") },
+                    onNavigateBack = {
+                        navController.navigate("home") {
+                            popUpTo("home") { inclusive = false }
+                            launchSingleTop = true
+                        }
+                    }
+                )
+            }
             
             composable("stats") {
                 StatsScreen(
@@ -135,7 +151,8 @@ fun AppNavGraph(
             composable("library") {
                 AzkarLibraryScreen(
                     viewModel = viewModel,
-                    onOpenAzkar = { category -> navController.navigate("azkar/$category") }
+                    onOpenAzkar = { category -> navController.navigate("azkar/$category") },
+                    onStartDailyWird = { navController.navigate("daily_wird/sabah") }
                 )
             }
         }
