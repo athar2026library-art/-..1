@@ -14,6 +14,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -24,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -36,6 +40,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.AzkarData
+import com.example.data.SavedSupplication
+import com.example.ui.AudioPlayer
 import com.example.ui.AppViewModel
 import com.example.ui.ShareHelper
 import com.example.ui.components.BaqiyatBackButton
@@ -53,8 +59,15 @@ fun FavoritesScreen(
 ) {
     val ids by viewModel.favorites.collectAsStateWithLifecycle()
     val items = remember(ids) { AzkarData.byIds(ids) }
+    val savedAssistantAzkar by viewModel.savedAssistantAzkar.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val audioPlayer = remember(context) { AudioPlayer(context.applicationContext) }
+    val isAudioPlaying by audioPlayer.isPlaying.collectAsStateWithLifecycle()
     val p = Baqiyat.colors
+
+    DisposableEffect(audioPlayer) {
+        onDispose { audioPlayer.shutdown() }
+    }
 
     Scaffold(
         containerColor = Color.Transparent,
@@ -66,7 +79,7 @@ fun FavoritesScreen(
             )
         }
     ) { padding ->
-        if (items.isEmpty()) {
+        if (items.isEmpty() && savedAssistantAzkar.isEmpty()) {
             Column(
                 Modifier.fillMaxSize().padding(padding).padding(32.dp),
                 verticalArrangement = Arrangement.Center,
@@ -89,44 +102,114 @@ fun FavoritesScreen(
                 contentPadding = PaddingValues(top = 8.dp, bottom = 32.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                item {
-                    BaqiyatButton(
-                        text = "اقرأ المفضلة (${items.size})",
-                        onClick = onRead,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-                items(items, key = { it.id }) { z ->
-                    GlassCard(Modifier.fillMaxWidth(), contentPadding = PaddingValues(18.dp)) {
-                        Text(AzkarData.titleFor(z.category), style = MaterialTheme.typography.labelMedium, color = p.accent)
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            z.text,
-                            style = ZekrTextStyle.copy(fontSize = 20.sp, lineHeight = 38.sp),
-                            maxLines = 4,
-                            overflow = TextOverflow.Ellipsis
+                if (items.isNotEmpty()) {
+                    item {
+                        BaqiyatButton(
+                            text = "اقرأ المفضلة (${items.size})",
+                            onClick = onRead,
+                            modifier = Modifier.fillMaxWidth()
                         )
-                        Spacer(Modifier.height(6.dp))
-                        Row(
-                            Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
+                    }
+                    items(items, key = { "favorite_${it.id}" }) { z ->
+                        GlassCard(Modifier.fillMaxWidth(), contentPadding = PaddingValues(18.dp)) {
+                            Text(AzkarData.titleFor(z.category), style = MaterialTheme.typography.labelMedium, color = p.accent)
+                            Spacer(Modifier.height(8.dp))
                             Text(
-                                if (z.repeatCount > 1) "يُقال ${z.repeatCount} مرات" else z.source,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.weight(1f)
+                                z.text,
+                                style = ZekrTextStyle.copy(fontSize = 20.sp, lineHeight = 38.sp),
+                                maxLines = 4,
+                                overflow = TextOverflow.Ellipsis
                             )
-                            IconButton(onClick = { runCatching { ShareHelper.shareZekrAsImage(context, z.text, z.source) } }) {
-                                Icon(Icons.Default.Share, contentDescription = "مشاركة", tint = p.primary)
-                            }
-                            IconButton(onClick = { viewModel.toggleFavorite(z.id) }) {
-                                Icon(Icons.Default.Favorite, contentDescription = "إزالة من المفضلة", tint = p.accent)
+                            Spacer(Modifier.height(6.dp))
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    if (z.repeatCount > 1) "يُقال ${z.repeatCount} مرات" else z.source,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                IconButton(onClick = { runCatching { ShareHelper.shareZekrAsImage(context, z.text, z.source) } }) {
+                                    Icon(Icons.Default.Share, contentDescription = "مشاركة", tint = p.primary)
+                                }
+                                IconButton(onClick = { viewModel.toggleFavorite(z.id) }) {
+                                    Icon(Icons.Default.Favorite, contentDescription = "إزالة من المفضلة", tint = p.accent)
+                                }
                             }
                         }
                     }
                 }
+
+                if (savedAssistantAzkar.isNotEmpty()) {
+                    item {
+                        Text(
+                            "أذكاري المحفوظة من المساعد",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = p.accent
+                        )
+                    }
+                    items(savedAssistantAzkar, key = { "assistant_${it.text}_${it.source}" }) { saved ->
+                        SavedAssistantSupplicationCard(
+                            saved = saved,
+                            isPlaying = isAudioPlaying,
+                            onPlay = {
+                                if (isAudioPlaying) audioPlayer.stop()
+                                else audioPlayer.playLoop(saved.text, 1)
+                            },
+                            onShare = {
+                                runCatching { ShareHelper.shareZekrAsImage(context, saved.text, saved.source) }
+                            },
+                            onRemove = { viewModel.removeAssistantSupplication(saved) }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+@Composable
+private fun SavedAssistantSupplicationCard(
+    saved: SavedSupplication,
+    isPlaying: Boolean,
+    onPlay: () -> Unit,
+    onShare: () -> Unit,
+    onRemove: () -> Unit
+) {
+    val p = Baqiyat.colors
+    GlassCard(Modifier.fillMaxWidth(), contentPadding = PaddingValues(18.dp)) {
+        Text(
+            saved.text,
+            style = ZekrTextStyle.copy(fontSize = 20.sp, lineHeight = 36.sp)
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "المصدر: ${saved.source}",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(8.dp))
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onPlay) {
+                Icon(
+                    if (isPlaying) Icons.Default.Stop else Icons.Default.PlayArrow,
+                    contentDescription = if (isPlaying) "إيقاف الصوت" else "استماع إلى الدعاء",
+                    tint = p.primary
+                )
+            }
+            IconButton(onClick = onShare) {
+                Icon(Icons.Default.Share, contentDescription = "مشاركة الدعاء", tint = p.primary)
+            }
+            IconButton(onClick = onRemove) {
+                Icon(Icons.Default.Delete, contentDescription = "حذف من أذكاري", tint = MaterialTheme.colorScheme.error)
             }
         }
     }

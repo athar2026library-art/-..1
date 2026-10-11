@@ -14,10 +14,12 @@ import com.example.data.FeedbackItem
 import com.example.data.FirestoreRepository
 import com.example.data.ProgressRepository
 import com.example.data.SettingsRepository
+import com.example.data.SavedSupplication
 import com.example.data.UserProgress
 import com.example.data.Zekr
 import com.example.ui.theme.AccentTheme
 import com.example.ui.theme.ReaderFont
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.functions.FirebaseFunctions
 import com.google.firebase.functions.FirebaseFunctionsException
 import kotlinx.coroutines.CancellationException
@@ -76,9 +78,16 @@ class AppViewModel(
     val autoPlayEnabled: StateFlow<Boolean> = settingsRepository.autoPlayFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
+    val audioSpeed: StateFlow<Float> = settingsRepository.audioSpeedFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, 0.75f)
+
     /** الأذكار المفضلة (معرّفات). Eagerly كي تكون جاهزة عند فتح القارئ. */
     val favorites: StateFlow<Set<Int>> = settingsRepository.favoritesFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
+
+    val savedAssistantAzkar: StateFlow<List<SavedSupplication>> =
+        settingsRepository.savedAssistantAzkarFlow
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val readerFont: StateFlow<ReaderFont> = settingsRepository.readerFontFlow
         .map { ReaderFont.from(it) }
@@ -154,6 +163,35 @@ class AppViewModel(
     init {
         viewModelScope.launch {
             progressRepository.initTodayProgress()
+        }
+    }
+
+    /**
+     * Records one completed supplication through a rate-limited, App Check-protected callable.
+     * Anonymous auth enables aggregate statistics without requiring Google sign-in.
+     */
+    fun recordAzkarRead(category: String, zekr: Zekr) {
+        viewModelScope.launch {
+            try {
+                val auth = FirebaseAuth.getInstance()
+                if (auth.currentUser == null) {
+                    auth.signInAnonymously().await()
+                }
+                FirebaseFunctions.getInstance("europe-west1")
+                    .getHttpsCallable("recordAzkarRead")
+                    .call(
+                        mapOf(
+                            "zekrId" to zekr.id.toString(),
+                            "category" to category,
+                            "text" to zekr.text.take(300)
+                        )
+                    )
+                    .await()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                // Reading progress remains local if analytics are offline or not configured.
+            }
         }
     }
 
@@ -247,6 +285,10 @@ class AppViewModel(
         viewModelScope.launch { settingsRepository.setAutoPlay(enabled) }
     }
 
+    fun setAudioSpeed(speed: Float) {
+        viewModelScope.launch { settingsRepository.setAudioSpeed(speed) }
+    }
+
     fun setWeeklyDaysGoal(days: Int) {
         viewModelScope.launch { settingsRepository.setWeeklyGoal(days) }
     }
@@ -257,6 +299,14 @@ class AppViewModel(
 
     fun toggleFavorite(id: Int) {
         viewModelScope.launch { settingsRepository.toggleFavorite(id) }
+    }
+
+    fun saveAssistantSupplication(supplication: SavedSupplication) {
+        viewModelScope.launch { settingsRepository.saveAssistantSupplication(supplication) }
+    }
+
+    fun removeAssistantSupplication(supplication: SavedSupplication) {
+        viewModelScope.launch { settingsRepository.removeAssistantSupplication(supplication) }
     }
 
     fun setReaderFont(key: String) {

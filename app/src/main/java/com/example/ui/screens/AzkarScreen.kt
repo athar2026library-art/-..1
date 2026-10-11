@@ -49,8 +49,10 @@ import com.example.data.AzkarData
 import com.example.data.CategoryDefaults
 import com.example.data.CustomWirds
 import com.example.data.Zekr
+import com.example.data.TopicAzkarData
 import com.example.ui.AppViewModel
 import com.example.ui.AudioPlayer
+import com.example.ui.RecordedAzkarAudioPlayer
 import com.example.ui.ShareHelper
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flowOf
@@ -77,8 +79,9 @@ fun AzkarScreen(
             else -> AzkarData.builtInOrEmpty(category)
         }
     }
+    val isTopicOnlyCategory = category in TopicAzkarData.topicOnlyCategories
     val liveAzkar by remember(category) {
-        if (isSnapshotMode) flowOf<List<Zekr>?>(null)
+        if (isSnapshotMode || isTopicOnlyCategory) flowOf<List<Zekr>?>(null)
         else viewModel.observePublishedAzkar(category).map<List<Zekr>, List<Zekr>?> { it }
     }.collectAsStateWithLifecycle(initialValue = null)
     val azkarList = liveAzkar?.takeIf { it.isNotEmpty() } ?: fallbackAzkar
@@ -100,6 +103,7 @@ fun AzkarScreen(
     val hideVirtues by viewModel.hideVirtues.collectAsStateWithLifecycle()
     val hideSources by viewModel.hideSources.collectAsStateWithLifecycle()
     val autoPlayEnabled by viewModel.autoPlayEnabled.collectAsStateWithLifecycle()
+    val audioSpeed by viewModel.audioSpeed.collectAsStateWithLifecycle()
 
     var currentIndex by remember { mutableIntStateOf(0) }
     var countRemaining by remember { mutableIntStateOf(1) }
@@ -107,21 +111,26 @@ fun AzkarScreen(
     var showBottomSheet by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
-    val audioPlayer = remember { AudioPlayer(context) }
-    val isPlaying by audioPlayer.isPlaying.collectAsState()
     val coroutineScope = rememberCoroutineScope()
+    val view = LocalView.current
+    val audioPlayer = remember(context) { AudioPlayer(context.applicationContext) }
+    val isPlaying by audioPlayer.isPlaying.collectAsStateWithLifecycle()
+    val recordedAudioPlayer = remember(context) { RecordedAzkarAudioPlayer(context.applicationContext) }
+    val isRecordedPlaying by recordedAudioPlayer.isPlaying.collectAsStateWithLifecycle()
+    val isAudioDownloading by recordedAudioPlayer.isDownloading.collectAsStateWithLifecycle()
+    val audioDownloadProgress by recordedAudioPlayer.downloadProgress.collectAsStateWithLifecycle()
+    val downloadedAudioCategories by recordedAudioPlayer.downloadedCategories.collectAsStateWithLifecycle()
+    val recordedAudioError by recordedAudioPlayer.error.collectAsStateWithLifecycle()
 
-    DisposableEffect(Unit) {
-        onDispose { audioPlayer.shutdown() }
+    LaunchedEffect(audioSpeed) {
+        audioPlayer.setSpeechRate(audioSpeed)
+        recordedAudioPlayer.setPlaybackSpeed(audioSpeed)
     }
 
-    val view = LocalView.current
-
-    val audioPlayer = remember { AudioPlayer(context.applicationContext) }
-    val isPlaying by audioPlayer.isPlaying.collectAsStateWithLifecycle()
-    DisposableEffect(Unit) {
+    DisposableEffect(audioPlayer, recordedAudioPlayer) {
         onDispose {
             audioPlayer.shutdown()
+            recordedAudioPlayer.release()
             viewModel.flushPendingTasbeeh()
         }
     }
@@ -251,6 +260,7 @@ fun AzkarScreen(
         if (isInitialized) {
             countRemaining = currentZekr.repeatCount
             audioPlayer.stop()
+            recordedAudioPlayer.stop()
             if (autoPlayEnabled) {
                 delay(350)
                 audioPlayer.playAndWait(currentZekr.text)
@@ -264,6 +274,7 @@ fun AzkarScreen(
             viewModel.addTasbeeh(1)
             if (isVibrationEnabled) vibrateLight(context)
             if (countRemaining == 0) {
+                viewModel.recordAzkarRead(category, currentZekr)
                 if (isVibrationEnabled) vibrateCompletion(context)
                 coroutineScope.launch {
                     delay(if (autoPlayEnabled) 1200 else 300)
@@ -328,24 +339,118 @@ fun AzkarScreen(
                         .padding(horizontal = 20.dp, vertical = 12.dp)
                         .navigationBarsPadding()
                 ) {
+                    if (recordedAudioPlayer.isSupported(category)) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(20.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                        ) {
+                            Column(Modifier.fillMaxWidth().padding(12.dp)) {
+                                Text(
+                                    "تسجيل كامل بصوت ${RecordedAzkarAudioPlayer.RECITER_NAME}",
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 14.sp
+                                )
+                                Text(
+                                    if (category in downloadedAudioCategories) "محفوظ على الجهاز — يعمل دون إنترنت"
+                                    else "المصدر: IslamHouse • يلزم الإنترنت للتشغيل أول مرة",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 11.sp
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Button(
+                                        onClick = {
+                                            if (isRecordedPlaying) {
+                                                recordedAudioPlayer.stop()
+                                            } else {
+                                                audioPlayer.stop()
+                                                recordedAudioPlayer.play(category)
+                                            }
+                                        },
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text(if (isRecordedPlaying) "إيقاف التسجيل" else "تشغيل التسجيل")
+                                    }
+                                    OutlinedButton(
+                                        onClick = {
+                                            coroutineScope.launch {
+                                                runCatching { recordedAudioPlayer.download(category) }
+                                            }
+                                        },
+                                        enabled = !isAudioDownloading && category !in downloadedAudioCategories
+                                    ) {
+                                        Text(
+                                            when {
+                                                isAudioDownloading -> "${audioDownloadProgress}%"
+                                                category in downloadedAudioCategories -> "تم التنزيل"
+                                                else -> "حفظ دون إنترنت"
+                                            }
+                                        )
+                                    }
+                                }
+                                if (isAudioDownloading) {
+                                    Spacer(Modifier.height(6.dp))
+                                    LinearProgressIndicator(
+                                        progress = { audioDownloadProgress / 100f },
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+                                recordedAudioError?.let { errorText ->
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(errorText, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+                                }
+                                Spacer(Modifier.height(8.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("السرعة", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    listOf(0.75f, 1.0f, 1.25f).forEach { speed ->
+                                        FilterChip(
+                                            selected = audioSpeed == speed,
+                                            onClick = { viewModel.setAudioSpeed(speed) },
+                                            label = { Text("${speed}×", fontSize = 12.sp) }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        Spacer(Modifier.height(8.dp))
+                    }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         FilledTonalIconButton(onClick = {
-                            if (isPlaying) audioPlayer.stop()
-                            else coroutineScope.launch { audioPlayer.playAndWait(currentZekr.text) }
+                            if (isPlaying) {
+                                audioPlayer.stop()
+                            } else {
+                                recordedAudioPlayer.stop()
+                                coroutineScope.launch { audioPlayer.playAndWait(currentZekr.text) }
+                            }
                         }) {
                             Icon(
                                 if (isPlaying) Icons.Default.Stop else Icons.Default.VolumeUp,
                                 contentDescription = if (isPlaying) "إيقاف" else "استماع"
                             )
                         }
-                        FilledTonalIconButton(onClick = { audioPlayer.playLoop(currentZekr.text, 3) }) {
+                        FilledTonalIconButton(onClick = {
+                            recordedAudioPlayer.stop()
+                            audioPlayer.playLoop(currentZekr.text, 3)
+                        }) {
                             Icon(Icons.Default.Repeat, contentDescription = "تكرار 3 مرات")
                         }
-                        FilledTonalIconButton(onClick = { audioPlayer.playLoop(currentZekr.text, 5) }) {
+                        FilledTonalIconButton(onClick = {
+                            recordedAudioPlayer.stop()
+                            audioPlayer.playLoop(currentZekr.text, 5)
+                        }) {
                             Icon(Icons.Default.RepeatOne, contentDescription = "تكرار 5 مرات")
                         }
                     }

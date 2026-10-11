@@ -1,0 +1,81 @@
+name: Baqiyat Android validation
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [fix/baqiyat-audio-search-foundation]
+
+permissions:
+  contents: read
+
+jobs:
+  compile-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+          # This job invokes the installed `gradle` command, not the repository wrapper.
+          validate-wrappers: false
+
+      - name: Provide non-secret Firebase config for compilation
+        run: |
+          cat > app/google-services.json <<'JSON'
+          {
+            "project_info": {
+              "project_number": "123456789012",
+              "project_id": "baqiyat-ci-only",
+              "storage_bucket": "baqiyat-ci-only.appspot.com"
+            },
+            "client": [{
+              "client_info": {
+                "mobilesdk_app_id": "1:123456789012:android:abcdef1234567890",
+                "android_client_info": {
+                  "package_name": "com.baqiyat.azkar"
+                }
+              },
+              "api_key": [{ "current_key": "AIzaSyDUMMY_FOR_CI_ONLY" }],
+              "services": {
+                "appinvite_service": { "other_platform_oauth_client": [] }
+              }
+            }],
+            "configuration_version": "1"
+          }
+          JSON
+
+      - name: Validate Firebase Functions and owner panel JavaScript
+        run: |
+          node --check firebase/functions/index.js
+          node --check firebase/functions/lib/helpers.js
+          cat admin-panel/app.part*.js > "$RUNNER_TEMP/baqiyat-admin-panel.js"
+          node --check "$RUNNER_TEMP/baqiyat-admin-panel.js"
+
+      - name: Compile Android app
+        run: gradle :app:compileDebugKotlin --no-daemon --stacktrace
+
+      - name: Run unit tests
+        run: gradle :app:testDebugUnitTest --no-daemon
+
+      - name: Assemble debug APK
+        run: gradle :app:assembleDebug --no-daemon
+
+      - name: Upload debug APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: baqiyat-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 7

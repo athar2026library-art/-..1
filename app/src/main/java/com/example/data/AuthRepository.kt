@@ -13,7 +13,9 @@ import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
-import kotlinx.coroutines.CancellationException
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.tasks.await
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -49,7 +51,26 @@ class AuthRepository(context: Context) {
             ) {
                 val googleCredential = GoogleIdTokenCredential.createFrom(credential.data)
                 val firebaseCredential = GoogleAuthProvider.getCredential(googleCredential.idToken, null)
-                firebaseAuth.signInWithCredential(firebaseCredential).await()
+                val signedInUser = firebaseAuth.signInWithCredential(firebaseCredential).await().user
+                    ?: return false
+
+                // Keep one minimal profile per Google account so the owner dashboard can count it.
+                runCatching {
+                    FirebaseFirestore.getInstance()
+                        .collection("users")
+                        .document(signedInUser.uid)
+                        .set(
+                            mapOf(
+                                "displayName" to (signedInUser.displayName ?: ""),
+                                "email" to (signedInUser.email ?: ""),
+                                "updatedAt" to FieldValue.serverTimestamp()
+                            ),
+                            SetOptions.merge()
+                        )
+                        .await()
+                }.onFailure { error ->
+                    Log.w("AuthRepository", "Could not sync the user profile; sign-in remains valid", error)
+                }
                 true
             } else {
                 Log.w("AuthRepository", "Unexpected credential type: ${credential.type}")

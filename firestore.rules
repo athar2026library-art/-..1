@@ -176,6 +176,16 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    match /owner_metrics/{metricId} {
+      // Aggregates are writable only by trusted Cloud Functions; admins may read them.
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /readRateLimits/{uid} {
+      allow read, write: if false;
+    }
+
     match /rateLimits/{uid} {
       allow read, write: if false;
     }

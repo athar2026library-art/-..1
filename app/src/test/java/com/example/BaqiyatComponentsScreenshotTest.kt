@@ -35,7 +35,7 @@ import org.robolectric.annotation.GraphicsMode
 /** لقطات مرجعية للمكوّنات في الأوضاع الأربعة (تشغيل: ./gradlew recordRoborazziDebug). */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(qualifiers = RobolectricDeviceQualifiers.Pixel8, sdk = [36])
+@Config(qualifiers = RobolectricDeviceQualifiers.Pixel8, sdk = [35])
 class BaqiyatComponentsScreenshotTest {
 
     @get:Rule val composeTestRule = createComposeRule()

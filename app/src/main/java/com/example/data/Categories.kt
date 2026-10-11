@@ -19,9 +19,11 @@ object CategoryDefaults {
     )
 
     private val builtInIds = builtIn.map { it.id }.toSet()
-    private val reserved = builtInIds + "favorites"
+    private val topicOnlyBuiltInIds = setOf("worry", "rizq", "illness", "waking")
+    private val reserved = builtInIds + topicOnlyBuiltInIds + "favorites"
 
-    fun isBuiltIn(id: String) = id in builtInIds
+    /** Search-only built-ins can be opened from results without becoming extra home tiles. */
+    fun isBuiltIn(id: String) = id in builtInIds || id in topicOnlyBuiltInIds
 
     /** تصنيف ديناميكي يمكن فتحه من «أقسام الأذكار» (لا المحجوزة ولا المخفية). */
     fun isDynamicId(id: String) = id !in reserved && !id.startsWith("wird_") && id.isNotBlank()

@@ -49,7 +49,7 @@ object AzkarData {
         Zekr(43, "آئِبُونَ تَائِبُونَ عَابِدُونَ لِرَبِّنَا حَامِدُونَ.", "رواه البخاري ومسلم", "عند الرجوع من السفر.", 1, "travel")
     )
 
-    fun all(): List<Zekr> = morningAzkar + eveningAzkar + sleepAzkar + travelAzkar
+    fun all(): List<Zekr> = morningAzkar + eveningAzkar + sleepAzkar + travelAzkar + TopicAzkarData.items
 
     fun byIds(ids: Set<Int>): List<Zekr> = all().filter { it.id in ids }
 
@@ -58,6 +58,7 @@ object AzkarData {
         "masaa" -> eveningAzkar
         "sleep" -> sleepAzkar
         "travel" -> travelAzkar
+        "worry", "rizq", "illness", "waking" -> TopicAzkarData.items.filter { it.category == category }
         else -> morningAzkar
     }
 
@@ -70,6 +71,10 @@ object AzkarData {
         "masaa" -> "أذكار المساء"
         "sleep" -> "أذكار النوم"
         "travel" -> "أذكار السفر"
+        "worry" -> "أذكار الهم والقلق"
+        "rizq" -> "أذكار الرزق"
+        "illness" -> "أدعية المرض والشفاء"
+        "waking" -> "ذكر الاستيقاظ"
         "favorites" -> "المفضلة"
         else -> "الأذكار"
     }
@@ -77,8 +82,12 @@ object AzkarData {
     fun search(query: String): List<Zekr> {
         val q = ArabicText.normalize(query)
         if (q.isEmpty()) return emptyList()
+
+        // Search both literal text and user intent (such as "قلق" or "السفر").
+        val intentCategories = TopicAzkarData.categoriesForQuery(q)
         return all().filter { z ->
-            ArabicText.normalize(z.text).contains(q) ||
+            z.category in intentCategories ||
+                ArabicText.normalize(z.text).contains(q) ||
                 ArabicText.normalize(z.source).contains(q) ||
                 ArabicText.normalize(z.fadl).contains(q) ||
                 ArabicText.normalize(titleFor(z.category)).contains(q)

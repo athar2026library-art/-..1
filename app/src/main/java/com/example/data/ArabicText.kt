@@ -24,16 +24,31 @@ object ArabicText {
         val sb = StringBuilder(s.length)
         val map = IntArray(s.length)
         var n = 0
+
         for (i in s.indices) {
             val c = s[i]
             if (isMark(c)) continue
-            sb.append(foldChar(c))
-            map[n++] = i
+
+            val folded = foldChar(c)
+            if (folded.isWhitespace()) {
+                // Search should treat line breaks and repeated spaces as one separator.
+                if (n == 0 || sb.last() == ' ') continue
+                sb.append(' ')
+                map[n++] = i
+            } else {
+                sb.append(folded)
+                map[n++] = i
+            }
+        }
+
+        if (n > 0 && sb.last() == ' ') {
+            sb.setLength(sb.length - 1)
+            n -= 1
         }
         return Folded(sb.toString(), map.copyOf(n))
     }
 
-    fun normalize(s: String): String = fold(s.trim()).text
+    fun normalize(s: String): String = fold(s).text
 
     /** مواضع تطابق الاستعلام في النص الأصلي (نهاية كل مدى تشمل حركات الحرف الأخير). */
     fun matches(text: String, query: String): List<IntRange> {

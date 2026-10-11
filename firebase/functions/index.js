@@ -92,6 +92,111 @@ async function refundRateLimit(uid) {
   });
 }
 
+async function recordOwnerActivity(uid, { aiQuestion = false, zekr = null } = {}) {
+  const db = getFirestore();
+  const summaryRef = db.collection("owner_metrics").doc("summary");
+  const userRef = db.collection("users").doc(uid);
+  const dateKey = new Date().toISOString().slice(0, 10);
+
+  await db.runTransaction(async (tx) => {
+    const summarySnap = await tx.get(summaryRef);
+    const current = summarySnap.exists ? summarySnap.data() || {} : {};
+    const change = { updatedAt: FieldValue.serverTimestamp() };
+
+    if (aiQuestion) {
+      change.aiQuestions = FieldValue.increment(1);
+    }
+
+    if (zekr) {
+      const id = String(zekr.id);
+      const reads = { ...(current.azkarReadsById || {}) };
+      const previous = reads[id];
+      const currentCount = Number(previous?.count) || 0;
+
+      change.totalAzkarReads = FieldValue.increment(1);
+      // Bound the map to protect Firestore's 1 MiB document limit.
+      if (Object.prototype.hasOwnProperty.call(reads, id) || Object.keys(reads).length < 500) {
+        reads[id] = {
+          count: currentCount + 1,
+          text: String(zekr.text || previous?.text || "").slice(0, 300),
+          category: String(zekr.category || previous?.category || "").slice(0, 40),
+        };
+        change.azkarReadsById = reads;
+      }
+    }
+
+    tx.set(summaryRef, change, { merge: true });
+    tx.set(
+      userRef,
+      {
+        lastActiveDate: dateKey,
+        lastActiveAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
+  });
+}
+
+async function enforceAzkarReadRateLimit(uid) {
+  const db = getFirestore();
+  const ref = db.collection("readRateLimits").doc(uid);
+  const now = Date.now();
+  const minuteKey = Math.floor(now / 60000);
+  const dayKey = Math.floor(now / 86400000);
+
+  await db.runTransaction(async (tx) => {
+    const snapshot = await tx.get(ref);
+    const data = snapshot.exists ? snapshot.data() || {} : {};
+    const minuteCount = data.minuteKey === minuteKey ? Number(data.minuteCount) || 0 : 0;
+    const dayCount = data.dayKey === dayKey ? Number(data.dayCount) || 0 : 0;
+
+    if (minuteCount >= 90 || dayCount >= 500) {
+      throw new HttpsError("resource-exhausted", "تجاوز الحد اليومي لتسجيل قراءات الأذكار.");
+    }
+
+    tx.set(
+      ref,
+      {
+        minuteKey,
+        minuteCount: minuteCount + 1,
+        dayKey,
+        dayCount: dayCount + 1,
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
+  });
+}
+
+exports.recordAzkarRead = onCall(
+  { region: REGION, enforceAppCheck: true, timeoutSeconds: 10, maxInstances: 10 },
+  async (req) => {
+    if (!req.auth?.uid) {
+      throw new HttpsError("unauthenticated", "يلزم إنشاء جلسة مستخدم لتسجيل القراءة.");
+    }
+
+    const rawId = String(req.data?.zekrId ?? "");
+    const category = String(req.data?.category ?? "");
+    const text = String(req.data?.text ?? "").trim().slice(0, 300);
+
+    if (!/^\\d{1,10}$/.test(rawId) ||
+        !/^[a-zA-Z0-9_-]{1,40}$/.test(category) ||
+        text.length < 2) {
+      throw new HttpsError("invalid-argument", "بيانات القراءة غير صالحة.");
+    }
+
+    await enforceAzkarReadRateLimit(req.auth.uid);
+    await recordOwnerActivity(req.auth.uid, {
+      zekr: { id: rawId, category, text },
+    }).catch((error) => {
+      console.error("Owner read metric update failed", error);
+      throw new HttpsError("internal", "تعذر حفظ إحصائية القراءة.");
+    });
+
+    return { ok: true };
+  },
+);
+
 exports.generateGemini = onCall(
   {
     region: REGION,
@@ -114,6 +219,9 @@ exports.generateGemini = onCall(
     }
 
     await enforceRateLimit(req.auth.uid, { perMinute: 3, perDay: 30 });
+    await recordOwnerActivity(req.auth.uid, { aiQuestion: true }).catch((error) => {
+      console.error("Owner AI metric update failed", error);
+    });
 
     const userPrompt = buildUserPrompt(mode, text.trim());
 

@@ -47,6 +47,7 @@
           <h1 id="page-title">نظرة عامة</h1>
         </div>
         <div class="top-actions">
+          <button class="ghost" id="refresh-metrics">تحديث الإحصاءات</button>
           <button class="ghost" id="export-json">تصدير JSON</button>
           <button class="ghost" id="preview-btn">معاينة الذكر ↗</button>
         </div>
@@ -65,6 +66,18 @@
           <article class="stat"><span>منشور</span><strong id="stat-published">—</strong><small>ظاهر للمستخدمين</small></article>
           <article class="stat"><span>مسودات</span><strong id="stat-draft">—</strong><small>غير ظاهرة</small></article>
           <article class="stat accent"><span>رسائل جديدة</span><strong id="stat-feedback">—</strong><small>صندوق الوارد</small></article>
+        </div>
+
+        <div class="stats-grid" aria-label="إحصاءات استخدام التطبيق">
+          <article class="stat"><span>ملفات المستخدمين</span><strong id="stat-users">—</strong><small>في قاعدة التطبيق</small></article>
+          <article class="stat"><span>النشطون اليوم</span><strong id="stat-active-today">—</strong><small>حسب آخر نشاط مسجل UTC</small></article>
+          <article class="stat"><span>قراءات الأذكار</span><strong id="stat-azkar-reads">—</strong><small>منذ تفعيل التسجيل</small></article>
+          <article class="stat"><span>أسئلة المساعد</span><strong id="stat-ai-questions">—</strong><small>منذ تفعيل التسجيل</small></article>
+          <article class="stat accent" style="grid-column: span 2">
+            <span>الأذكار الأكثر قراءة</span>
+            <strong id="stat-top-read" style="font-size:14px;line-height:1.8;overflow-wrap:anywhere">لا توجد بيانات بعد</strong>
+            <small>تُجمع الإحصاءات الجديدة فقط بعد نشر الدالة</small>
+          </article>
         </div>
         <div class="content-grid">
           <article class="panel">

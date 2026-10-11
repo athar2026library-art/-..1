@@ -40,6 +40,7 @@ fun SettingsScreen(
     val hideSources by viewModel.hideSources.collectAsStateWithLifecycle()
     val notificationsEnabled by viewModel.notificationsEnabled.collectAsStateWithLifecycle()
     val autoPlayEnabled by viewModel.autoPlayEnabled.collectAsStateWithLifecycle()
+    val audioSpeed by viewModel.audioSpeed.collectAsStateWithLifecycle()
 
     val userSignedIn by viewModel.userSignedIn.collectAsStateWithLifecycle()
     val statusMessage by viewModel.statusMessage.collectAsStateWithLifecycle()
@@ -165,6 +166,27 @@ fun SettingsScreen(
                     SettingSwitchRow("الاهتزاز عند التسبيح", isVibrationEnabled) { viewModel.setVibration(it) }
                     SettingDivider()
                     SettingSwitchRow("القراءة المستمرة", autoPlayEnabled, "تشغيل الصوت والانتقال للذكر التالي تلقائياً") { viewModel.setAutoPlay(it) }
+                    SettingDivider()
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("سرعة الصوت", fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                        Text(
+                            "اختر السرعة المناسبة للتسجيلات وللنطق الصوتي",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            listOf(0.75f, 1.0f, 1.25f).forEach { speed ->
+                                FilterChip(
+                                    selected = audioSpeed == speed,
+                                    onClick = { viewModel.setAudioSpeed(speed) },
+                                    label = { Text("${speed}×") }
+                                )
+                            }
+                        }
+                    }
                     SettingDivider()
                     SettingSwitchRow("إبقاء الشاشة مضاءة", keepScreenOn, "أثناء قراءة الأذكار فقط") { viewModel.setKeepScreenOn(it) }
                     SettingDivider()

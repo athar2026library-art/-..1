@@ -4,7 +4,8 @@
 
 ## التفعيل المطلوب
 
-- Firebase Authentication: Google provider.
+- Firebase Authentication: Google provider، مع تفعيل **Anonymous** حتى تعمل المساعدة والإحصاءات لمن لا يسجّل الدخول بحساب Google.
+- Firebase App Check: استخدم Debug provider أثناء التطوير وسجّل Debug token في Console؛ للإصدار Release سجّل Play Integrity قبل فرض App Check.
 - Cloud Firestore.
 - Custom claim للمشرف: `admin: true`، ويُمنح من Cloud Function أو Admin SDK موثوق فقط.
 - **أو** مستند `admins/{uid}` في Firestore (`role: super_admin` لأول مشرف).
