@@ -60,9 +60,11 @@ fun AzkarLibraryScreen(
     var query by remember { mutableStateOf("") }
     var showSaved by remember { mutableStateOf(false) }
     val savedAzkar by viewModel.myAzkar.collectAsState()
+    val audioSpeed by viewModel.audioSpeed.collectAsState()
     val context = LocalContext.current
     val player = remember(context) { AudioPlayer(context) }
     val playing by player.isPlaying.collectAsState()
+    androidx.compose.runtime.LaunchedEffect(audioSpeed) { player.setSpeechRate(audioSpeed) }
     DisposableEffect(player) { onDispose { player.shutdown() } }
 
     val allAzkar = remember { AzkarData.morningAzkar + AzkarData.eveningAzkar }
