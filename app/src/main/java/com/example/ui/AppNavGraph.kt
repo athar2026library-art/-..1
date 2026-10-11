@@ -5,6 +5,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Chat
 import androidx.compose.material3.Icon
@@ -29,18 +30,21 @@ import com.example.ui.screens.AzkarScreen
 import com.example.ui.screens.StatsScreen
 import com.example.ui.screens.SettingsScreen
 import com.example.ui.screens.AiServicesScreen
+import com.example.ui.screens.AzkarLibraryScreen
 
 sealed class Screen(val route: String, val title: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
     object Home : Screen("home", "الأذكار", Icons.Default.List)
     object AiServices : Screen("ai_services", "المساعد", Icons.Outlined.Chat)
     object Stats : Screen("stats", "الإحصائيات", Icons.Default.Star)
     object Settings : Screen("settings", "الإعدادات", Icons.Default.Settings)
+    object Library : Screen("library", "البحث", Icons.Default.Search)
 }
 
 val bottomNavItems = listOf(
     Screen.Home,
     Screen.AiServices,
     Screen.Stats,
+    Screen.Library,
     Screen.Settings
 )
 
@@ -125,6 +129,13 @@ fun AppNavGraph(
             composable("ai_services") {
                 AiServicesScreen(
                     viewModel = viewModel
+                )
+            }
+
+            composable("library") {
+                AzkarLibraryScreen(
+                    viewModel = viewModel,
+                    onOpenAzkar = { category -> navController.navigate("azkar/$category") }
                 )
             }
         }
