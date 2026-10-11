@@ -116,6 +116,7 @@ dependencies {
   debugImplementation(libs.firebase.appcheck.debug)
   releaseImplementation(libs.firebase.appcheck.playintegrity)
   implementation(libs.kotlinx.coroutines.android)
+  implementation(libs.kotlinx.coroutines.play.services)
   implementation(libs.kotlinx.coroutines.core)
   implementation("androidx.work:work-runtime-ktx:2.9.0")
   implementation("androidx.glance:glance-appwidget:1.1.1")

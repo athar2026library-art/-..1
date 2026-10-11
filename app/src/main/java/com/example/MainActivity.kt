@@ -1,5 +1,8 @@
 package com.example
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -38,12 +41,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
+import com.example.data.AiRepository
+import com.example.data.AppDatabase
+import com.example.data.AuthRepository
+import com.example.data.FirestoreRepository
 import com.example.data.ProgressRepository
 import com.example.data.SettingsRepository
 import com.example.data.dataStore
-import com.example.data.AiRepository
-import com.example.data.AuthRepository
-import com.example.data.FirestoreRepository
 import com.example.ui.AppNavGraph
 import com.example.ui.AppViewModel
 import com.example.ui.AppViewModelFactory
@@ -83,7 +90,7 @@ class MainActivity : ComponentActivity() {
         val workRequest = PeriodicWorkRequestBuilder<NotificationWorker>(2, TimeUnit.HOURS).build()
         WorkManager.getInstance(applicationContext).enqueueUniquePeriodicWork(
             "AzkarNotifications",
-            androidx.work.ExistingPeriodicWorkPolicy.KEEP,
+            ExistingPeriodicWorkPolicy.KEEP,
             workRequest
         )
         SyncWorker.enqueue(applicationContext)
@@ -91,7 +98,7 @@ class MainActivity : ComponentActivity() {
         val progressRepository = ProgressRepository.getInstance(applicationContext)
         val settingsRepository = SettingsRepository(applicationContext.dataStore)
         val aiRepository = AiRepository()
-        val authRepository = AuthRepository(applicationContext)
+        val authRepository = AuthRepository(this)
         val firestoreRepository = FirestoreRepository()
 
         FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->

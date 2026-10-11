@@ -32,6 +32,8 @@ import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -104,8 +106,15 @@ fun AzkarScreen(
     var isInitialized by remember { mutableStateOf(false) }
     var showBottomSheet by remember { mutableStateOf(false) }
 
-    val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
+    val audioPlayer = remember { AudioPlayer(context) }
+    val isPlaying by audioPlayer.isPlaying.collectAsState()
+    val coroutineScope = rememberCoroutineScope()
+
+    DisposableEffect(Unit) {
+        onDispose { audioPlayer.shutdown() }
+    }
+
     val view = LocalView.current
 
     val audioPlayer = remember { AudioPlayer(context.applicationContext) }

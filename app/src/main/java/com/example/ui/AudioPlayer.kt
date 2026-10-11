@@ -3,9 +3,12 @@ package com.example.ui
 import android.content.Context
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
+import android.speech.tts.Voice
+import android.util.Log
 import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,7 +25,7 @@ class AudioPlayer(context: Context) : TextToSpeech.OnInitListener {
     private val continuations = ConcurrentHashMap<String, CancellableContinuation<Boolean>>()
 
     init {
-        tts = TextToSpeech(context, this)
+        tts = TextToSpeech(context.applicationContext, this)
     }
 
     override fun onInit(status: Int) {
@@ -43,7 +46,36 @@ class AudioPlayer(context: Context) : TextToSpeech.OnInitListener {
                         _isPlaying.value = false
                         continuations.remove(utteranceId)?.resume(false) { _, _, _ -> }
                     }
-                })
+                }
+            }
+        )
+
+        isInitialized = true
+        Log.d("AudioPlayer", "TTS ready (ar)")
+    }
+
+    private var pendingLoopText: String? = null
+
+    private fun selectArabicVoice(speechEngine: TextToSpeech) {
+        val voices =
+            speechEngine.voices.orEmpty()
+                .filter {
+                    it.locale.language.equals("ar", ignoreCase = true)
+                }
+                .sortedWith(
+                    compareBy<Voice> {
+                        !it.locale.language.equals("ar", ignoreCase = true)
+                    }.thenBy {
+                        if (it.locale == Locale("ar", "SA")) 0 else 1
+                    }.thenBy {
+                        it.isNetworkConnectionRequired
+                    }
+                )
+
+        voices.firstOrNull()?.let { voice ->
+            runCatching {
+                speechEngine.setVoice(voice)
+                Log.d("AudioPlayer", "Selected voice: ${voice.name} (${voice.locale})")
             }
         }
     }
@@ -92,5 +124,7 @@ class AudioPlayer(context: Context) : TextToSpeech.OnInitListener {
     fun shutdown() {
         stop()
         tts?.shutdown()
+        tts = null
+        isInitialized = false
     }
 }
