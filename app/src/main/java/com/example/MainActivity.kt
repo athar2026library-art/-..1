@@ -42,8 +42,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.PeriodicWorkRequestBuilder
-import androidx.work.WorkManager
 import com.example.data.AiRepository
 import com.example.data.AppDatabase
 import com.example.data.AuthRepository
@@ -69,10 +67,7 @@ import com.example.ui.SyncWorker
 import java.util.concurrent.TimeUnit
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
-import android.Manifest
-import android.os.Build
 import androidx.core.app.ActivityCompat
-import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
 
 class MainActivity : ComponentActivity() {
