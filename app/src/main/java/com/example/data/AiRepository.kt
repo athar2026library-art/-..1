@@ -52,9 +52,10 @@ class AiRepository {
                     .toRequestBody(JSON_MEDIA_TYPE)
 
                 val request = Request.Builder()
-                    .url("$API_URL?key=$apiKey")
+                    .url(API_URL)
                     .post(body)
                     .header("Content-Type", "application/json")
+                    .header("x-goog-api-key", apiKey)
                     .build()
 
                 client.newCall(request).execute().use { response ->
