@@ -107,19 +107,12 @@ fun AzkarScreen(
     var showBottomSheet by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
-    val audioPlayer = remember { AudioPlayer(context) }
-    val isPlaying by audioPlayer.isPlaying.collectAsState()
     val coroutineScope = rememberCoroutineScope()
-
-    DisposableEffect(Unit) {
-        onDispose { audioPlayer.shutdown() }
-    }
-
     val view = LocalView.current
-
-    val audioPlayer = remember { AudioPlayer(context.applicationContext) }
+    val audioPlayer = remember(context) { AudioPlayer(context.applicationContext) }
     val isPlaying by audioPlayer.isPlaying.collectAsStateWithLifecycle()
-    DisposableEffect(Unit) {
+
+    DisposableEffect(audioPlayer) {
         onDispose {
             audioPlayer.shutdown()
             viewModel.flushPendingTasbeeh()
