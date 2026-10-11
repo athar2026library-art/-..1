@@ -1,8 +1,12 @@
 package com.example.data
 
 import android.content.Context
-import androidx.room.Room
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -13,29 +17,60 @@ class ProgressRepository(private val progressDao: ProgressDao) {
         return sdf.format(Date())
     }
 
-    fun getTodayProgress(): Flow<UserProgress?> = progressDao.getProgressByDate(getTodayDateStr())
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun getTodayProgress(): Flow<UserProgress?> =
+        currentDateFlow().flatMapLatest { progressDao.getProgressByDate(it) }
+
+    private fun currentDateFlow(): Flow<String> = flow {
+        while (true) {
+            emit(getTodayDateStr())
+            delay(60_000L)
+        }
+    }.distinctUntilChanged()
+
     fun getRecentProgress(): Flow<List<UserProgress>> = progressDao.getRecentProgress()
 
-    suspend fun initTodayProgress() {
+    suspend fun getTodayProgressSync(date: String = getTodayDateStr()): UserProgress? =
+        progressDao.getProgressByDateSync(date)
+
+    fun getAllProgressFlow(): Flow<List<UserProgress>> = progressDao.getAllProgressFlow()
+
+    suspend fun getAllProgress(): List<UserProgress> = progressDao.getAllProgressSync()
+
+    /** يضمن وجود صف اليوم قبل أي تحديث (مهم بعد منتصف الليل والتطبيق مفتوح). */
+    private suspend fun ensureToday(): String {
         val date = getTodayDateStr()
-        // Use IGNORE so we never overwrite existing progress for the day
         progressDao.insertProgressIfNotExists(UserProgress(date = date))
+        return date
+    }
+
+    suspend fun initTodayProgress() {
+        progressDao.insertProgressIfNotExists(UserProgress(date = getTodayDateStr()))
     }
 
     suspend fun completeSabah() {
-        progressDao.updateSabah(getTodayDateStr(), true)
+        progressDao.updateSabah(ensureToday(), true)
     }
 
     suspend fun completeMasaa() {
-        progressDao.updateMasaa(getTodayDateStr(), true)
+        progressDao.updateMasaa(ensureToday(), true)
+    }
+
+    suspend fun completeSleep() {
+        progressDao.updateSleep(ensureToday(), true)
     }
 
     suspend fun addTasbeeh(count: Int) {
-        progressDao.addTasbeeh(getTodayDateStr(), count)
+        progressDao.addTasbeeh(ensureToday(), count)
+    }
+
+    suspend fun clearLocalProgress() {
+        progressDao.clearAll()
     }
 
     suspend fun syncProgress(remoteList: List<UserProgress>) {
         for (remote in remoteList) {
+            if (remote.date.isBlank()) continue
             val local = progressDao.getProgressByDateSync(remote.date)
             if (local == null) {
                 progressDao.insertProgress(remote)
@@ -43,6 +78,7 @@ class ProgressRepository(private val progressDao: ProgressDao) {
                 val merged = local.copy(
                     completedSabah = local.completedSabah || remote.completedSabah,
                     completedMasaa = local.completedMasaa || remote.completedMasaa,
+                    completedSleep = local.completedSleep || remote.completedSleep,
                     totalTasbeeh = maxOf(local.totalTasbeeh, remote.totalTasbeeh)
                 )
                 progressDao.insertProgress(merged)
@@ -56,17 +92,10 @@ class ProgressRepository(private val progressDao: ProgressDao) {
 
         fun getInstance(context: Context): ProgressRepository {
             return instance ?: synchronized(this) {
-                instance ?: buildRepository(context).also { instance = it }
+                instance ?: ProgressRepository(
+                    AppDatabase.getDatabase(context).progressDao()
+                ).also { instance = it }
             }
-        }
-
-        private fun buildRepository(context: Context): ProgressRepository {
-            val db = Room.databaseBuilder(
-                context.applicationContext,
-                AppDatabase::class.java,
-                "azkar_db"
-            ).build()
-            return ProgressRepository(db.progressDao())
         }
     }
 }

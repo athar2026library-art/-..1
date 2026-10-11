@@ -1,171 +1,119 @@
 package com.example.data
 
 import android.util.Log
-import com.google.firebase.ai.Firebase
-import com.google.firebase.ai.ai
-import com.google.firebase.ai.type.GenerativeBackend
-import com.google.firebase.ai.type.ThinkingLevel
-import com.google.firebase.ai.type.generationConfig
-import com.google.firebase.ai.type.thinkingConfig
-import com.google.firebase.functions.FirebaseFunctions
-import com.google.firebase.functions.FirebaseFunctionsException
+import com.example.BuildConfig
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.job
 import kotlinx.coroutines.withContext
-import kotlin.coroutines.cancellation.CancellationException
+import org.json.JSONObject
+import java.io.IOException
+import java.net.HttpURLConnection
+import java.net.URL
 
+/**
+ * عميل Gemini مباشر للتطوير المحلي فقط.
+ *
+ * يقرأ المفتاح من local.properties عبر BuildConfig؛ لا تضع المفتاح في Git
+ * ولا توزع نسخة release مبنية بهذا المسار على المستخدمين.
+ */
 class AiRepository {
 
-    companion object {
-        private const val MAX_INPUT_CHARS = 800
+    suspend fun ask(message: String): String = callGemini("suggest", message)
 
-        private const val DIRECT_SYSTEM_INSTRUCTION =
-            "أنت مساعد إسلامي متخصص في الأذكار والدعاء. " +
-                "اعتمد فقط على الأحاديث الصحيحة وكتاب حصن المسلم. " +
-                "قدم إجاباتك بالعربية بأسلوب ميسر ومختصر وهادئ. " +
-                "لا تفتِ ولا تصدر أحكاماً شرعية من عندك. " +
-                "لا تخترع أحاديث أو أذكاراً من عندك."
+    suspend fun explainZekr(zekr: String): String = callGemini("explain", zekr)
 
-        private const val DISCLAIMER =
-            "\n\n— هذا رد آلي للمساعدة العامة وليس فتوى شرعية."
-    }
+    suspend fun suggestZekrForFeeling(feeling: String): String = callGemini("suggest", feeling)
 
-    private val functions: FirebaseFunctions by lazy {
-        FirebaseFunctions.getInstance()
-    }
+    private suspend fun callGemini(mode: String, text: String): String = withContext(Dispatchers.IO) {
+        val clean = text.trim().take(MAX_INPUT_CHARS)
+        if (clean.length < 2) return@withContext "اكتب سؤالك أو شعورك أولاً."
 
-    private val directModel by lazy {
-        val config = generationConfig {
-            thinkingConfig = thinkingConfig {
-                thinkingLevel = ThinkingLevel.LOW
-            }
+        val apiKey = BuildConfig.GEMINI_API_KEY.trim()
+        if (apiKey.isEmpty()) {
+            return@withContext "المساعد غير مهيأ للتطوير المحلي. أضف GEMINI_API_KEY إلى local.properties."
         }
 
-        Firebase.ai(
-            backend = GenerativeBackend.googleAI()
-        ).generativeModel(
-            modelName = "gemini-2.5-flash",
-            generationConfig = config,
-            systemInstruction = DIRECT_SYSTEM_INSTRUCTION,
-        )
-    }
-
-    suspend fun explainZekr(zekr: String): String =
-        callGemini(mode = "explain", text = zekr)
-
-    suspend fun suggestZekrForFeeling(feeling: String): String =
-        callGemini(mode = "suggest", text = feeling)
-
-    private fun buildDirectPrompt(mode: String, text: String): String {
-        return when (mode) {
-            "explain" ->
-                "قم بشرح وتدبر هذا الذكر بأسلوب إيماني، ميسر ومختصر جداً:\n\n\"$text\""
-            else ->
-                "أشعر بـ ($text) أو أحتاج إلى دعاء بهذا الخصوص. " +
-                    "اقترح لي ذكراً أو دعاءً من الأحاديث الصحيحة وحصن المسلم يناسب حالتي.\n" +
-                    "نرجو الرد بالتنسيق التالي حصراً:\n" +
-                    "الذكر: [النص]\nفضله: [شرح مبسط ومختصر لفضله]\nالمصدر والتخريج: [المرجع]"
-        }
-    }
-
-    private fun ensureDisclaimer(text: String): String {
-        val trimmed = text.trim()
-        return if (trimmed.contains("ليس فتوى") || trimmed.contains("ليس حكماً شرعياً")) {
-            trimmed
-        } else {
-            trimmed + DISCLAIMER
-        }
-    }
-
-    private suspend fun callGemini(
-        mode: String,
-        text: String
-    ): String = withContext(Dispatchers.IO) {
-
-        val clean = text
-            .trim()
-            .take(MAX_INPUT_CHARS)
-
-        if (clean.length < 2) {
-            return@withContext "اكتب سؤالك أو شعورك أولاً."
+        val prompt = when (mode) {
+            "explain" -> "اشرح هذا الذكر باختصار وبلغة عربية واضحة، مع بيان معناه وفائدته دون اختلاق مصادر:\n$clean"
+            else -> "أجب بالعربية بإيجاز وبأسلوب داعم حول طلب المستخدم التالي، ولا تقدم فتوى أو مصدرًا غير متأكد منه:\n$clean"
         }
 
-        var directFailure: Throwable? = null
-
+        var connection: HttpURLConnection? = null
+        val startedAt = android.os.SystemClock.elapsedRealtime()
+        val cancellationHandle = currentCoroutineContext().job.invokeOnCompletion {
+            connection?.disconnect()
+        }
         try {
-            val prompt = buildDirectPrompt(mode, clean)
-            val response = directModel.generateContent(prompt)
-            val out = response.text?.trim()
-
-            if (!out.isNullOrEmpty()) {
-                return@withContext ensureDisclaimer(out)
-            }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            directFailure = e
-            Log.w(
-                "AiRepository",
-                "Direct Firebase AI Logic failed; trying Cloud Function fallback",
-                e
+            val endpoint = URL(
+                "https://generativelanguage.googleapis.com/v1beta/models/" +
+                    "$MODEL:generateContent?key=$apiKey"
             )
-        }
-
-        try {
-            val result = functions
-                .getHttpsCallable("generateGemini")
-                .call(
-                    mapOf(
-                        "mode" to mode,
-                        "text" to clean
-                    )
-                )
-                .await()
-
-            @Suppress("UNCHECKED_CAST")
-            val data = result.data as? Map<String, Any?>
-
-            val out = data?.get("text") as? String
-
-            out?.trim()
-                .takeUnless { it.isNullOrEmpty() }
-                ?.let {
-                    return@withContext ensureDisclaimer(it)
-                }
-                ?: "عذراً، لم أتمكن من استخراج الإجابة."
-
-        } catch (e: FirebaseFunctionsException) {
-            when (e.code) {
-                FirebaseFunctionsException.Code.UNAUTHENTICATED ->
-                    "سجّل الدخول أولاً لاستخدام المساعد الذكي."
-
-                FirebaseFunctionsException.Code.PERMISSION_DENIED ->
-                    "المساعد محمي بـ App Check ولم يتم اعتماد هذا الجهاز بعد."
-
-                FirebaseFunctionsException.Code.RESOURCE_EXHAUSTED ->
-                    "وصلت لحد الاستخدام. حاول بعد قليل."
-
-                FirebaseFunctionsException.Code.INVALID_ARGUMENT ->
-                    "النص غير مقبول. اختصر أو أعد الصياغة."
-
-                FirebaseFunctionsException.Code.UNAVAILABLE ->
-                    "لا يوجد اتصال بالإنترنت. تحقق من الشبكة 🌐"
-
-                FirebaseFunctionsException.Code.NOT_FOUND ->
-                    "خدمة المساعد غير منشورة بعد."
-
-                else ->
-                    "تعذر الحصول على إجابة. تأكد من إعداد Firebase AI."
+            connection = (endpoint.openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                connectTimeout = TIMEOUT_MS
+                readTimeout = TIMEOUT_MS
+                doOutput = true
+                setRequestProperty("Content-Type", "application/json; charset=UTF-8")
             }
+
+            val body = JSONObject()
+                .put("contents", org.json.JSONArray().put(
+                    JSONObject().put("parts", org.json.JSONArray().put(JSONObject().put("text", prompt)))
+                ))
+                .put("generationConfig", JSONObject()
+                    .put("temperature", 0.7)
+                    .put("maxOutputTokens", 512))
+                .toString()
+
+            connection.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
+            val status = connection.responseCode
+            Log.d("AiRepository", "Gemini HTTP response in ${android.os.SystemClock.elapsedRealtime() - startedAt}ms (status=$status)")
+            val stream = if (status in 200..299) connection.inputStream else connection.errorStream
+            val responseText = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+
+            if (status !in 200..299) {
+                Log.e("AiRepository", "Gemini HTTP $status: ${responseText.take(300)}")
+                return@withContext when (status) {
+                    400 -> "طلب غير صالح إلى Gemini. تحقق من إعداد التطوير."
+                    401, 403 -> "مفتاح Gemini غير صالح أو غير مصرح به."
+                    429 -> "تم تجاوز حد الاستخدام. حاول لاحقاً."
+                    else -> "تعذر الاتصال بالمساعد. حاول لاحقاً."
+                }
+            }
+
+            val output = JSONObject(responseText)
+                .optJSONArray("candidates")
+                ?.optJSONObject(0)
+                ?.optJSONObject("content")
+                ?.optJSONArray("parts")
+                ?.optJSONObject(0)
+                ?.optString("text")
+                ?.trim()
+                .orEmpty()
+
+            output.ifEmpty { "عذراً، لم أتمكن من استخراج الإجابة." }
         } catch (e: CancellationException) {
             throw e
+        } catch (e: java.net.SocketTimeoutException) {
+            Log.e("AiRepository", "Gemini timeout", e)
+            "انتهت مهلة الاتصال. تحقق من الشبكة وحاول مرة أخرى."
+        } catch (e: IOException) {
+            Log.e("AiRepository", "Gemini network failure", e)
+            "لا يوجد اتصال بالإنترنت. تحقق من الشبكة وحاول مرة أخرى."
         } catch (e: Exception) {
-            Log.e("AiRepository", "Cloud Function fallback failed", e)
-            if (directFailure != null) {
-                "تعذر الاتصال بالمساعد الذكي. تحقق من الشبكة وإعدادات Firebase."
-            } else {
-                "حدث خطأ غير متوقع. حاول مرة أخرى لاحقاً."
-            }
+            Log.e("AiRepository", "Gemini request failed", e)
+            "حدث خطأ غير متوقع أثناء الاتصال بالمساعد."
+        } finally {
+            cancellationHandle.dispose()
+            connection?.disconnect()
         }
+    }
+
+    private companion object {
+        const val MODEL = "gemini-3.8-flash"
+        const val MAX_INPUT_CHARS = 500
+        const val TIMEOUT_MS = 20_000
     }
 }

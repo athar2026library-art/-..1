@@ -1,19 +1,36 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    function signedIn() { return request.auth != null; }
+    function signedIn() {
+      return request.auth != null;
+    }
+    // موحّد مع Firestore: claim أو وثيقة admins/{uid}
     function isAdmin() {
       return signedIn() && (
         request.auth.token.admin == true
         || firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid))
       );
     }
-    match /feedback/{userId}/{allPaths=**} {
-      allow read: if isAdmin() || (signedIn() && request.auth.uid == userId);
-      allow write: if signedIn() && request.auth.uid == userId
-        && request.resource.size < 5 * 1024 * 1024
+    function isOwner(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+    function validImage() {
+      return request.resource.size < 5 * 1024 * 1024
         && request.resource.contentType.matches('image/.*');
     }
+
+    match /content/azkar/{assetId}/{fileName} {
+      allow read: if true;
+      allow write: if isAdmin() && validImage();
+      allow delete: if isAdmin();
+    }
+
+    match /feedback/{userId}/{feedbackId}/{fileName} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow write: if isOwner(userId) && validImage();
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
     match /{allPaths=**} {
       allow read, write: if false;
     }

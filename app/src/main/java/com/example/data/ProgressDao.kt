@@ -8,19 +8,25 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ProgressDao {
-    @Query("SELECT * FROM user_progress WHERE date = :date")
+    @Query("SELECT * FROM user_progress WHERE date = :date LIMIT 1")
     fun getProgressByDate(date: String): Flow<UserProgress?>
-    
-    @Query("SELECT * FROM user_progress WHERE date = :date")
+
+    @Query("SELECT * FROM user_progress WHERE date = :date LIMIT 1")
     suspend fun getProgressByDateSync(date: String): UserProgress?
 
     @Query("SELECT * FROM user_progress ORDER BY date DESC LIMIT 30")
     fun getRecentProgress(): Flow<List<UserProgress>>
 
+    @Query("SELECT * FROM user_progress ORDER BY date DESC")
+    fun getAllProgressFlow(): Flow<List<UserProgress>>
+
+    @Query("SELECT * FROM user_progress ORDER BY date ASC")
+    suspend fun getAllProgressSync(): List<UserProgress>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertProgress(progress: UserProgress)
 
-    /** Insert only if no row exists for this date. Used by initTodayProgress to avoid wiping existing progress. */
+    /** Insert only if the day row does not exist — prevents wiping today's progress. */
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertProgressIfNotExists(progress: UserProgress)
 
@@ -30,6 +36,12 @@ interface ProgressDao {
     @Query("UPDATE user_progress SET completedMasaa = :completed WHERE date = :date")
     suspend fun updateMasaa(date: String, completed: Boolean)
 
+    @Query("UPDATE user_progress SET completedSleep = :completed WHERE date = :date")
+    suspend fun updateSleep(date: String, completed: Boolean)
+
     @Query("UPDATE user_progress SET totalTasbeeh = totalTasbeeh + :count WHERE date = :date")
     suspend fun addTasbeeh(date: String, count: Int)
+
+    @Query("DELETE FROM user_progress")
+    suspend fun clearAll()
 }

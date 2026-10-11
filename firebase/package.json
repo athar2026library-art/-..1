@@ -1,0 +1,12 @@
+{
+  "name": "baqiyat-firebase",
+  "private": true,
+  "scripts": {
+    "test:rules": "firebase emulators:exec --only firestore --project baqiyat-rules-test \"node --test tests/rules.test.mjs\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^4.0.1",
+    "firebase": "^11.0.0",
+    "firebase-tools": "^13.29.3"
+  }
+}

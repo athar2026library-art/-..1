@@ -1,15 +1,17 @@
 package com.example
 
 import android.app.Application
-import com.google.firebase.Firebase
-import com.google.firebase.initialize
+import android.util.Log
+import com.google.firebase.FirebaseApp
 
 class AzkarApplication : Application() {
     override fun onCreate() {
         super.onCreate()
-
-        // Initialize Firebase before installing the build-variant App Check provider.
-        Firebase.initialize(this)
-        AppCheckInstaller.install()
+        try {
+            FirebaseApp.initializeApp(this)
+            AppCheckInstaller.install()
+        } catch (e: Exception) {
+            Log.e("AzkarApplication", "Firebase / App Check init failed", e)
+        }
     }
 }

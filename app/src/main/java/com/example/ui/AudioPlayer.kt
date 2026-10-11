@@ -22,78 +22,29 @@ class AudioPlayer(context: Context) : TextToSpeech.OnInitListener {
     private val _isPlaying = MutableStateFlow(false)
     val isPlaying: StateFlow<Boolean> = _isPlaying.asStateFlow()
 
-    private val continuations =
-        ConcurrentHashMap<String, CancellableContinuation<Boolean>>()
-
-    private val loopRemaining = AtomicInteger(0)
+    private val continuations = ConcurrentHashMap<String, CancellableContinuation<Boolean>>()
 
     init {
         tts = TextToSpeech(context.applicationContext, this)
     }
 
     override fun onInit(status: Int) {
-        if (status != TextToSpeech.SUCCESS) {
-            Log.e("AudioPlayer", "TTS init failed with status=$status")
-            return
-        }
-
-        val speechEngine = tts ?: return
-        val preferredLocale = Locale("ar", "SA")
-
-        var languageResult = speechEngine.setLanguage(preferredLocale)
-
-        if (
-            languageResult == TextToSpeech.LANG_MISSING_DATA ||
-            languageResult == TextToSpeech.LANG_NOT_SUPPORTED
-        ) {
-            languageResult = speechEngine.setLanguage(Locale.forLanguageTag("ar"))
-        }
-
-        if (
-            languageResult == TextToSpeech.LANG_MISSING_DATA ||
-            languageResult == TextToSpeech.LANG_NOT_SUPPORTED
-        ) {
-            Log.w("AudioPlayer", "Arabic TTS language not available")
-            return
-        }
-
-        speechEngine.setSpeechRate(0.64f)
-        speechEngine.setPitch(1.0f)
-        selectArabicVoice(speechEngine)
-
-        speechEngine.setOnUtteranceProgressListener(
-            object : UtteranceProgressListener() {
-                override fun onStart(utteranceId: String?) {
-                    _isPlaying.value = true
-                }
-
-                override fun onDone(utteranceId: String?) {
-                    val remaining = loopRemaining.decrementAndGet()
-                    if (remaining > 0 && utteranceId != null) {
-                        val text = pendingLoopText
-                        if (!text.isNullOrBlank()) {
-                            val nextId = UUID.randomUUID().toString()
-                            speechEngine.speak(
-                                text,
-                                TextToSpeech.QUEUE_FLUSH,
-                                null,
-                                nextId
-                            )
-                            return
-                        }
+        if (status == TextToSpeech.SUCCESS) {
+            val result = tts?.setLanguage(Locale.forLanguageTag("ar"))
+            if (result != TextToSpeech.LANG_MISSING_DATA && result != TextToSpeech.LANG_NOT_SUPPORTED) {
+                isInitialized = true
+                tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+                    override fun onStart(utteranceId: String) {
+                        _isPlaying.value = true
                     }
-                    _isPlaying.value = false
-                    utteranceId?.let { id ->
-                        continuations.remove(id)?.resume(true, null)
+                    override fun onDone(utteranceId: String) {
+                        _isPlaying.value = false
+                        continuations.remove(utteranceId)?.resume(true) { _, _, _ -> }
                     }
-                }
-
-                @Deprecated("Deprecated in Java")
-                override fun onError(utteranceId: String?) {
-                    _isPlaying.value = false
-                    loopRemaining.set(0)
-                    utteranceId?.let { id ->
-                        continuations.remove(id)?.resume(false, null)
+                    @Deprecated("Deprecated in Java")
+                    override fun onError(utteranceId: String) {
+                        _isPlaying.value = false
+                        continuations.remove(utteranceId)?.resume(false) { _, _, _ -> }
                     }
                 }
             }
@@ -129,78 +80,43 @@ class AudioPlayer(context: Context) : TextToSpeech.OnInitListener {
         }
     }
 
-    private fun cleanForSpeech(text: String): String {
-        return text
-            .replace("ﷺ", "صلى الله عليه وسلم")
-            .replace("۝", ". ")
-            .replace(Regex("[\\u06D6-\\u06ED]"), "")
-            .replace("ـ", "")
-            .replace(Regex("[\\u200B-\\u200F\\u202A-\\u202E]"), "")
-            .replace("…", "... ")
-            .replace(Regex("[،؛]"), "$0 ")
-            .replace(Regex("\\s+"), " ")
-            .trim()
-    }
-
-    suspend fun playAndWait(text: String): Boolean =
-        suspendCancellableCoroutine { cont ->
-            if (!isInitialized) {
-                cont.resume(false, null)
-                return@suspendCancellableCoroutine
-            }
-
-            val cleaned = cleanForSpeech(text)
-            if (cleaned.isBlank()) {
-                cont.resume(false, null)
-                return@suspendCancellableCoroutine
-            }
-
-            loopRemaining.set(0)
-            pendingLoopText = null
-
-            val id = UUID.randomUUID().toString()
-            continuations[id] = cont
-
-            val status = tts?.speak(cleaned, TextToSpeech.QUEUE_FLUSH, null, id)
-            if (status != TextToSpeech.SUCCESS) {
-                continuations.remove(id)
-                cont.resume(false, null)
-            }
-
-            cont.invokeOnCancellation {
-                tts?.stop()
-                continuations.remove(id)
-                _isPlaying.value = false
-            }
+    suspend fun playAndWait(text: String): Boolean = suspendCancellableCoroutine { cont ->
+        if (!isInitialized) {
+            cont.resume(false) { _, _, _ -> }
+            return@suspendCancellableCoroutine
         }
-
-    fun playLoop(text: String, times: Int) {
-        if (!isInitialized || times <= 0) return
-
-        val cleaned = cleanForSpeech(text)
-        if (cleaned.isBlank()) return
-
-        stop()
-        pendingLoopText = cleaned
-        loopRemaining.set(times)
 
         val id = UUID.randomUUID().toString()
-        val status = tts?.speak(cleaned, TextToSpeech.QUEUE_FLUSH, null, id)
-        if (status == TextToSpeech.SUCCESS) {
-            _isPlaying.value = true
-        } else {
-            loopRemaining.set(0)
-            pendingLoopText = null
+        continuations[id] = cont
+
+        val status = tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, id)
+        if (status != TextToSpeech.SUCCESS) {
+            continuations.remove(id)
+            cont.resume(false) { _, _, _ -> }
         }
+
+        cont.invokeOnCancellation {
+            tts?.stop()
+            continuations.remove(id)
+            _isPlaying.value = false
+        }
+    }
+
+    /** Repeat the same zekr several times (QUEUE_ADD). */
+    fun playLoop(text: String, times: Int) {
+        if (!isInitialized || times < 1) return
+        tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, UUID.randomUUID().toString())
+        repeat(times - 1) {
+            tts?.speak(text, TextToSpeech.QUEUE_ADD, null, UUID.randomUUID().toString())
+        }
+        _isPlaying.value = true
     }
 
     fun stop() {
         if (isInitialized) {
             tts?.stop()
             _isPlaying.value = false
-            loopRemaining.set(0)
-            pendingLoopText = null
-            continuations.values.forEach { if (it.isActive) it.resume(false, null) }
+            continuations.values.forEach { if (it.isActive) it.resume(false) { _, _, _ -> } }
             continuations.clear()
         }
     }
