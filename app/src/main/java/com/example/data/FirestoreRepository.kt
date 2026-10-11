@@ -133,7 +133,9 @@ class FirestoreRepository {
                         source = doc.getString("source").orEmpty(),
                         fadl = doc.getString("fadl").orEmpty(),
                         repeatCount = (doc.getLong("repeat") ?: 1L).toInt().coerceAtLeast(1),
-                        category = category
+                        category = category,
+                        audioUrl = doc.getString("audioUrl"),
+                        audioUrlsByReciter = readAudioUrlsByReciter(doc.get("audioUrlsByReciter"))
                     )
                 }
                 .filter { it.text.isNotBlank() }
@@ -142,6 +144,15 @@ class FirestoreRepository {
             emptyList()
         }
     }
+
+    private fun readAudioUrlsByReciter(raw: Any?): Map<String, String> =
+        (raw as? Map<*, *>)
+            ?.mapNotNull { (key, value) ->
+                if (key is String && value is String && value.startsWith("https://")) key to value
+                else null
+            }
+            ?.toMap()
+            .orEmpty()
 
     /** التصنيفات الديناميكية المنشورة. تصل فوراً دون إصدار جديد للتطبيق. */
     fun observeCategories(): Flow<List<AzkarCategory>> = callbackFlow {
@@ -201,7 +212,9 @@ class FirestoreRepository {
                             source = doc.getString("source").orEmpty(),
                             fadl = doc.getString("fadl").orEmpty(),
                             repeatCount = (doc.getLong("repeat") ?: 1L).toInt().coerceAtLeast(1),
-                            category = category
+                            category = category,
+                            audioUrl = doc.getString("audioUrl"),
+                            audioUrlsByReciter = readAudioUrlsByReciter(doc.get("audioUrlsByReciter"))
                         )
                     }
                     .filter { it.text.isNotBlank() }
