@@ -12,10 +12,14 @@ data class AzkarCategory(
 
 object CategoryDefaults {
     val builtIn = listOf(
-        AzkarCategory("sabah", "الصباح", "ابدأ يومك بنور", "sun", builtIn = true),
-        AzkarCategory("masaa", "المساء", "اختم يومك بسكينة", "moon", builtIn = true),
-        AzkarCategory("sleep", "النوم", "طمأنينة قبل النوم", "bed", builtIn = true),
-        AzkarCategory("travel", "السفر", "حفظ وأمان", "car", builtIn = true)
+        AzkarCategory("sabah", "الصباح", "ابدأ يومك بنور", "sun", order = 0, builtIn = true),
+        AzkarCategory("masaa", "المساء", "اختم يومك بسكينة", "moon", order = 1, builtIn = true),
+        AzkarCategory("sleep", "النوم", "طمأنينة قبل النوم", "bed", order = 2, builtIn = true),
+        AzkarCategory("travel", "السفر", "حفظ وأمان", "car", order = 3, builtIn = true),
+        AzkarCategory("worry", "الهم والقلق", "أذكار عند الضيق والخوف", "heart", order = 4, builtIn = true),
+        AzkarCategory("rizq", "الرزق", "دعاء بسعة الخير", "food", order = 5, builtIn = true),
+        AzkarCategory("illness", "المرض والشفاء", "دعاء للمريض", "heart", order = 6, builtIn = true),
+        AzkarCategory("waking", "الاستيقاظ", "ذكر بداية اليوم", "sun", order = 7, builtIn = true)
     )
 
     private val builtInIds = builtIn.map { it.id }.toSet()
