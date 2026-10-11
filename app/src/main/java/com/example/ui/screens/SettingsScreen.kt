@@ -29,6 +29,14 @@ fun SettingsScreen(
     val isVibrationEnabled by viewModel.isVibrationEnabled.collectAsState()
     val keepScreenOn by viewModel.keepScreenOn.collectAsState()
     val autoDnd by viewModel.autoDnd.collectAsState()
+    val audioSpeed by viewModel.audioSpeed.collectAsState()
+    val remindSabah by viewModel.remindSabah.collectAsState()
+    val remindMasaa by viewModel.remindMasaa.collectAsState()
+    val remindSleep by viewModel.remindSleep.collectAsState()
+    val remindFriday by viewModel.remindFriday.collectAsState()
+    val reminderSabahTime by viewModel.reminderSabahTime.collectAsState()
+    val reminderMasaaTime by viewModel.reminderMasaaTime.collectAsState()
+    val reminderSleepTime by viewModel.reminderSleepTime.collectAsState()
     
     val userSignedIn by viewModel.userSignedIn.collectAsState()
     val context = LocalContext.current
@@ -166,6 +174,58 @@ fun SettingsScreen(
             }
             
             Spacer(modifier = Modifier.height(32.dp))
+
+            Text("الصوت والتذكيرات", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            Spacer(modifier = Modifier.height(16.dp))
+            Card(
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(0.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Text("سرعة النطق الصوتي الاحتياطي", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    Text("${audioSpeed}×", color = MaterialTheme.colorScheme.primary)
+                    Slider(
+                        value = audioSpeed,
+                        onValueChange = { viewModel.setAudioSpeed(it) },
+                        valueRange = 0.75f..1.25f,
+                        steps = 1
+                    )
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+                    Spacer(modifier = Modifier.height(12.dp))
+                    ReminderSettingRow("أذكار الصباح", remindSabah, { viewModel.setReminderEnabled("sabah", it) })
+                    Text("وقت التذكير", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf("07:00", "08:00", "09:00").forEach { time ->
+                            FilterChip(selected = reminderSabahTime == time, onClick = { viewModel.setReminderTime("sabah", time) }, label = { Text(time) })
+                        }
+                    }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+                    Spacer(modifier = Modifier.height(12.dp))
+                    ReminderSettingRow("أذكار المساء", remindMasaa, { viewModel.setReminderEnabled("masaa", it) })
+                    Text("وقت التذكير", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf("17:00", "18:00", "19:00").forEach { time ->
+                            FilterChip(selected = reminderMasaaTime == time, onClick = { viewModel.setReminderTime("masaa", time) }, label = { Text(time) })
+                        }
+                    }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+                    Spacer(modifier = Modifier.height(12.dp))
+                    ReminderSettingRow("قبل النوم", remindSleep, { viewModel.setReminderEnabled("sleep", it) })
+                    Text("وقت التذكير", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf("21:00", "22:00", "23:00").forEach { time ->
+                            FilterChip(selected = reminderSleepTime == time, onClick = { viewModel.setReminderTime("sleep", time) }, label = { Text(time) })
+                        }
+                    }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+                    Spacer(modifier = Modifier.height(12.dp))
+                    ReminderSettingRow("تذكير يوم الجمعة", remindFriday, { viewModel.setReminderEnabled("friday", it) })
+                }
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
             
             Text("المزامنة السحابية", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
             Spacer(modifier = Modifier.height(16.dp))
@@ -211,5 +271,22 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(48.dp))
         }
+    }
+}
+
+
+@Composable
+private fun ReminderSettingRow(
+    title: String,
+    enabled: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(title, fontSize = 16.sp)
+        Switch(checked = enabled, onCheckedChange = onCheckedChange)
     }
 }
