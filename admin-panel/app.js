@@ -87,31 +87,107 @@
     }
   }
 
-  function setSignedInUI(user) {
-    const authSection = $("#auth-section");
+  function setSignedOutUI(messageText = "سجّل الدخول بحساب Google المصرّح له.") {
     const adminSection = $("#admin-section");
     const btnIn = $("#btn-sign-in");
     const btnOut = $("#btn-sign-out");
     const message = $("#auth-message");
-    const status = $("#admin-status");
+    if (message) message.textContent = messageText;
+    if (btnIn) btnIn.hidden = false;
+    if (btnOut) btnOut.hidden = true;
+    if (adminSection) adminSection.hidden = true;
+  }
 
-    if (user) {
-      if (message) message.textContent = `مرحباً، ${user.displayName || user.email}`;
-      if (btnIn) btnIn.hidden = true;
-      if (btnOut) btnOut.hidden = false;
-      if (adminSection) adminSection.hidden = false;
-      if (status) {
-        status.textContent =
-          "تم تسجيل الدخول. يمكنك متابعة إدارة المحتوى من هنا.";
-      }
-    } else {
-      if (message) {
-        message.textContent = "سجّل الدخول بحساب Google المصرّح له.";
-      }
-      if (btnIn) btnIn.hidden = false;
-      if (btnOut) btnOut.hidden = true;
-      if (adminSection) adminSection.hidden = true;
+  async function verifyAdmin(user) {
+    if (!user) return false;
+
+    try {
+      const token = await user.getIdTokenResult(true);
+      if (token.claims?.admin === true) return true;
+
+      // The Firestore rules allow a signed-in user to read only their own
+      // admins/{uid} document, so this check cannot grant access by itself.
+      const adminDoc = await db.collection("admins").doc(user.uid).get();
+      return adminDoc.exists &&
+        ["admin", "super_admin"].includes(adminDoc.data()?.role);
+    } catch (error) {
+      console.error("Admin verification failed", error);
+      return false;
     }
+  }
+
+  async function loadDashboard() {
+    const container = $("#admin-content");
+    if (!container) return;
+    container.textContent = "جاري تحميل الإحصائيات…";
+
+    try {
+      const [usersSnapshot, feedbackSnapshot] = await Promise.all([
+        db.collection("users").get(),
+        db.collection("feedback").get()
+      ]);
+      const newComplaints = feedbackSnapshot.docs.filter((doc) => {
+        const data = doc.data() || {};
+        return data.status === "new" &&
+          ["complaint", "technical", "bug"].includes(data.type);
+      }).length;
+
+      const stats = [
+        ["إجمالي المستخدمين", String(usersSnapshot.size)],
+        ["الشكاوى والمشكلات الجديدة", String(newComplaints)],
+        ["النشطون اليوم", "غير متاح بعد — لا يُسجَّل نشاط يومي موثوق"],
+        ["عدد قراءات الأذكار", "غير متاح بعد — يلزم تسجيل أحداث القراءة"],
+        ["أسئلة المساعد", "غير متاح بعد — يلزم تفعيل إحصاءات آمنة"]
+      ];
+      container.replaceChildren();
+      const grid = document.createElement("div");
+      grid.className = "stats-grid";
+      stats.forEach(([label, value]) => {
+        const card = document.createElement("article");
+        card.className = "stat-card";
+        const heading = document.createElement("h3");
+        heading.textContent = label;
+        const metric = document.createElement("p");
+        metric.textContent = value;
+        card.append(heading, metric);
+        grid.append(card);
+      });
+      container.append(grid);
+    } catch (error) {
+      console.error("Dashboard loading failed", error);
+      container.textContent =
+        "تعذر تحميل الإحصائيات. تحقق من صلاحيات Firestore وقواعد الأمان.";
+    }
+  }
+
+  async function handleAuthState(user) {
+    const message = $("#auth-message");
+    const adminSection = $("#admin-section");
+    const btnIn = $("#btn-sign-in");
+    const btnOut = $("#btn-sign-out");
+
+    if (!user) {
+      setSignedOutUI();
+      return;
+    }
+
+    if (message) message.textContent = "جارٍ التحقق من صلاحيات المالك…";
+    if (btnIn) btnIn.hidden = true;
+    if (btnOut) btnOut.hidden = false;
+    if (adminSection) adminSection.hidden = true;
+
+    const authorized = await verifyAdmin(user);
+    if (!authorized) {
+      setSignedOutUI("هذا الحساب لا يملك صلاحية المالك. اطلب من مسؤول المشروع منحه صلاحية الإدارة.");
+      if (btnOut) btnOut.hidden = false;
+      return;
+    }
+
+    if (message) message.textContent = `مرحباً، ${user.displayName || user.email}`;
+    if (adminSection) adminSection.hidden = false;
+    const status = $("#admin-status");
+    if (status) status.textContent = "تم التحقق من صلاحيات الإدارة.";
+    await loadDashboard();
   }
 
   async function init() {
@@ -136,7 +212,7 @@
     $("#btn-sign-in")?.addEventListener("click", signInAdmin);
     $("#btn-sign-out")?.addEventListener("click", () => auth.signOut());
 
-    auth.onAuthStateChanged((user) => setSignedInUI(user));
+    auth.onAuthStateChanged((user) => { void handleAuthState(user); });
   }
 
   document.addEventListener("DOMContentLoaded", init);
