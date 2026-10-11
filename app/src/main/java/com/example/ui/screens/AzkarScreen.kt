@@ -273,6 +273,7 @@ fun AzkarScreen(
             viewModel.addTasbeeh(1)
             if (isVibrationEnabled) vibrateLight(context)
             if (countRemaining == 0) {
+                viewModel.recordAzkarRead(category, currentZekr)
                 if (isVibrationEnabled) vibrateCompletion(context)
                 coroutineScope.launch {
                     delay(if (autoPlayEnabled) 1200 else 300)
