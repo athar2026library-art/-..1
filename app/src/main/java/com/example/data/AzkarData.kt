@@ -6,7 +6,9 @@ data class Zekr(
     val source: String,
     val fadl: String,
     val repeatCount: Int,
-    val category: String // sabah, masaa, sleep, travel
+    val category: String, // sabah, masaa, sleep, travel, or a topic category
+    val audioUrl: String? = null,
+    val audioUrlsByReciter: Map<String, String> = emptyMap()
 )
 
 object AzkarData {
