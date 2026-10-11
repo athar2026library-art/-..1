@@ -5,6 +5,7 @@
     $("#close-category")?.addEventListener("click", closeCategoryEditor);
     $("#close-preview")?.addEventListener("click", closePreview);
     $("#export-json")?.addEventListener("click", exportJson);
+    $("#refresh-metrics")?.addEventListener("click", () => loadOwnerMetrics());
     $("#send-notify")?.addEventListener("click", () => sendNotify().catch((e) => toast(e.message)));
   }
 
