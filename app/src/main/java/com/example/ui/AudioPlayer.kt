@@ -27,6 +27,7 @@ class AudioPlayer(context: Context) : TextToSpeech.OnInitListener {
     private val stateLock = Any()
     private var pendingLoopText: String? = null
     private var loopRemaining = 0
+    private var loopPendingStart = false
 
     private val initialization = CompletableDeferred<Boolean>()
     private val continuations = ConcurrentHashMap<String, CancellableContinuation<Boolean>>()
@@ -86,8 +87,17 @@ class AudioPlayer(context: Context) : TextToSpeech.OnInitListener {
             }
         )
 
-        isInitialized = true
+        val queuedLoopText = synchronized(stateLock) {
+            isInitialized = true
+            if (loopPendingStart && loopRemaining > 0) {
+                loopPendingStart = false
+                pendingLoopText
+            } else {
+                null
+            }
+        }
         initialization.complete(true)
+        queuedLoopText?.let(::speakLoopIteration)
         Log.d("AudioPlayer", "Arabic TTS ready")
     }
 
@@ -121,6 +131,8 @@ class AudioPlayer(context: Context) : TextToSpeech.OnInitListener {
             .trim()
 
     suspend fun playAndWait(text: String): Boolean {
+        // A new speech request replaces a loop or another utterance.
+        stop()
         val ready = isInitialized || (withTimeoutOrNull(3_000L) { initialization.await() } == true)
         if (!ready) return false
 
@@ -158,16 +170,19 @@ class AudioPlayer(context: Context) : TextToSpeech.OnInitListener {
 
     /** Repeats the supplied text exactly [times] times, including the current play. */
     fun playLoop(text: String, times: Int) {
-        if (!isInitialized || times < 1) return
+        if (times < 1) return
         val cleaned = cleanForSpeech(text)
         if (cleaned.isBlank()) return
 
         stop()
-        synchronized(stateLock) {
+        val startNow = synchronized(stateLock) {
             pendingLoopText = cleaned
             loopRemaining = times.coerceAtMost(100)
+            loopPendingStart = !isInitialized
+            isInitialized
         }
-        speakLoopIteration(cleaned)
+        // If TTS is still initializing, onInit consumes this one pending request.
+        if (startNow) speakLoopIteration(cleaned)
     }
 
     private fun speakLoopIteration(text: String) {
@@ -215,6 +230,7 @@ class AudioPlayer(context: Context) : TextToSpeech.OnInitListener {
         synchronized(stateLock) {
             pendingLoopText = null
             loopRemaining = 0
+            loopPendingStart = false
         }
         _isPlaying.value = false
         utteranceId?.let { id ->
