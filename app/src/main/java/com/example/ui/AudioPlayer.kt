@@ -250,6 +250,7 @@ class AudioPlayer(context: Context) : TextToSpeech.OnInitListener {
         synchronized(stateLock) {
             pendingLoopText = null
             loopRemaining = 0
+            loopPendingStart = false
         }
         _isPlaying.value = false
         continuations.keys.toList().forEach { id ->
