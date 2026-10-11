@@ -73,6 +73,23 @@ class AppViewModel(
     val notificationsEnabled: StateFlow<Boolean> = settingsRepository.notificationsEnabledFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
+    val remindSabah: StateFlow<Boolean> = settingsRepository.remindSabahFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+    val remindMasaa: StateFlow<Boolean> = settingsRepository.remindMasaaFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+    val remindSleep: StateFlow<Boolean> = settingsRepository.remindSleepFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+    val remindFriday: StateFlow<Boolean> = settingsRepository.remindFridayFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+    val reminderSabahTime: StateFlow<String> = settingsRepository.reminderSabahTimeFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "07:00")
+    val reminderMasaaTime: StateFlow<String> = settingsRepository.reminderMasaaTimeFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "18:00")
+    val reminderSleepTime: StateFlow<String> = settingsRepository.reminderSleepTimeFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "22:00")
+    val reminderFridayTime: StateFlow<String> = settingsRepository.reminderFridayTimeFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "09:00")
+
     val autoPlayEnabled: StateFlow<Boolean> = settingsRepository.autoPlayFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
@@ -242,6 +259,14 @@ class AppViewModel(
             firestoreRepository.updateNotificationPrefs(enabled)
         }
     }
+    fun setReminderEnabled(category: String, enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setReminderEnabled(category, enabled) }
+    }
+
+    fun setReminderTime(category: String, time: String) {
+        viewModelScope.launch { settingsRepository.setReminderTime(category, time) }
+    }
+
 
     fun setAutoPlay(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setAutoPlay(enabled) }
