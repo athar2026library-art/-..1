@@ -87,10 +87,11 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        val workRequest = PeriodicWorkRequestBuilder<NotificationWorker>(2, TimeUnit.HOURS).build()
+        // Check every 15 minutes so user-selected reminder times are not sampled only every 2 hours.
+        val workRequest = PeriodicWorkRequestBuilder<NotificationWorker>(15, TimeUnit.MINUTES).build()
         WorkManager.getInstance(applicationContext).enqueueUniquePeriodicWork(
             "AzkarNotifications",
-            ExistingPeriodicWorkPolicy.KEEP,
+            ExistingPeriodicWorkPolicy.REPLACE,
             workRequest
         )
         SyncWorker.enqueue(applicationContext)
