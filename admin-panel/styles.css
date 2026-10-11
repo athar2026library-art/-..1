@@ -68,3 +68,29 @@ button[hidden] { display: none; }
   color: var(--muted);
   line-height: 1.6;
 }
+
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 14px;
+  margin-top: 18px;
+}
+.stat-card {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 16px;
+  background: var(--surface, #fff);
+}
+.stat-card h3 {
+  margin: 0 0 10px;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+.stat-card p {
+  margin: 0;
+  font-weight: 700;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
