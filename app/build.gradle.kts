@@ -16,6 +16,14 @@ android {
     applicationId = "com.baqiyat.azkar"
     minSdk = 24
     targetSdk = 36
+    // Local-only key from local.properties; never commit the key itself.
+    val localProps = java.util.Properties().apply {
+      val localPropsFile = rootProject.file("local.properties")
+      if (localPropsFile.exists()) localPropsFile.inputStream().use { load(it) }
+    }
+    val geminiKey = localProps.getProperty("geminiApiKey", "")
+      .replace("\\", "\\\\").replace("\"", "\\\"")
+    buildConfigField("String", "GEMINI_API_KEY", "\"$geminiKey\"")
     versionCode = 1
     versionName = "1.0"
 
@@ -97,7 +105,8 @@ dependencies {
   implementation(libs.firebase.firestore)
   implementation(libs.firebase.auth)
   implementation(libs.firebase.messaging)
-  // لا firebase-ai: المساعد يمر عبر Cloud Function فقط
+  // Direct Gemini REST call; API key is loaded from ignored local.properties.
+  implementation(libs.okhttp)
   implementation("com.google.firebase:firebase-functions")
   implementation("com.google.firebase:firebase-storage")
   implementation(libs.androidx.credentials)

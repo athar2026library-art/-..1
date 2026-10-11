@@ -1,19 +1,26 @@
 package com.example.data
 
-import android.util.Log
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.functions.FirebaseFunctions
-import com.google.firebase.functions.FirebaseFunctionsException
+import com.example.BuildConfig
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONArray
+import org.json.JSONObject
+import java.io.IOException
+import java.util.concurrent.TimeUnit
 
 /**
- * Calls the authenticated Firebase callable function. Gemini credentials stay
- * on the server and are never compiled into the Android APK.
+ * Direct Gemini REST client for local experiments.
+ *
+ * Set geminiApiKey in local.properties (which is git-ignored). The key is still
+ * extractable from a built APK; use this only for private testing and rotate keys
+ * that may have been shared publicly.
  */
 class AiRepository {
-    private val functions by lazy { FirebaseFunctions.getInstance(REGION) }
-
     suspend fun ask(message: String): String = callGemini("suggest", message)
 
     suspend fun explainZekr(zekr: String): String = callGemini("explain", zekr)
@@ -24,48 +31,73 @@ class AiRepository {
         val clean = text.trim().take(MAX_INPUT_CHARS)
         if (clean.length < 2) return "اكتب سؤالك أو شعورك أولاً."
 
-        val signedIn = runCatching { FirebaseAuth.getInstance().currentUser != null }
-            .getOrDefault(false)
-        if (!signedIn) return "سجّل الدخول بحساب Google لتشغيل المساعد الذكي."
+        val apiKey = BuildConfig.GEMINI_API_KEY.trim()
+        if (apiKey.isEmpty()) {
+            return "مفتاح Gemini غير مضبوط. أضف geminiApiKey إلى ملف local.properties ثم أعد بناء التطبيق."
+        }
+
+        val prompt = when (mode) {
+            "explain" -> "اشرح هذا الذكر باللغة العربية شرحاً موجزاً ومتزناً، ولا تنسب فضائل أو أحاديث بلا مصدر موثوق:\n$clean"
+            else -> "أجب باللغة العربية عن طلب المستخدم بما يناسب تطبيق أذكار إسلامي. كن واضحاً ومختصراً، ولا تختلق آيات أو أحاديث أو تنسب نصوصاً إلى مصادر دون تحقق. إن كان السؤال طبياً أو شرعياً تخصصياً فاذكر حدود الإجابة وشجع على الرجوع إلى مختص.\n$clean"
+        }
 
         return try {
-            val result = functions
-                .getHttpsCallable(FUNCTION_NAME)
-                .call(mapOf("mode" to mode, "text" to clean))
-                .await()
+            withContext(Dispatchers.IO) {
+                val body = JSONObject()
+                    .put("contents", JSONArray().put(
+                        JSONObject().put("parts", JSONArray().put(JSONObject().put("text", prompt)))
+                    ))
+                    .put("generationConfig", JSONObject().put("temperature", 0.4))
+                    .toString()
+                    .toRequestBody(JSON_MEDIA_TYPE)
 
-            val data = result.data as? Map<*, *>
-            val answer = data?.get("text") as? String
-            answer?.trim()?.takeIf { it.isNotEmpty() }
-                ?: "وصل رد فارغ من المساعد. حاول مرة أخرى."
+                val request = Request.Builder()
+                    .url(API_URL)
+                    .post(body)
+                    .header("Content-Type", "application/json")
+                    .header("x-goog-api-key", apiKey)
+                    .build()
+
+                client.newCall(request).execute().use { response ->
+                    val responseText = response.body?.string().orEmpty()
+                    if (!response.isSuccessful) {
+                        val message = runCatching {
+                            JSONObject(responseText).optJSONObject("error")?.optString("message")
+                        }.getOrNull().orEmpty()
+                        when (response.code) {
+                            400, 401, 403 -> "رفض Gemini الطلب. تحقق من المفتاح وإتاحته للخدمة."
+                            429 -> "تم بلوغ حد استخدام Gemini المجاني. حاول لاحقاً."
+                            else -> "تعذر الاتصال بـ Gemini (HTTP ${response.code}). ${message.take(120)}"
+                        }
+                    } else {
+                        val json = JSONObject(responseText)
+                        val candidates = json.optJSONArray("candidates")
+                        val parts = candidates?.optJSONObject(0)?.optJSONObject("content")?.optJSONArray("parts")
+                        val answer = parts?.let { array ->
+                            (0 until array.length()).mapNotNull { array.optJSONObject(it)?.optString("text") }
+                                .filter { it.isNotBlank() }.joinToString("\n")
+                        }.orEmpty()
+                        answer.ifBlank { "لم يُرجع Gemini إجابة نصية. حاول بصياغة أخرى." }
+                    }
+                }
+            }
         } catch (error: CancellationException) {
             throw error
-        } catch (error: FirebaseFunctionsException) {
-            Log.w(TAG, "Callable failed with code=${error.code}")
-            when (error.code) {
-                FirebaseFunctionsException.Code.UNAUTHENTICATED ->
-                    "انتهت جلسة الدخول. سجّل الدخول مجدداً ثم حاول."
-                FirebaseFunctionsException.Code.RESOURCE_EXHAUSTED ->
-                    "وصلت إلى حد الاستخدام المؤقت للمساعد. حاول لاحقاً."
-                FirebaseFunctionsException.Code.UNAVAILABLE,
-                FirebaseFunctionsException.Code.DEADLINE_EXCEEDED ->
-                    "المساعد غير متاح حالياً. تحقق من اتصال الإنترنت وحاول لاحقاً."
-                FirebaseFunctionsException.Code.FAILED_PRECONDITION ->
-                    "خدمة المساعد غير مهيأة بالكامل على الخادم."
-                FirebaseFunctionsException.Code.INVALID_ARGUMENT ->
-                    "لم أتمكن من فهم الطلب. جرّب صياغة أقصر."
-                else -> "تعذر الحصول على إجابة من المساعد. حاول مرة أخرى."
-            }
+        } catch (error: IOException) {
+            "تعذر الاتصال بالإنترنت. تحقق من الاتصال وحاول مرة أخرى."
         } catch (error: Exception) {
-            Log.e(TAG, "Callable request failed", error)
-            "حدث خطأ أثناء الاتصال بالمساعد. تحقق من الإنترنت وحاول مرة أخرى."
+            "حدث خطأ أثناء معالجة رد Gemini. حاول مرة أخرى."
         }
     }
 
     private companion object {
-        const val TAG = "AiRepository"
-        const val FUNCTION_NAME = "generateGemini"
-        const val REGION = "europe-west1"
         const val MAX_INPUT_CHARS = 500
+        const val API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
+        val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
+        val client = OkHttpClient.Builder()
+            .callTimeout(45, TimeUnit.SECONDS)
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(45, TimeUnit.SECONDS)
+            .build()
     }
 }
