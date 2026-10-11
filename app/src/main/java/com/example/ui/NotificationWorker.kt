@@ -42,22 +42,26 @@ class NotificationWorker(
         var title: String? = null
         var message: String? = null
         var notificationId = 1
+        var reminderCategory = ""
 
         when {
             sabahEnabled && !completedSabah && isWithinReminderWindow(hour, minute, sabahTime) -> {
                 title = "🌤️ صباح الخير"
                 message = "حان وقت أذكار الصباح. دقائق قليلة تبدأ بها يومك."
                 notificationId = 1
+                reminderCategory = "sabah"
             }
             masaaEnabled && !completedMasaa && isWithinReminderWindow(hour, minute, masaaTime) -> {
                 title = "🌙 مساء الخير"
                 message = "لا تنسَ أذكار المساء."
                 notificationId = 2
+                reminderCategory = "masaa"
             }
             sleepEnabled && isWithinReminderWindow(hour, minute, sleepTime) -> {
                 title = "🌙 أذكار ما قبل النوم"
                 message = "اختم يومك بذكر الله."
                 notificationId = 3
+                reminderCategory = "sleep"
             }
             fridayEnabled &&
                 now.get(Calendar.DAY_OF_WEEK) == Calendar.FRIDAY &&
@@ -65,10 +69,13 @@ class NotificationWorker(
                 title = "🕌 تذكير الجمعة"
                 message = "لا تنسَ الإكثار من الصلاة على النبي ﷺ يوم الجمعة."
                 notificationId = 4
+                reminderCategory = "friday"
             }
         }
 
-        if (title != null && message != null) showNotification(title, message, notificationId)
+        if (title != null && message != null && settings.claimReminderForToday(reminderCategory)) {
+            showNotification(title, message, notificationId)
+        }
         return Result.success()
     }
 
