@@ -18,6 +18,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 class AudioPlayer(context: Context) : TextToSpeech.OnInitListener {
     private var tts: TextToSpeech? = null
     private var isInitialized = false
+    private var speechRate = 0.75f
 
     private val _isPlaying = MutableStateFlow(false)
     val isPlaying: StateFlow<Boolean> = _isPlaying.asStateFlow()
@@ -57,7 +58,7 @@ class AudioPlayer(context: Context) : TextToSpeech.OnInitListener {
             return
         }
 
-        speechEngine.setSpeechRate(0.64f)
+        speechEngine.setSpeechRate(speechRate)
         speechEngine.setPitch(1.0f)
         selectArabicVoice(speechEngine)
 
@@ -192,6 +193,11 @@ class AudioPlayer(context: Context) : TextToSpeech.OnInitListener {
             loopRemaining.set(0)
             pendingLoopText = null
         }
+    }
+
+    fun setSpeechRate(rate: Float) {
+        speechRate = rate.coerceIn(0.5f, 1.5f)
+        if (isInitialized) tts?.setSpeechRate(speechRate)
     }
 
     fun stop() {
