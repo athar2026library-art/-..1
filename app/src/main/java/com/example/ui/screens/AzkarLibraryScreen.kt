@@ -46,6 +46,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.AzkarData
+import com.example.data.ArabicSearchNormalizer
 import com.example.data.TopicAzkarData
 import com.example.data.Zekr
 import com.example.ui.AppViewModel
@@ -71,23 +72,40 @@ fun AzkarLibraryScreen(
     DisposableEffect(player) { onDispose { player.shutdown() } }
 
     val allAzkar = remember { AzkarData.morningAzkar + AzkarData.eveningAzkar + TopicAzkarData.items }
-    val normalizedQuery = query.trim()
+    val normalizedQuery = remember(query) {
+        ArabicSearchNormalizer.normalize(query)
+    }
     val results = remember(normalizedQuery, allAzkar) {
-        if (normalizedQuery.isBlank()) emptyList()
-        else allAzkar.filter { zekr ->
-            zekr.text.contains(normalizedQuery, ignoreCase = true) ||
-                zekr.source.contains(normalizedQuery, ignoreCase = true) ||
-                zekr.fadl.contains(normalizedQuery, ignoreCase = true) ||
-                (normalizedQuery.contains("صباح") && zekr.category == "sabah") ||
-                (normalizedQuery.contains("مساء") && zekr.category == "masaa") ||
-                (normalizedQuery.contains("تحصين") && (zekr.id in 1..2 || zekr.id in 9..10)) ||
-                (normalizedQuery.contains("استغفار") && zekr.text.contains("فاغفر لي")) ||
-                (normalizedQuery.contains("نوم") && zekr.category == "sleep") ||
-                (normalizedQuery.contains("سفر") && zekr.category == "travel") ||
-                ((normalizedQuery.contains("قلق") || normalizedQuery.contains("خوف") || normalizedQuery.contains("هم")) && zekr.category == "worry") ||
-                (normalizedQuery.contains("رزق") && zekr.category == "rizq") ||
-                ((normalizedQuery.contains("مرض") || normalizedQuery.contains("شفاء")) && zekr.category == "illness") ||
-                ((normalizedQuery.contains("استيقاظ") || normalizedQuery.contains("استيقظ")) && zekr.category == "waking")
+        if (normalizedQuery.isBlank()) {
+            emptyList()
+        } else {
+            val morningIntent = listOf("صباح", "صبح", "فجر").any(normalizedQuery::contains)
+            val eveningIntent = listOf("مساء", "عصر", "مغرب").any(normalizedQuery::contains)
+            val protectionIntent = listOf("تحصين", "حفظ", "حسد").any(normalizedQuery::contains)
+            val sleepIntent = listOf("نوم", "فراش").any(normalizedQuery::contains)
+            val travelIntent = listOf("سفر", "سيارة", "طريق", "رحلة", "مسافر").any(normalizedQuery::contains)
+            val worryIntent = normalizedQuery == "هم" ||
+                listOf("قلق", "خوف", "الهم", "حزن", "ضيق", "كرب", "توتر", "فزع")
+                    .any(normalizedQuery::contains)
+            val rizqIntent = listOf("رزق", "معيشة", "عمل", "بركة", "مال").any(normalizedQuery::contains)
+            val illnessIntent = listOf("مرض", "مريض", "شفاء", "صحة", "وجع").any(normalizedQuery::contains)
+            val wakingIntent = listOf("استيقاظ", "استيقظ", "أحيانا").any(normalizedQuery::contains)
+            val istighfarIntent = normalizedQuery.contains("استغفار")
+            allAzkar.filter { zekr ->
+                ArabicSearchNormalizer.normalize(zekr.text).contains(normalizedQuery) ||
+                    ArabicSearchNormalizer.normalize(zekr.source).contains(normalizedQuery) ||
+                    ArabicSearchNormalizer.normalize(zekr.fadl).contains(normalizedQuery) ||
+                    (morningIntent && zekr.category == "sabah") ||
+                    (eveningIntent && zekr.category == "masaa") ||
+                    (protectionIntent && (zekr.id in 1..2 || zekr.id in 9..10)) ||
+                    (istighfarIntent && ArabicSearchNormalizer.normalize(zekr.text).contains("فاغفر لي")) ||
+                    (sleepIntent && zekr.category == "sleep") ||
+                    (travelIntent && zekr.category == "travel") ||
+                    (worryIntent && zekr.category == "worry") ||
+                    (rizqIntent && zekr.category == "rizq") ||
+                    (illnessIntent && zekr.category == "illness") ||
+                    (wakingIntent && zekr.category == "waking")
+            }
         }
     }
 
