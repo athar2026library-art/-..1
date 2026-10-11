@@ -17,6 +17,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import android.app.Activity
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
@@ -37,6 +38,7 @@ fun AiServicesScreen(
     val isLoadingAi by viewModel.isLoadingAi.collectAsState()
     val userSignedIn by viewModel.userSignedIn.collectAsState()
     val context = LocalContext.current
+    val activity = context as? Activity
 
     var inputText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
@@ -75,7 +77,8 @@ fun AiServicesScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Button(
-                            onClick = { viewModel.signIn(context) },
+                            onClick = { activity?.let(viewModel::signIn) },
+                            enabled = activity != null,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text("تسجيل الدخول باستخدام Google")
