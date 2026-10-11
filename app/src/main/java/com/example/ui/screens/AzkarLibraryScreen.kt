@@ -89,7 +89,7 @@ fun AzkarLibraryScreen(
                     .any(normalizedQuery::contains)
             val rizqIntent = listOf("رزق", "معيشة", "عمل", "بركة", "مال").any(normalizedQuery::contains)
             val illnessIntent = listOf("مرض", "مريض", "شفاء", "صحة", "وجع").any(normalizedQuery::contains)
-            val wakingIntent = listOf("استيقاظ", "استيقظ", "أحيانا").any(normalizedQuery::contains)
+            val wakingIntent = listOf("استيقاظ", "استيقظ", "يقظة", "صحوت", "صحونا", "اصبحت", "اصبحنا").any(normalizedQuery::contains)
             val istighfarIntent = normalizedQuery.contains("استغفار")
             allAzkar.filter { zekr ->
                 ArabicSearchNormalizer.normalize(zekr.text).contains(normalizedQuery) ||
