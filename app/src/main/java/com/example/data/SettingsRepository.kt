@@ -11,6 +11,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -112,10 +113,10 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val key = stringSetPreferencesKey("completed_categories_$date")
         it[key] = (it[key] ?: emptySet()) + category
     }
-    suspend fun isCategoryCompleted(category: String, date: String = todayKey()): Boolean =
-        dataStore.data.map { it[stringSetPreferencesKey("completed_categories_$date")]?.contains(category) == true }.let { flow ->
-            kotlinx.coroutines.flow.first(flow)
-        }
+    suspend fun isCategoryCompleted(category: String, date: String = todayKey()): Boolean {
+        val key = stringSetPreferencesKey("completed_categories_$date")
+        return dataStore.data.first()[key]?.contains(category) == true
+    }
 
     private fun todayKey(): String = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
 }
