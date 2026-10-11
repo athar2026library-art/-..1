@@ -173,7 +173,7 @@ fun SettingsScreen(
                         HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
                         Spacer(Modifier.height(12.dp))
 
-                        ReminderSettingRow("أذكار الصباح", remindSabah) {
+                        SettingSwitchRow("أذكار الصباح", remindSabah) {
                             viewModel.setReminderEnabled("sabah", it)
                         }
                         ReminderTimeChoices(
@@ -183,7 +183,7 @@ fun SettingsScreen(
                         ) { viewModel.setReminderTime("sabah", it) }
 
                         SettingDivider()
-                        ReminderSettingRow("أذكار المساء", remindMasaa) {
+                        SettingSwitchRow("أذكار المساء", remindMasaa) {
                             viewModel.setReminderEnabled("masaa", it)
                         }
                         ReminderTimeChoices(
@@ -193,7 +193,7 @@ fun SettingsScreen(
                         ) { viewModel.setReminderTime("masaa", it) }
 
                         SettingDivider()
-                        ReminderSettingRow("قبل النوم", remindSleep) {
+                        SettingSwitchRow("قبل النوم", remindSleep) {
                             viewModel.setReminderEnabled("sleep", it)
                         }
                         ReminderTimeChoices(
@@ -203,7 +203,7 @@ fun SettingsScreen(
                         ) { viewModel.setReminderTime("sleep", it) }
 
                         SettingDivider()
-                        ReminderSettingRow("تذكير يوم الجمعة", remindFriday) {
+                        SettingSwitchRow("تذكير يوم الجمعة", remindFriday) {
                             viewModel.setReminderEnabled("friday", it)
                         }
                         ReminderTimeChoices(
