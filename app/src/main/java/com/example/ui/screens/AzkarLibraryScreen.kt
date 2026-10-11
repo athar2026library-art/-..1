@@ -45,11 +45,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.AzkarData
+import com.example.data.TopicAzkarData
 import com.example.data.Zekr
 import com.example.ui.AppViewModel
 import com.example.ui.AudioPlayer
 
-private val searchSuggestions = listOf("الصباح", "المساء", "التحصين", "الاستغفار")
+private val searchSuggestions = listOf("الصباح", "المساء", "النوم", "السفر", "القلق", "الرزق", "المرض", "الاستيقاظ", "التحصين")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,7 +68,7 @@ fun AzkarLibraryScreen(
     androidx.compose.runtime.LaunchedEffect(audioSpeed) { player.setSpeechRate(audioSpeed) }
     DisposableEffect(player) { onDispose { player.shutdown() } }
 
-    val allAzkar = remember { AzkarData.morningAzkar + AzkarData.eveningAzkar }
+    val allAzkar = remember { AzkarData.morningAzkar + AzkarData.eveningAzkar + TopicAzkarData.items }
     val normalizedQuery = query.trim()
     val results = remember(normalizedQuery, allAzkar) {
         if (normalizedQuery.isBlank()) emptyList()
@@ -78,7 +79,13 @@ fun AzkarLibraryScreen(
                 (normalizedQuery.contains("صباح") && zekr.category == "sabah") ||
                 (normalizedQuery.contains("مساء") && zekr.category == "masaa") ||
                 (normalizedQuery.contains("تحصين") && (zekr.id in 1..2 || zekr.id in 9..10)) ||
-                (normalizedQuery.contains("استغفار") && zekr.text.contains("فاغفر لي"))
+                (normalizedQuery.contains("استغفار") && zekr.text.contains("فاغفر لي")) ||
+                (normalizedQuery.contains("نوم") && zekr.category == "sleep") ||
+                (normalizedQuery.contains("سفر") && zekr.category == "travel") ||
+                ((normalizedQuery.contains("قلق") || normalizedQuery.contains("خوف") || normalizedQuery.contains("هم")) && zekr.category == "worry") ||
+                (normalizedQuery.contains("رزق") && zekr.category == "rizq") ||
+                ((normalizedQuery.contains("مرض") || normalizedQuery.contains("شفاء")) && zekr.category == "illness") ||
+                ((normalizedQuery.contains("استيقاظ") || normalizedQuery.contains("استيقظ")) && zekr.category == "waking")
         }
     }
 
@@ -126,13 +133,17 @@ fun AzkarLibraryScreen(
                 )
             }
             item {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    searchSuggestions.forEach { suggestion ->
-                        FilterChip(
-                            selected = query == suggestion,
-                            onClick = { query = suggestion; showSaved = false },
-                            label = { Text(suggestion) }
-                        )
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    searchSuggestions.chunked(3).forEach { suggestionsRow ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            suggestionsRow.forEach { suggestion ->
+                                FilterChip(
+                                    selected = query == suggestion,
+                                    onClick = { query = suggestion; showSaved = false },
+                                    label = { Text(suggestion) }
+                                )
+                            }
+                        }
                     }
                 }
             }
