@@ -24,6 +24,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -56,7 +57,8 @@ private val searchSuggestions = listOf("الصباح", "المساء", "النو
 @Composable
 fun AzkarLibraryScreen(
     viewModel: AppViewModel,
-    onOpenAzkar: (String) -> Unit
+    onOpenAzkar: (String) -> Unit,
+    onStartDailyWird: () -> Unit
 ) {
     var query by remember { mutableStateOf("") }
     var showSaved by remember { mutableStateOf(false) }
@@ -117,6 +119,10 @@ fun AzkarLibraryScreen(
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(onClick = { onOpenAzkar("sabah") }) { Text("ورد الصباح") }
                             Button(onClick = { onOpenAzkar("masaa") }) { Text("ورد المساء") }
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedButton(onClick = onStartDailyWird, modifier = Modifier.fillMaxWidth()) {
+                            Text("ابدأ الورد اليومي المتتابع")
                         }
                     }
                 }
