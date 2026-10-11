@@ -40,6 +40,8 @@ fun SettingsScreen(
     val hideSources by viewModel.hideSources.collectAsStateWithLifecycle()
     val notificationsEnabled by viewModel.notificationsEnabled.collectAsStateWithLifecycle()
     val autoPlayEnabled by viewModel.autoPlayEnabled.collectAsStateWithLifecycle()
+    val audioSpeed by viewModel.audioSpeed.collectAsStateWithLifecycle()
+    val reciterId by viewModel.reciterId.collectAsStateWithLifecycle()
     val remindSabah by viewModel.remindSabah.collectAsStateWithLifecycle()
     val remindMasaa by viewModel.remindMasaa.collectAsStateWithLifecycle()
     val remindSleep by viewModel.remindSleep.collectAsStateWithLifecycle()
@@ -210,6 +212,65 @@ fun SettingsScreen(
                             options = listOf("09:00", "12:00", "15:00")
                         ) { viewModel.setReminderTime("friday", it) }
                     }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+            Text("الصوت والتلاوة", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            Spacer(modifier = Modifier.height(16.dp))
+            Card(
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = androidx.compose.foundation.BorderStroke(
+                    1.dp,
+                    MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text("القارئ المفضل", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    listOf(
+                        "mishary" to "مشاري العفاسي",
+                        "abdulbasit" to "عبد الباسط",
+                        "maher" to "ماهر المعيقلي",
+                        "yasser" to "ياسر الدوسري"
+                    ).chunked(2).forEach { options ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            options.forEach { (id, label) ->
+                                FilterChip(
+                                    selected = reciterId == id,
+                                    onClick = { viewModel.setReciterId(id) },
+                                    label = { Text(label) }
+                                )
+                            }
+                        }
+                    }
+
+                    SettingDivider()
+                    Text("سرعة التشغيل", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf(0.75f, 1.0f, 1.25f).forEach { rate ->
+                            FilterChip(
+                                selected = audioSpeed == rate,
+                                onClick = { viewModel.setAudioSpeed(rate) },
+                                label = { Text("${rate}×") }
+                            )
+                        }
+                    }
+                    Text(
+                        "عند توفر تسجيل للقارئ المختار سيُشغَّل الصوت المسجل، وإلا يستخدم التطبيق النطق العربي الاحتياطي.",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        lineHeight = 18.sp
+                    )
                 }
             }
 
