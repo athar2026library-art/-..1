@@ -24,7 +24,7 @@
       ].filter(([, url]) => url)
     );
     const suppliedAudioUrls = [audioUrl, ...Object.values(audioUrlsByReciter)];
-    if (suppliedAudioUrls.some((url) => !/^https:\/\/\S+$/i.test(url))) {
+    if (suppliedAudioUrls.filter(Boolean).some((url) => !/^https:\/\/\S+$/i.test(url))) {
       toast("روابط الصوت يجب أن تبدأ بـ HTTPS وألا تحتوي مسافات.");
       return;
     }
