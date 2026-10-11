@@ -16,13 +16,15 @@ android {
     applicationId = "com.baqiyat.azkar"
     minSdk = 24
     targetSdk = 36
-    // Local-only key from local.properties; never commit the key itself.
+    
+    // قراءة مفتاح Gemini من local.properties أو من متغيرات البيئة (CI / GitHub Actions) كاحتياط تام
     val localProps = java.util.Properties().apply {
       val localPropsFile = rootProject.file("local.properties")
       if (localPropsFile.exists()) localPropsFile.inputStream().use { load(it) }
     }
-    val geminiKey = localProps.getProperty("geminiApiKey", "")
-      .replace("\\", "\\\\").replace("\"", "\\\"")
+    val rawGeminiKey = localProps.getProperty("geminiApiKey") ?: System.getenv("GEMINI_API_KEY") ?: ""
+    val geminiKey = rawGeminiKey.replace("\\", "\\\\").replace("\"", "\\\"")
+    
     buildConfigField("String", "GEMINI_API_KEY", "\"$geminiKey\"")
     versionCode = 1
     versionName = "1.0"
@@ -92,7 +94,6 @@ dependencies {
   implementation(libs.androidx.compose.ui)
   implementation(libs.androidx.compose.ui.graphics)
   implementation(libs.androidx.compose.ui.tooling.preview)
-  // بدون رقم إصدار — Compose BOM يحدد النسخة المتوافقة
   implementation("androidx.compose.ui:ui-text-google-fonts")
   implementation(libs.androidx.core.ktx)
   implementation(libs.androidx.datastore.preferences)
@@ -105,7 +106,6 @@ dependencies {
   implementation(libs.firebase.firestore)
   implementation(libs.firebase.auth)
   implementation(libs.firebase.messaging)
-  // Direct Gemini REST call; API key is loaded from ignored local.properties.
   implementation(libs.okhttp)
   implementation("com.google.firebase:firebase-functions")
   implementation("com.google.firebase:firebase-storage")
