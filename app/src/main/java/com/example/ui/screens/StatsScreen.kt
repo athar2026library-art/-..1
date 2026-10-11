@@ -156,15 +156,38 @@ fun StatsScreen(
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("إجمالي التسبيح", fontSize = 14.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
+                    Text("إجمالي التسبيح (آخر 30 يوماً)", fontSize = 14.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
                     Spacer(modifier = Modifier.height(4.dp))
                     Text("$totalAzkar", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("أيام مكتملة", fontSize = 14.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
+                    Text("أيام مكتملة (آخر 30 يوماً)", fontSize = 14.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
                     Spacer(modifier = Modifier.height(4.dp))
                     Text("$completedDays", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+            Column(
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(MaterialTheme.colorScheme.surface).padding(20.dp)
+            ) {
+                Text("إنجاز الورد خلال آخر 30 يوماً", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                Spacer(modifier = Modifier.height(12.dp))
+                Text("أذكار الصباح: $sabahPercent%", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                LinearProgressIndicator(
+                    progress = { sabahPercent / 100f },
+                    modifier = Modifier.fillMaxWidth().height(8.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text("أذكار المساء: $masaaPercent%", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                LinearProgressIndicator(
+                    progress = { masaaPercent / 100f },
+                    modifier = Modifier.fillMaxWidth().height(8.dp),
+                    color = MaterialTheme.colorScheme.tertiary,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant
+                )
             }
         }
     }
