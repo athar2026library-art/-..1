@@ -27,6 +27,8 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "9.3.1"
+          # This job invokes the installed `gradle` command, not the repository wrapper.
+          validate-wrappers: false
 
       - name: Provide non-secret Firebase config for compilation
         run: |
