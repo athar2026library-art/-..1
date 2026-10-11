@@ -1,6 +1,7 @@
 name: Android validation
 
 on:
+  workflow_dispatch:
   pull_request:
     branches: [main]
   push:
@@ -53,7 +54,7 @@ jobs:
           JSON
 
       - name: Compile Android app
-        run: gradle :app:compileDebugKotlin --no-daemon
+        run: gradle :app:compileDebugKotlin --no-daemon --stacktrace
 
       - name: Run unit tests
         run: gradle :app:testDebugUnitTest --no-daemon
