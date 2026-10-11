@@ -1,10 +1,11 @@
 package com.example.data
 
 import android.util.Log
-import com.google.firebase.ai.Firebase
+import com.google.firebase.Firebase
 import com.google.firebase.ai.ai
 import com.google.firebase.ai.type.GenerativeBackend
 import com.google.firebase.ai.type.ThinkingLevel
+import com.google.firebase.ai.type.content
 import com.google.firebase.ai.type.generationConfig
 import com.google.firebase.ai.type.thinkingConfig
 import com.google.firebase.functions.FirebaseFunctions
@@ -46,7 +47,7 @@ class AiRepository {
         ).generativeModel(
             modelName = "gemini-2.5-flash",
             generationConfig = config,
-            systemInstruction = DIRECT_SYSTEM_INSTRUCTION,
+            systemInstruction = content { text(DIRECT_SYSTEM_INSTRUCTION) },
         )
     }
 
