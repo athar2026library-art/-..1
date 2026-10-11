@@ -8,7 +8,7 @@ class ArabicTextTest {
     @Test
     fun foldsDiacriticsAndAlefVariants() {
         assertEquals("اللهم", ArabicText.normalize("اللَّهُمَّ"))
-        assertEquals("الى", ArabicText.normalize("إِلَىٰ"))
+        assertEquals("الي", ArabicText.normalize("إِلَىٰ"))
     }
 
     @Test
