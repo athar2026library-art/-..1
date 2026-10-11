@@ -141,7 +141,7 @@ fun AzkarLibraryScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Button(onClick = { showSaved = false }) { Text("نتائج البحث") }
-                    Button(onClick = { showSaved = true }) { Text("أذكاري المحفوظة (\${savedAzkar.size})") }
+                    Button(onClick = { showSaved = true }) { Text("أذكاري المحفوظة (${savedAzkar.size})") }
                 }
             }
 
@@ -171,7 +171,7 @@ fun AzkarLibraryScreen(
                         )
                     }
                 }
-                items(results, key = { "\${it.category}-\${it.id}" }) { zekr ->
+                items(results, key = { "${it.category}-${it.id}" }) { zekr ->
                     ZekrSearchCard(
                         zekr = zekr,
                         isSaved = savedAzkar.contains(zekr.text),
@@ -206,10 +206,10 @@ private fun ZekrSearchCard(
         Column(Modifier.padding(16.dp)) {
             Text(zekr.text, fontSize = 19.sp, lineHeight = 32.sp, textAlign = TextAlign.Start)
             Spacer(Modifier.height(10.dp))
-            Text("التكرار: \${zekr.repeatCount}", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+            Text("التكرار: ${zekr.repeatCount}", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
             if (zekr.source.isNotBlank()) {
                 Spacer(Modifier.height(4.dp))
-                Text("المصدر: \${zekr.source}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("المصدر: ${zekr.source}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),
