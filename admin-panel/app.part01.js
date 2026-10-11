@@ -8,6 +8,10 @@
     masaa: "المساء",
     sleep: "النوم",
     travel: "السفر",
+    worry: "الهم والقلق",
+    rizq: "الرزق",
+    illness: "المرض والشفاء",
+    waking: "الاستيقاظ",
   };
 
   const BUILTIN_CATEGORIES = [
