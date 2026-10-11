@@ -34,6 +34,7 @@
     listenFeedback();
     listenCategories();
     renderCategories();
+    loadOwnerMetrics();
   }
 
   function stopSession() {
