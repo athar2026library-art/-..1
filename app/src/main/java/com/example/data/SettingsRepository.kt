@@ -10,6 +10,8 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.example.data.SavedSupplication
+import com.example.data.SavedSupplicationCodec
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -37,6 +39,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     private val DAILY_GOAL = intPreferencesKey("daily_tasbeeh_goal")
     private val TASBIH_TARGET = intPreferencesKey("tasbih_target")
     private val FAVORITES = stringSetPreferencesKey("favorite_zekr_ids")
+    private val SAVED_ASSISTANT_AZKAR = stringSetPreferencesKey("saved_assistant_azkar")
 
     val fontSizeFlow: Flow<Float> = dataStore.data.map { it[FONT_SIZE] ?: 24f }
     val darkModeFlow: Flow<Boolean> = dataStore.data.map { it[DARK_MODE] ?: true }
@@ -56,6 +59,12 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     val tasbihTargetFlow: Flow<Int> = dataStore.data.map { it[TASBIH_TARGET] ?: 33 }
     val favoritesFlow: Flow<Set<Int>> = dataStore.data.map { prefs ->
         prefs[FAVORITES]?.mapNotNull { it.toIntOrNull() }?.toSet() ?: emptySet()
+    }
+
+    val savedAssistantAzkarFlow: Flow<List<SavedSupplication>> = dataStore.data.map { prefs ->
+        prefs[SAVED_ASSISTANT_AZKAR].orEmpty()
+            .mapNotNull(SavedSupplicationCodec::decode)
+            .sortedBy { it.text }
     }
 
     val lastReadCategoryFlow: Flow<String> = dataStore.data.map { it[LAST_READ_CATEGORY] ?: "" }
@@ -114,6 +123,23 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
             val current = prefs[FAVORITES] ?: emptySet()
             val key = id.toString()
             prefs[FAVORITES] = if (key in current) current - key else current + key
+        }
+    }
+
+    suspend fun saveAssistantSupplication(supplication: SavedSupplication) {
+        val encoded = SavedSupplicationCodec.encode(supplication)
+        if (encoded.isBlank()) return
+        dataStore.edit { prefs ->
+            val current = prefs[SAVED_ASSISTANT_AZKAR] ?: emptySet()
+            prefs[SAVED_ASSISTANT_AZKAR] = current + encoded
+        }
+    }
+
+    suspend fun removeAssistantSupplication(supplication: SavedSupplication) {
+        val encoded = SavedSupplicationCodec.encode(supplication)
+        dataStore.edit { prefs ->
+            prefs[SAVED_ASSISTANT_AZKAR] =
+                (prefs[SAVED_ASSISTANT_AZKAR] ?: emptySet()) - encoded
         }
     }
 }
