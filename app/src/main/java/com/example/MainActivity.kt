@@ -45,7 +45,7 @@ class MainActivity : ComponentActivity() {
             }
         }
         
-        val workRequest = PeriodicWorkRequestBuilder<NotificationWorker>(2, TimeUnit.HOURS).build()
+        val workRequest = PeriodicWorkRequestBuilder<NotificationWorker>(15, TimeUnit.MINUTES).build()
         WorkManager.getInstance(applicationContext).enqueueUniquePeriodicWork(
             "AzkarNotifications",
             ExistingPeriodicWorkPolicy.KEEP,
