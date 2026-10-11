@@ -1,6 +1,8 @@
 package com.example.ui.screens
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -26,6 +28,7 @@ fun SearchScreen(
     onOpenCategory: (String) -> Unit
 ) {
     var query by remember { mutableStateOf("") }
+    val topicSuggestions = listOf("الصباح", "المساء", "النوم", "السفر", "القلق", "الرزق", "الشفاء", "الاستيقاظ")
     val results = remember(query) { AzkarData.search(query) }
 
     Scaffold(
@@ -56,6 +59,19 @@ fun SearchScreen(
                 singleLine = true,
                 shape = RoundedCornerShape(16.dp)
             )
+            Spacer(Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                topicSuggestions.forEach { topic ->
+                    FilterChip(
+                        selected = query == topic,
+                        onClick = { query = topic },
+                        label = { Text(topic) }
+                    )
+                }
+            }
             Spacer(Modifier.height(12.dp))
             if (query.isBlank()) {
                 Text(
