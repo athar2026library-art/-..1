@@ -40,6 +40,14 @@ fun SettingsScreen(
     val hideSources by viewModel.hideSources.collectAsStateWithLifecycle()
     val notificationsEnabled by viewModel.notificationsEnabled.collectAsStateWithLifecycle()
     val autoPlayEnabled by viewModel.autoPlayEnabled.collectAsStateWithLifecycle()
+    val remindSabah by viewModel.remindSabah.collectAsStateWithLifecycle()
+    val remindMasaa by viewModel.remindMasaa.collectAsStateWithLifecycle()
+    val remindSleep by viewModel.remindSleep.collectAsStateWithLifecycle()
+    val remindFriday by viewModel.remindFriday.collectAsStateWithLifecycle()
+    val reminderSabahTime by viewModel.reminderSabahTime.collectAsStateWithLifecycle()
+    val reminderMasaaTime by viewModel.reminderMasaaTime.collectAsStateWithLifecycle()
+    val reminderSleepTime by viewModel.reminderSleepTime.collectAsStateWithLifecycle()
+    val reminderFridayTime by viewModel.reminderFridayTime.collectAsStateWithLifecycle()
 
     val userSignedIn by viewModel.userSignedIn.collectAsStateWithLifecycle()
     val statusMessage by viewModel.statusMessage.collectAsStateWithLifecycle()
@@ -146,9 +154,61 @@ fun SettingsScreen(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text("تذكيرات الأذكار", fontSize = 16.sp)
-                            Text("صباح ومساء — يمكن إيقافها بالكامل", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(
+                                "خصص أوقات الصباح والمساء والنوم والجمعة",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
-                        Switch(checked = notificationsEnabled, onCheckedChange = { viewModel.setNotificationsEnabled(it) })
+                        Switch(
+                            checked = notificationsEnabled,
+                            onCheckedChange = { viewModel.setNotificationsEnabled(it) }
+                        )
+                    }
+
+                    if (notificationsEnabled) {
+                        Spacer(Modifier.height(12.dp))
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+                        Spacer(Modifier.height(12.dp))
+
+                        ReminderSettingRow("أذكار الصباح", remindSabah) {
+                            viewModel.setReminderEnabled("sabah", it)
+                        }
+                        ReminderTimeChoices(
+                            label = "وقت الصباح",
+                            selected = reminderSabahTime,
+                            options = listOf("06:00", "07:00", "08:00", "09:00")
+                        ) { viewModel.setReminderTime("sabah", it) }
+
+                        SettingDivider()
+                        ReminderSettingRow("أذكار المساء", remindMasaa) {
+                            viewModel.setReminderEnabled("masaa", it)
+                        }
+                        ReminderTimeChoices(
+                            label = "وقت المساء",
+                            selected = reminderMasaaTime,
+                            options = listOf("17:00", "18:00", "19:00", "20:00")
+                        ) { viewModel.setReminderTime("masaa", it) }
+
+                        SettingDivider()
+                        ReminderSettingRow("قبل النوم", remindSleep) {
+                            viewModel.setReminderEnabled("sleep", it)
+                        }
+                        ReminderTimeChoices(
+                            label = "وقت ما قبل النوم",
+                            selected = reminderSleepTime,
+                            options = listOf("21:00", "22:00", "23:00")
+                        ) { viewModel.setReminderTime("sleep", it) }
+
+                        SettingDivider()
+                        ReminderSettingRow("تذكير يوم الجمعة", remindFriday) {
+                            viewModel.setReminderEnabled("friday", it)
+                        }
+                        ReminderTimeChoices(
+                            label = "وقت تذكير الجمعة",
+                            selected = reminderFridayTime,
+                            options = listOf("09:00", "12:00", "15:00")
+                        ) { viewModel.setReminderTime("friday", it) }
                     }
                 }
             }
@@ -287,6 +347,32 @@ fun SettingsScreen(
                 }
             }
             Spacer(modifier = Modifier.height(32.dp))
+        }
+    }
+}
+
+@Composable
+private fun ReminderTimeChoices(
+    label: String,
+    selected: String,
+    options: List<String>,
+    onSelect: (String) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(label, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        options.chunked(3).forEach { rowOptions ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                rowOptions.forEach { time ->
+                    FilterChip(
+                        selected = selected == time,
+                        onClick = { onSelect(time) },
+                        label = { Text(time) }
+                    )
+                }
+            }
         }
     }
 }
