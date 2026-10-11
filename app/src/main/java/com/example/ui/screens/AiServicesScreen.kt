@@ -30,6 +30,7 @@ import com.example.data.AssistantSupplicationParser
 import com.example.data.SavedSupplication
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
