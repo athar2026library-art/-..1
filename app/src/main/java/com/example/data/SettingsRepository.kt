@@ -113,6 +113,18 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val key = stringSetPreferencesKey("completed_categories_$date")
         it[key] = (it[key] ?: emptySet()) + category
     }
+
+    suspend fun claimReminderForToday(category: String, date: String = todayKey()): Boolean {
+        var claimed = false
+        dataStore.edit {
+            val key = booleanPreferencesKey("reminder_sent_${date}_${category}")
+            if (it[key] != true) {
+                it[key] = true
+                claimed = true
+            }
+        }
+        return claimed
+    }
     suspend fun isCategoryCompleted(category: String, date: String = todayKey()): Boolean {
         val key = stringSetPreferencesKey("completed_categories_$date")
         return dataStore.data.first()[key]?.contains(category) == true
