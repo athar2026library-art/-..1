@@ -50,7 +50,9 @@ import kotlinx.coroutines.launch
 fun AzkarScreen(
     category: String,
     viewModel: AppViewModel,
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    isDailyWird: Boolean = false,
+    onNextWird: (() -> Unit)? = null
 ) {
     val azkarList = if (category == "sabah") AzkarData.morningAzkar else AzkarData.eveningAzkar
     val title = if (category == "sabah") "أذكار الصباح" else "أذكار المساء"
@@ -165,11 +167,18 @@ fun AzkarScreen(
                 Text("تقبل الله طاعتك", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
                 Spacer(modifier = Modifier.height(32.dp))
                 Button(
-                    onClick = onNavigateBack,
+                    onClick = {
+                        if (isDailyWird && category == "sabah" && onNextWird != null) {
+                            onNextWird()
+                        } else {
+                            onNavigateBack()
+                        }
+                    },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                     shape = RoundedCornerShape(24.dp)
                 ) {
-                    Text("العودة للرئيسية", fontSize = 16.sp, modifier = Modifier.padding(8.dp))
+                    val completionLabel = if (isDailyWird && category == "sabah") "متابعة ورد المساء" else "العودة للرئيسية"
+                    Text(completionLabel, fontSize = 16.sp, modifier = Modifier.padding(8.dp))
                 }
             }
         }
