@@ -20,7 +20,9 @@ import androidx.compose.animation.core.tween
 import android.app.Activity
 import androidx.compose.ui.Alignment
 import androidx.compose.material.icons.filled.BookmarkAdd
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.DisposableEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -267,7 +269,7 @@ fun ChatBubble(
                         ) {
                             TextButton(onClick = onPlay) {
                                 androidx.compose.material3.Icon(
-                                    if (isAudioPlaying) androidx.compose.material.icons.Icons.Default.Stop
+                                    if (isAudioPlaying) Icons.Default.Stop
                                     else Icons.Default.PlayArrow,
                                     contentDescription = null
                                 )
@@ -276,7 +278,7 @@ fun ChatBubble(
                             }
                             TextButton(onClick = onSave, enabled = !isSaved) {
                                 androidx.compose.material3.Icon(
-                                    if (isSaved) androidx.compose.material.icons.Icons.Default.Check
+                                    if (isSaved) Icons.Default.Check
                                     else Icons.Default.BookmarkAdd,
                                     contentDescription = null
                                 )
