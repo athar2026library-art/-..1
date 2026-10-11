@@ -55,6 +55,13 @@ jobs:
           }
           JSON
 
+      - name: Validate Firebase Functions and owner panel JavaScript
+        run: |
+          node --check firebase/functions/index.js
+          node --check firebase/functions/lib/helpers.js
+          cat admin-panel/app.part*.js > "$RUNNER_TEMP/baqiyat-admin-panel.js"
+          node --check "$RUNNER_TEMP/baqiyat-admin-panel.js"
+
       - name: Compile Android app
         run: gradle :app:compileDebugKotlin --no-daemon --stacktrace
 
