@@ -16,6 +16,8 @@ import kotlinx.coroutines.flow.map
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
 class SettingsRepository(private val dataStore: DataStore<Preferences>) {
+    private companion object { const val MAX_SAVED_AI_AZKAR = 100 }
+
 
     private val FONT_SIZE = floatPreferencesKey("font_size")
     private val DARK_MODE = booleanPreferencesKey("dark_mode")
@@ -47,6 +49,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     private val DAILY_GOAL = intPreferencesKey("daily_tasbeeh_goal")
     private val TASBIH_TARGET = intPreferencesKey("tasbih_target")
     private val FAVORITES = stringSetPreferencesKey("favorite_zekr_ids")
+    private val MY_AZKAR = stringSetPreferencesKey("my_azkar")
 
     val fontSizeFlow: Flow<Float> = dataStore.data.map { it[FONT_SIZE] ?: 24f }
     val darkModeFlow: Flow<Boolean> = dataStore.data.map { it[DARK_MODE] ?: true }
@@ -76,6 +79,9 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     val tasbihTargetFlow: Flow<Int> = dataStore.data.map { it[TASBIH_TARGET] ?: 33 }
     val favoritesFlow: Flow<Set<Int>> = dataStore.data.map { prefs ->
         prefs[FAVORITES]?.mapNotNull { it.toIntOrNull() }?.toSet() ?: emptySet()
+    }
+    val savedAiAzkarFlow: Flow<List<String>> = dataStore.data.map { prefs ->
+        prefs[MY_AZKAR].orEmpty().toList().sorted()
     }
 
     val lastReadCategoryFlow: Flow<String> = dataStore.data.map { it[LAST_READ_CATEGORY] ?: "" }
@@ -183,6 +189,23 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
             val current = prefs[FAVORITES] ?: emptySet()
             val key = id.toString()
             prefs[FAVORITES] = if (key in current) current - key else current + key
+        }
+    }
+    suspend fun saveAiZekr(text: String) {
+        val clean = text.trim().take(4000)
+        if (clean.isBlank()) return
+        dataStore.edit { prefs ->
+            val current = prefs[MY_AZKAR] ?: emptySet()
+            if (clean !in current) {
+                val updated = (current + clean).toList().sorted().takeLast(MAX_SAVED_AI_AZKAR).toSet()
+                prefs[MY_AZKAR] = updated
+            }
+        }
+    }
+
+    suspend fun removeAiZekr(text: String) {
+        dataStore.edit { prefs ->
+            prefs[MY_AZKAR] = (prefs[MY_AZKAR] ?: emptySet()) - text
         }
     }
 }
