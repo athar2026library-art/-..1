@@ -64,7 +64,7 @@ class ProgressRepository(private val progressDao: ProgressDao) {
             val db = Room.databaseBuilder(
                 context.applicationContext,
                 AppDatabase::class.java,
-                "azkar_db"
+                "azkar_database"
             ).build()
             return ProgressRepository(db.progressDao())
         }
