@@ -29,6 +29,10 @@ class NotificationWorker(
     override suspend fun doWork(): Result {
         val settings = SettingsRepository(applicationContext.dataStore)
         if (!settings.notificationsEnabledFlow.first()) return Result.success()
+        // Don't claim a reminder day until Android notifications are enabled.
+        if (!NotificationManagerCompat.from(applicationContext).areNotificationsEnabled()) {
+            return Result.success()
+        }
 
         val now = Calendar.getInstance()
         val currentMinutes = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
