@@ -29,6 +29,14 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     private val AUTO_DND = booleanPreferencesKey("auto_dnd")
     private val ONBOARDING_COMPLETE = booleanPreferencesKey("onboarding_complete")
     private val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
+    private val REMIND_SABAH = booleanPreferencesKey("remind_sabah")
+    private val REMIND_MASAA = booleanPreferencesKey("remind_masaa")
+    private val REMIND_SLEEP = booleanPreferencesKey("remind_sleep")
+    private val REMIND_FRIDAY = booleanPreferencesKey("remind_friday")
+    private val REMINDER_SABAH_TIME = stringPreferencesKey("reminder_sabah_time")
+    private val REMINDER_MASAA_TIME = stringPreferencesKey("reminder_masaa_time")
+    private val REMINDER_SLEEP_TIME = stringPreferencesKey("reminder_sleep_time")
+    private val REMINDER_FRIDAY_TIME = stringPreferencesKey("reminder_friday_time")
     private val AUTO_PLAY = booleanPreferencesKey("auto_play")
     private val CUSTOM_WIRDS = stringPreferencesKey("custom_wirds")
     private val WEEKLY_GOAL = intPreferencesKey("weekly_days_goal")
@@ -47,6 +55,14 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     val hideSourcesFlow: Flow<Boolean> = dataStore.data.map { it[HIDE_SOURCES] ?: false }
     val onboardingCompleteFlow: Flow<Boolean> = dataStore.data.map { it[ONBOARDING_COMPLETE] ?: false }
     val notificationsEnabledFlow: Flow<Boolean> = dataStore.data.map { it[NOTIFICATIONS_ENABLED] ?: true }
+    val remindSabahFlow: Flow<Boolean> = dataStore.data.map { it[REMIND_SABAH] ?: true }
+    val remindMasaaFlow: Flow<Boolean> = dataStore.data.map { it[REMIND_MASAA] ?: true }
+    val remindSleepFlow: Flow<Boolean> = dataStore.data.map { it[REMIND_SLEEP] ?: true }
+    val remindFridayFlow: Flow<Boolean> = dataStore.data.map { it[REMIND_FRIDAY] ?: false }
+    val reminderSabahTimeFlow: Flow<String> = dataStore.data.map { it[REMINDER_SABAH_TIME] ?: "07:00" }
+    val reminderMasaaTimeFlow: Flow<String> = dataStore.data.map { it[REMINDER_MASAA_TIME] ?: "18:00" }
+    val reminderSleepTimeFlow: Flow<String> = dataStore.data.map { it[REMINDER_SLEEP_TIME] ?: "22:00" }
+    val reminderFridayTimeFlow: Flow<String> = dataStore.data.map { it[REMINDER_FRIDAY_TIME] ?: "09:00" }
     val autoPlayFlow: Flow<Boolean> = dataStore.data.map { it[AUTO_PLAY] ?: false }
     val customWirdsFlow: Flow<List<CustomWird>> = dataStore.data.map { CustomWirds.decode(it[CUSTOM_WIRDS]) }
     val weeklyGoalFlow: Flow<Int> = dataStore.data.map { it[WEEKLY_GOAL] ?: 5 }
@@ -88,6 +104,44 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     suspend fun setHideSources(hide: Boolean) { dataStore.edit { it[HIDE_SOURCES] = hide } }
     suspend fun setNotificationsEnabled(enabled: Boolean) {
         dataStore.edit { it[NOTIFICATIONS_ENABLED] = enabled }
+    }
+    suspend fun setReminderEnabled(category: String, enabled: Boolean) {
+        val key = when (category) {
+            "sabah" -> REMIND_SABAH
+            "masaa" -> REMIND_MASAA
+            "sleep" -> REMIND_SLEEP
+            "friday" -> REMIND_FRIDAY
+            else -> return
+        }
+        dataStore.edit { it[key] = enabled }
+    }
+
+    suspend fun setReminderTime(category: String, time: String) {
+        if (!time.matches(Regex("^([01]?[0-9]|2[0-3]):[0-5][0-9]$"))) return
+        val parts = time.split(":")
+        val normalized = "${parts[0].padStart(2, '0')}:${parts[1]}"
+        val key = when (category) {
+            "sabah" -> REMINDER_SABAH_TIME
+            "masaa" -> REMINDER_MASAA_TIME
+            "sleep" -> REMINDER_SLEEP_TIME
+            "friday" -> REMINDER_FRIDAY_TIME
+            else -> return
+        }
+        dataStore.edit { it[key] = normalized }
+    }
+
+    /** Claims one reminder category for a date, preventing repeat notifications from periodic work. */
+    suspend fun claimReminderForDate(category: String, date: String): Boolean {
+        if (category !in setOf("sabah", "masaa", "sleep", "friday")) return false
+        var claimed = false
+        val key = stringPreferencesKey("last_reminder_$category")
+        dataStore.edit { prefs ->
+            if (prefs[key] != date) {
+                prefs[key] = date
+                claimed = true
+            }
+        }
+        return claimed
     }
     suspend fun setAutoPlay(enabled: Boolean) { dataStore.edit { it[AUTO_PLAY] = enabled } }
     suspend fun saveCustomWird(wird: CustomWird) {
