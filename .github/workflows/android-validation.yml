@@ -28,8 +28,12 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Set up Gradle cache
+      # Run the action-downloaded Gradle distribution directly; do not execute the unrecognized wrapper JAR.
+      - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+          validate-wrappers: false
 
       - name: Create non-secret Firebase config for CI
         run: |
@@ -66,7 +70,7 @@ jobs:
         run: git diff --check
 
       - name: Run Android unit tests and compile APK
-        run: ./gradlew :app:testDebugUnitTest :app:assembleDebug --no-daemon --stacktrace
+        run: gradle :app:testDebugUnitTest :app:assembleDebug --no-daemon --stacktrace
 
       - name: Run Cloud Functions tests
         working-directory: firebase/functions
