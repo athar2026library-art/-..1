@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -52,6 +53,7 @@ fun FavoritesScreen(
     onRead: () -> Unit
 ) {
     val ids by viewModel.favorites.collectAsStateWithLifecycle()
+    val savedAiAzkar by viewModel.savedAiAzkar.collectAsStateWithLifecycle()
     val items = remember(ids) { AzkarData.byIds(ids) }
     val context = LocalContext.current
     val p = Baqiyat.colors
@@ -60,13 +62,13 @@ fun FavoritesScreen(
         containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
-                title = { Text("المفضلة", style = MaterialTheme.typography.titleLarge) },
+                title = { Text("المفضلة وأذكاري", style = MaterialTheme.typography.titleLarge) },
                 navigationIcon = { BaqiyatBackButton(onNavigateBack) },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         }
     ) { padding ->
-        if (items.isEmpty()) {
+        if (items.isEmpty() && savedAiAzkar.isEmpty()) {
             Column(
                 Modifier.fillMaxSize().padding(padding).padding(32.dp),
                 verticalArrangement = Arrangement.Center,
@@ -77,7 +79,7 @@ fun FavoritesScreen(
                 Text("لم تحفظ شيئاً بعد", style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    "اضغط على القلب أثناء القراءة أو من نتائج البحث لتجمع أذكارك المحببة هنا.",
+                    "احفظ الأذكار من شاشة القراءة، أو أضف إجابات المساعد إلى «أذكاري» لتعود إليها لاحقاً.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
@@ -89,40 +91,74 @@ fun FavoritesScreen(
                 contentPadding = PaddingValues(top = 8.dp, bottom = 32.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                item {
-                    BaqiyatButton(
-                        text = "اقرأ المفضلة (${items.size})",
-                        onClick = onRead,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-                items(items, key = { it.id }) { z ->
-                    GlassCard(Modifier.fillMaxWidth(), contentPadding = PaddingValues(18.dp)) {
-                        Text(AzkarData.titleFor(z.category), style = MaterialTheme.typography.labelMedium, color = p.accent)
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            z.text,
-                            style = ZekrTextStyle.copy(fontSize = 20.sp, lineHeight = 38.sp),
-                            maxLines = 4,
-                            overflow = TextOverflow.Ellipsis
+                if (items.isNotEmpty()) {
+                    item {
+                        BaqiyatButton(
+                            text = "اقرأ المفضلة (${items.size})",
+                            onClick = onRead,
+                            modifier = Modifier.fillMaxWidth()
                         )
-                        Spacer(Modifier.height(6.dp))
-                        Row(
-                            Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
+                    }
+                    items(items, key = { it.id }) { z ->
+                        GlassCard(Modifier.fillMaxWidth(), contentPadding = PaddingValues(18.dp)) {
+                            Text(AzkarData.titleFor(z.category), style = MaterialTheme.typography.labelMedium, color = p.accent)
+                            Spacer(Modifier.height(8.dp))
                             Text(
-                                if (z.repeatCount > 1) "يُقال ${z.repeatCount} مرات" else z.source,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.weight(1f)
+                                z.text,
+                                style = ZekrTextStyle.copy(fontSize = 20.sp, lineHeight = 38.sp),
+                                maxLines = 4,
+                                overflow = TextOverflow.Ellipsis
                             )
-                            IconButton(onClick = { runCatching { ShareHelper.shareZekrAsImage(context, z.text, z.source) } }) {
-                                Icon(Icons.Default.Share, contentDescription = "مشاركة", tint = p.primary)
+                            Spacer(Modifier.height(6.dp))
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    if (z.repeatCount > 1) "يُقال ${z.repeatCount} مرات" else z.source,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                IconButton(onClick = { runCatching { ShareHelper.shareZekrAsImage(context, z.text, z.source) } }) {
+                                    Icon(Icons.Default.Share, contentDescription = "مشاركة", tint = p.primary)
+                                }
+                                IconButton(onClick = { viewModel.toggleFavorite(z.id) }) {
+                                    Icon(Icons.Default.Favorite, contentDescription = "إزالة من المفضلة", tint = p.accent)
+                                }
                             }
-                            IconButton(onClick = { viewModel.toggleFavorite(z.id) }) {
-                                Icon(Icons.Default.Favorite, contentDescription = "إزالة من المفضلة", tint = p.accent)
+                        }
+                    }
+                }
+
+                if (savedAiAzkar.isNotEmpty()) {
+                    item {
+                        Text(
+                            "أذكاري المحفوظة من المساعد",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = p.accent,
+                            modifier = Modifier.padding(top = 12.dp)
+                        )
+                    }
+                    items(savedAiAzkar, key = { "ai:$it" }) { saved ->
+                        GlassCard(Modifier.fillMaxWidth(), contentPadding = PaddingValues(18.dp)) {
+                            Text(
+                                saved,
+                                style = ZekrTextStyle.copy(fontSize = 17.sp, lineHeight = 30.sp),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End
+                            ) {
+                                IconButton(onClick = { runCatching { ShareHelper.shareZekrAsImage(context, saved, "إجابة المساعد الذكي") } }) {
+                                    Icon(Icons.Default.Share, contentDescription = "مشاركة", tint = p.primary)
+                                }
+                                IconButton(onClick = { viewModel.removeAiZekr(saved) }) {
+                                    Icon(Icons.Default.Delete, contentDescription = "حذف من أذكاري", tint = MaterialTheme.colorScheme.error)
+                                }
                             }
                         }
                     }

@@ -1,0 +1,84 @@
+name: Baqiyat validation
+
+on:
+  push:
+    branches: [fix/baqiyat-secure-ai]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: baqiyat-validation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # Run the action-downloaded Gradle distribution directly; do not execute the unrecognized wrapper JAR.
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+          validate-wrappers: false
+
+      - name: Create non-secret Firebase config for CI
+        run: |
+          cat > app/google-services.json <<'JSON'
+          {
+            "project_info": {
+              "project_number": "123456789012",
+              "project_id": "baqiyat-ci-only",
+              "storage_bucket": "baqiyat-ci-only.appspot.com"
+            },
+            "client": [{
+              "client_info": {
+                "mobilesdk_app_id": "1:123456789012:android:abcdef1234567890",
+                "android_client_info": {
+                  "package_name": "com.baqiyat.azkar"
+                }
+              },
+              "oauth_client": [{
+                "client_id": "123456789012-ci.apps.googleusercontent.com",
+                "client_type": 3
+              }],
+              "api_key": [{ "current_key": "AIzaSyDUMMY_FOR_CI_ONLY" }],
+              "services": {
+                "appinvite_service": {
+                  "other_platform_oauth_client": []
+                }
+              }
+            }],
+            "configuration_version": "1"
+          }
+          JSON
+
+      - name: Check patch whitespace
+        run: git diff --check
+
+      - name: Run Android unit tests and compile APK
+        run: gradle :app:testDebugUnitTest :app:assembleDebug --no-daemon --stacktrace
+
+      - name: Run Cloud Functions tests
+        working-directory: firebase/functions
+        run: |
+          npm install --ignore-scripts
+          npm test

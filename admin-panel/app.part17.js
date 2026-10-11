@@ -14,12 +14,28 @@
       toast("يرجى كتابة نص الذكر");
       return;
     }
+    const audioUrl = $("#field-audio-url")?.value.trim() || "";
+    const audioUrlsByReciter = Object.fromEntries(
+      [
+        ["mishary", $("#field-audio-mishary")?.value.trim() || ""],
+        ["abdulbasit", $("#field-audio-abdulbasit")?.value.trim() || ""],
+        ["maher", $("#field-audio-maher")?.value.trim() || ""],
+        ["yasser", $("#field-audio-yasser")?.value.trim() || ""],
+      ].filter(([, url]) => url)
+    );
+    const suppliedAudioUrls = [audioUrl, ...Object.values(audioUrlsByReciter)];
+    if (suppliedAudioUrls.filter(Boolean).some((url) => !/^https:\/\/\S+$/i.test(url))) {
+      toast("روابط الصوت يجب أن تبدأ بـ HTTPS وألا تحتوي مسافات.");
+      return;
+    }
     const payload = {
       text,
       category: $("#field-category")?.value || "sabah",
       repeat: Number($("#field-repeat")?.value) || 1,
       fadl: $("#field-fadl")?.value.trim() || "",
       source: $("#field-source")?.value.trim() || "",
+      audioUrl,
+      audioUrlsByReciter,
       published: !!$("#field-published")?.checked,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
     };

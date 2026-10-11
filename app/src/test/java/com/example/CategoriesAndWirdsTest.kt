@@ -17,14 +17,14 @@ class CategoriesAndWirdsTest {
 
     @Test fun mergeKeepsBuiltInsFirstAndSortsRemote() {
         val merged = CategoryDefaults.merge(listOf(cat("home", 2), cat("food", 1)))
-        assertEquals(listOf("sabah", "masaa", "sleep", "travel", "food", "home"), merged.map { it.id })
+        assertEquals(CategoryDefaults.builtIn.map { it.id } + listOf("food", "home"), merged.map { it.id })
     }
 
     @Test fun mergeDropsReservedDuplicateAndUntitled() {
         val merged = CategoryDefaults.merge(
             listOf(cat("sabah"), cat("favorites"), cat("wird_x"), cat("home"), cat("home", 9), cat("blank", title = " "))
         )
-        assertEquals(listOf("sabah", "masaa", "sleep", "travel", "home"), merged.map { it.id })
+        assertEquals(CategoryDefaults.builtIn.map { it.id } + "home", merged.map { it.id })
         assertTrue(merged.first { it.id == "sabah" }.builtIn)
     }
 

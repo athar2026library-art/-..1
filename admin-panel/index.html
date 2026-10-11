@@ -97,6 +97,10 @@
             <option value="masaa">المساء</option>
             <option value="sleep">النوم</option>
             <option value="travel">السفر</option>
+            <option value="worry">الهم والقلق</option>
+            <option value="rizq">الرزق</option>
+            <option value="illness">المرض والشفاء</option>
+            <option value="waking">الاستيقاظ</option>
           </select>
           <select id="status-filter">
             <option value="all">كل الحالات</option>
@@ -207,12 +211,25 @@
             <option value="masaa">المساء</option>
             <option value="sleep">النوم</option>
             <option value="travel">السفر</option>
+            <option value="worry">الهم والقلق</option>
+            <option value="rizq">الرزق</option>
+            <option value="illness">المرض والشفاء</option>
+            <option value="waking">الاستيقاظ</option>
           </select>
         </label>
         <label>عدد التكرار<input id="field-repeat" type="number" min="1" value="1" /></label>
       </div>
       <label>الفضل<textarea id="field-fadl" rows="3" placeholder="فضل الذكر أو الأجر"></textarea></label>
       <label>المصدر<input id="field-source" placeholder="تخريج الحديث أو الكتاب" /></label>
+      <details class="audio-sources">
+        <summary>تسجيلات القراء (اختياري)</summary>
+        <p class="muted">أضف روابط HTTPS لتسجيلات تملك حق نشرها. تُستخدم فقط عند توفر تسجيل للقارئ المختار؛ وإلا يستخدم التطبيق النطق العربي الاحتياطي.</p>
+        <label>رابط تسجيل احتياطي<input id="field-audio-url" type="url" inputmode="url" placeholder="https://…/dhikr.mp3" /></label>
+        <label>مشاري العفاسي<input id="field-audio-mishary" type="url" inputmode="url" placeholder="https://…/mishary.mp3" /></label>
+        <label>عبد الباسط عبد الصمد<input id="field-audio-abdulbasit" type="url" inputmode="url" placeholder="https://…/abdulbasit.mp3" /></label>
+        <label>ماهر المعيقلي<input id="field-audio-maher" type="url" inputmode="url" placeholder="https://…/maher.mp3" /></label>
+        <label>ياسر الدوسري<input id="field-audio-yasser" type="url" inputmode="url" placeholder="https://…/yasser.mp3" /></label>
+      </details>
       <label class="publish-toggle">
         <span><strong>نشر مباشر</strong></span>
         <input id="field-published" type="checkbox" checked />

@@ -40,6 +40,16 @@ fun SettingsScreen(
     val hideSources by viewModel.hideSources.collectAsStateWithLifecycle()
     val notificationsEnabled by viewModel.notificationsEnabled.collectAsStateWithLifecycle()
     val autoPlayEnabled by viewModel.autoPlayEnabled.collectAsStateWithLifecycle()
+    val audioSpeed by viewModel.audioSpeed.collectAsStateWithLifecycle()
+    val reciterId by viewModel.reciterId.collectAsStateWithLifecycle()
+    val remindSabah by viewModel.remindSabah.collectAsStateWithLifecycle()
+    val remindMasaa by viewModel.remindMasaa.collectAsStateWithLifecycle()
+    val remindSleep by viewModel.remindSleep.collectAsStateWithLifecycle()
+    val remindFriday by viewModel.remindFriday.collectAsStateWithLifecycle()
+    val reminderSabahTime by viewModel.reminderSabahTime.collectAsStateWithLifecycle()
+    val reminderMasaaTime by viewModel.reminderMasaaTime.collectAsStateWithLifecycle()
+    val reminderSleepTime by viewModel.reminderSleepTime.collectAsStateWithLifecycle()
+    val reminderFridayTime by viewModel.reminderFridayTime.collectAsStateWithLifecycle()
 
     val userSignedIn by viewModel.userSignedIn.collectAsStateWithLifecycle()
     val statusMessage by viewModel.statusMessage.collectAsStateWithLifecycle()
@@ -146,10 +156,121 @@ fun SettingsScreen(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text("تذكيرات الأذكار", fontSize = 16.sp)
-                            Text("صباح ومساء — يمكن إيقافها بالكامل", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(
+                                "خصص أوقات الصباح والمساء والنوم والجمعة",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
-                        Switch(checked = notificationsEnabled, onCheckedChange = { viewModel.setNotificationsEnabled(it) })
+                        Switch(
+                            checked = notificationsEnabled,
+                            onCheckedChange = { viewModel.setNotificationsEnabled(it) }
+                        )
                     }
+
+                    if (notificationsEnabled) {
+                        Spacer(Modifier.height(12.dp))
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+                        Spacer(Modifier.height(12.dp))
+
+                        SettingSwitchRow("أذكار الصباح", remindSabah) {
+                            viewModel.setReminderEnabled("sabah", it)
+                        }
+                        ReminderTimeChoices(
+                            label = "وقت الصباح",
+                            selected = reminderSabahTime,
+                            options = listOf("06:00", "07:00", "08:00", "09:00")
+                        ) { viewModel.setReminderTime("sabah", it) }
+
+                        SettingDivider()
+                        SettingSwitchRow("أذكار المساء", remindMasaa) {
+                            viewModel.setReminderEnabled("masaa", it)
+                        }
+                        ReminderTimeChoices(
+                            label = "وقت المساء",
+                            selected = reminderMasaaTime,
+                            options = listOf("17:00", "18:00", "19:00", "20:00")
+                        ) { viewModel.setReminderTime("masaa", it) }
+
+                        SettingDivider()
+                        SettingSwitchRow("قبل النوم", remindSleep) {
+                            viewModel.setReminderEnabled("sleep", it)
+                        }
+                        ReminderTimeChoices(
+                            label = "وقت ما قبل النوم",
+                            selected = reminderSleepTime,
+                            options = listOf("21:00", "22:00", "23:00")
+                        ) { viewModel.setReminderTime("sleep", it) }
+
+                        SettingDivider()
+                        SettingSwitchRow("تذكير يوم الجمعة", remindFriday) {
+                            viewModel.setReminderEnabled("friday", it)
+                        }
+                        ReminderTimeChoices(
+                            label = "وقت تذكير الجمعة",
+                            selected = reminderFridayTime,
+                            options = listOf("09:00", "12:00", "15:00")
+                        ) { viewModel.setReminderTime("friday", it) }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+            Text("الصوت والتلاوة", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            Spacer(modifier = Modifier.height(16.dp))
+            Card(
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = androidx.compose.foundation.BorderStroke(
+                    1.dp,
+                    MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text("القارئ المفضل", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    listOf(
+                        "mishary" to "مشاري العفاسي",
+                        "abdulbasit" to "عبد الباسط",
+                        "maher" to "ماهر المعيقلي",
+                        "yasser" to "ياسر الدوسري"
+                    ).chunked(2).forEach { options ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            options.forEach { (id, label) ->
+                                FilterChip(
+                                    selected = reciterId == id,
+                                    onClick = { viewModel.setReciterId(id) },
+                                    label = { Text(label) }
+                                )
+                            }
+                        }
+                    }
+
+                    SettingDivider()
+                    Text("سرعة التشغيل", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf(0.75f, 1.0f, 1.25f).forEach { rate ->
+                            FilterChip(
+                                selected = audioSpeed == rate,
+                                onClick = { viewModel.setAudioSpeed(rate) },
+                                label = { Text("${rate}×") }
+                            )
+                        }
+                    }
+                    Text(
+                        "عند توفر تسجيل للقارئ المختار سيُشغَّل الصوت المسجل، وإلا يستخدم التطبيق النطق العربي الاحتياطي.",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        lineHeight = 18.sp
+                    )
                 }
             }
 
@@ -287,6 +408,32 @@ fun SettingsScreen(
                 }
             }
             Spacer(modifier = Modifier.height(32.dp))
+        }
+    }
+}
+
+@Composable
+private fun ReminderTimeChoices(
+    label: String,
+    selected: String,
+    options: List<String>,
+    onSelect: (String) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(label, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        options.chunked(3).forEach { rowOptions ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                rowOptions.forEach { time ->
+                    FilterChip(
+                        selected = selected == time,
+                        onClick = { onSelect(time) },
+                        label = { Text(time) }
+                    )
+                }
+            }
         }
     }
 }

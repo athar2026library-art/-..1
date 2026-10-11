@@ -16,6 +16,8 @@ import kotlinx.coroutines.flow.map
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
 class SettingsRepository(private val dataStore: DataStore<Preferences>) {
+    private companion object { const val MAX_SAVED_AI_AZKAR = 100 }
+
 
     private val FONT_SIZE = floatPreferencesKey("font_size")
     private val DARK_MODE = booleanPreferencesKey("dark_mode")
@@ -29,7 +31,17 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     private val AUTO_DND = booleanPreferencesKey("auto_dnd")
     private val ONBOARDING_COMPLETE = booleanPreferencesKey("onboarding_complete")
     private val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
+    private val REMIND_SABAH = booleanPreferencesKey("remind_sabah")
+    private val REMIND_MASAA = booleanPreferencesKey("remind_masaa")
+    private val REMIND_SLEEP = booleanPreferencesKey("remind_sleep")
+    private val REMIND_FRIDAY = booleanPreferencesKey("remind_friday")
+    private val REMINDER_SABAH_TIME = stringPreferencesKey("reminder_sabah_time")
+    private val REMINDER_MASAA_TIME = stringPreferencesKey("reminder_masaa_time")
+    private val REMINDER_SLEEP_TIME = stringPreferencesKey("reminder_sleep_time")
+    private val REMINDER_FRIDAY_TIME = stringPreferencesKey("reminder_friday_time")
     private val AUTO_PLAY = booleanPreferencesKey("auto_play")
+    private val AUDIO_SPEED = floatPreferencesKey("audio_speed")
+    private val RECITER_ID = stringPreferencesKey("reciter_id")
     private val CUSTOM_WIRDS = stringPreferencesKey("custom_wirds")
     private val WEEKLY_GOAL = intPreferencesKey("weekly_days_goal")
     private val ACCENT = stringPreferencesKey("accent_theme")
@@ -37,6 +49,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     private val DAILY_GOAL = intPreferencesKey("daily_tasbeeh_goal")
     private val TASBIH_TARGET = intPreferencesKey("tasbih_target")
     private val FAVORITES = stringSetPreferencesKey("favorite_zekr_ids")
+    private val MY_AZKAR = stringSetPreferencesKey("my_azkar")
 
     val fontSizeFlow: Flow<Float> = dataStore.data.map { it[FONT_SIZE] ?: 24f }
     val darkModeFlow: Flow<Boolean> = dataStore.data.map { it[DARK_MODE] ?: true }
@@ -47,7 +60,17 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     val hideSourcesFlow: Flow<Boolean> = dataStore.data.map { it[HIDE_SOURCES] ?: false }
     val onboardingCompleteFlow: Flow<Boolean> = dataStore.data.map { it[ONBOARDING_COMPLETE] ?: false }
     val notificationsEnabledFlow: Flow<Boolean> = dataStore.data.map { it[NOTIFICATIONS_ENABLED] ?: true }
+    val remindSabahFlow: Flow<Boolean> = dataStore.data.map { it[REMIND_SABAH] ?: true }
+    val remindMasaaFlow: Flow<Boolean> = dataStore.data.map { it[REMIND_MASAA] ?: true }
+    val remindSleepFlow: Flow<Boolean> = dataStore.data.map { it[REMIND_SLEEP] ?: true }
+    val remindFridayFlow: Flow<Boolean> = dataStore.data.map { it[REMIND_FRIDAY] ?: false }
+    val reminderSabahTimeFlow: Flow<String> = dataStore.data.map { it[REMINDER_SABAH_TIME] ?: "07:00" }
+    val reminderMasaaTimeFlow: Flow<String> = dataStore.data.map { it[REMINDER_MASAA_TIME] ?: "18:00" }
+    val reminderSleepTimeFlow: Flow<String> = dataStore.data.map { it[REMINDER_SLEEP_TIME] ?: "22:00" }
+    val reminderFridayTimeFlow: Flow<String> = dataStore.data.map { it[REMINDER_FRIDAY_TIME] ?: "09:00" }
     val autoPlayFlow: Flow<Boolean> = dataStore.data.map { it[AUTO_PLAY] ?: false }
+    val audioSpeedFlow: Flow<Float> = dataStore.data.map { it[AUDIO_SPEED] ?: 1.0f }
+    val reciterIdFlow: Flow<String> = dataStore.data.map { it[RECITER_ID] ?: "mishary" }
     val customWirdsFlow: Flow<List<CustomWird>> = dataStore.data.map { CustomWirds.decode(it[CUSTOM_WIRDS]) }
     val weeklyGoalFlow: Flow<Int> = dataStore.data.map { it[WEEKLY_GOAL] ?: 5 }
     val accentFlow: Flow<String> = dataStore.data.map { it[ACCENT] ?: "gold" }
@@ -56,6 +79,9 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     val tasbihTargetFlow: Flow<Int> = dataStore.data.map { it[TASBIH_TARGET] ?: 33 }
     val favoritesFlow: Flow<Set<Int>> = dataStore.data.map { prefs ->
         prefs[FAVORITES]?.mapNotNull { it.toIntOrNull() }?.toSet() ?: emptySet()
+    }
+    val savedAiAzkarFlow: Flow<List<String>> = dataStore.data.map { prefs ->
+        prefs[MY_AZKAR].orEmpty().toList().sorted()
     }
 
     val lastReadCategoryFlow: Flow<String> = dataStore.data.map { it[LAST_READ_CATEGORY] ?: "" }
@@ -89,7 +115,56 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     suspend fun setNotificationsEnabled(enabled: Boolean) {
         dataStore.edit { it[NOTIFICATIONS_ENABLED] = enabled }
     }
+    suspend fun setReminderEnabled(category: String, enabled: Boolean) {
+        val key = when (category) {
+            "sabah" -> REMIND_SABAH
+            "masaa" -> REMIND_MASAA
+            "sleep" -> REMIND_SLEEP
+            "friday" -> REMIND_FRIDAY
+            else -> return
+        }
+        dataStore.edit { it[key] = enabled }
+    }
+
+    suspend fun setReminderTime(category: String, time: String) {
+        if (!time.matches(Regex("^([01]?[0-9]|2[0-3]):[0-5][0-9]$"))) return
+        val parts = time.split(":")
+        val normalized = "${parts[0].padStart(2, '0')}:${parts[1]}"
+        val key = when (category) {
+            "sabah" -> REMINDER_SABAH_TIME
+            "masaa" -> REMINDER_MASAA_TIME
+            "sleep" -> REMINDER_SLEEP_TIME
+            "friday" -> REMINDER_FRIDAY_TIME
+            else -> return
+        }
+        dataStore.edit { it[key] = normalized }
+    }
+
+    /** Claims one reminder category for a date, preventing repeat notifications from periodic work. */
+    suspend fun claimReminderForDate(category: String, date: String): Boolean {
+        if (category !in setOf("sabah", "masaa", "sleep", "friday")) return false
+        var claimed = false
+        val key = stringPreferencesKey("last_reminder_$category")
+        dataStore.edit { prefs ->
+            if (prefs[key] != date) {
+                prefs[key] = date
+                claimed = true
+            }
+        }
+        return claimed
+    }
     suspend fun setAutoPlay(enabled: Boolean) { dataStore.edit { it[AUTO_PLAY] = enabled } }
+    suspend fun setAudioSpeed(speed: Float) {
+        val allowed = listOf(0.75f, 1.0f, 1.25f)
+        val selected = allowed.minByOrNull { kotlin.math.abs(it - speed) } ?: 1.0f
+        dataStore.edit { it[AUDIO_SPEED] = selected }
+    }
+
+    suspend fun setReciterId(id: String) {
+        val allowed = setOf("mishary", "abdulbasit", "maher", "yasser")
+        if (id !in allowed) return
+        dataStore.edit { it[RECITER_ID] = id }
+    }
     suspend fun saveCustomWird(wird: CustomWird) {
         dataStore.edit { prefs ->
             val current = CustomWirds.decode(prefs[CUSTOM_WIRDS])
@@ -114,6 +189,23 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
             val current = prefs[FAVORITES] ?: emptySet()
             val key = id.toString()
             prefs[FAVORITES] = if (key in current) current - key else current + key
+        }
+    }
+    suspend fun saveAiZekr(text: String) {
+        val clean = text.trim().take(4000)
+        if (clean.isBlank()) return
+        dataStore.edit { prefs ->
+            val current = prefs[MY_AZKAR] ?: emptySet()
+            if (clean !in current) {
+                val updated = (current + clean).toList().sorted().takeLast(MAX_SAVED_AI_AZKAR).toSet()
+                prefs[MY_AZKAR] = updated
+            }
+        }
+    }
+
+    suspend fun removeAiZekr(text: String) {
+        dataStore.edit { prefs ->
+            prefs[MY_AZKAR] = (prefs[MY_AZKAR] ?: emptySet()) - text
         }
     }
 }

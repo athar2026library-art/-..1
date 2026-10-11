@@ -100,26 +100,25 @@ fun AzkarScreen(
     val hideVirtues by viewModel.hideVirtues.collectAsStateWithLifecycle()
     val hideSources by viewModel.hideSources.collectAsStateWithLifecycle()
     val autoPlayEnabled by viewModel.autoPlayEnabled.collectAsStateWithLifecycle()
+    val audioSpeed by viewModel.audioSpeed.collectAsStateWithLifecycle()
+    val reciterId by viewModel.reciterId.collectAsStateWithLifecycle()
 
     var currentIndex by remember { mutableIntStateOf(0) }
     var countRemaining by remember { mutableIntStateOf(1) }
     var isInitialized by remember { mutableStateOf(false) }
     var showBottomSheet by remember { mutableStateOf(false) }
+    var isDownloadingAudio by remember { mutableStateOf(false) }
+    var audioStatus by remember { mutableStateOf("") }
 
     val context = LocalContext.current
-    val audioPlayer = remember { AudioPlayer(context) }
-    val isPlaying by audioPlayer.isPlaying.collectAsState()
+    val view = LocalView.current
+    val audioPlayer = remember(context.applicationContext) {
+        AudioPlayer(context.applicationContext)
+    }
+    val isPlaying by audioPlayer.isPlaying.collectAsStateWithLifecycle()
     val coroutineScope = rememberCoroutineScope()
 
-    DisposableEffect(Unit) {
-        onDispose { audioPlayer.shutdown() }
-    }
-
-    val view = LocalView.current
-
-    val audioPlayer = remember { AudioPlayer(context.applicationContext) }
-    val isPlaying by audioPlayer.isPlaying.collectAsStateWithLifecycle()
-    DisposableEffect(Unit) {
+    DisposableEffect(audioPlayer) {
         onDispose {
             audioPlayer.shutdown()
             viewModel.flushPendingTasbeeh()
@@ -243,17 +242,45 @@ fun AzkarScreen(
     }
 
     val currentZekr = azkarList[currentIndex]
+    val selectedAudioUrl = currentZekr.audioUrlsByReciter[reciterId] ?: currentZekr.audioUrl
+    val playCurrentZekr: (Int, Boolean) -> Unit = { repetitions, autoAdvance ->
+        val itemIndex = currentIndex
+        val onComplete: (() -> Unit)? = if (autoAdvance) {
+            {
+                coroutineScope.launch {
+                    delay(450)
+                    if (currentIndex == itemIndex) currentIndex++
+                }
+            }
+        } else null
+
+        if (!selectedAudioUrl.isNullOrBlank() && selectedAudioUrl.startsWith("https://")) {
+            audioPlayer.playRecording(
+                url = selectedAudioUrl,
+                speed = audioSpeed,
+                repetitions = repetitions,
+                onCompletion = onComplete
+            )
+        } else {
+            audioPlayer.playLoop(
+                text = currentZekr.text,
+                times = repetitions,
+                rate = audioSpeed,
+                onCompletion = onComplete
+            )
+        }
+    }
     val completedItems = currentIndex +
         ((currentZekr.repeatCount - countRemaining).toFloat() / currentZekr.repeatCount.coerceAtLeast(1))
     val readingProgress = (completedItems / azkarList.size.coerceAtLeast(1)).coerceIn(0f, 1f)
 
-    LaunchedEffect(currentIndex) {
+    LaunchedEffect(currentIndex, autoPlayEnabled) {
         if (isInitialized) {
             countRemaining = currentZekr.repeatCount
             audioPlayer.stop()
             if (autoPlayEnabled) {
                 delay(350)
-                audioPlayer.playAndWait(currentZekr.text)
+                playCurrentZekr(1, true)
             }
         }
     }
@@ -335,18 +362,63 @@ fun AzkarScreen(
                     ) {
                         FilledTonalIconButton(onClick = {
                             if (isPlaying) audioPlayer.stop()
-                            else coroutineScope.launch { audioPlayer.playAndWait(currentZekr.text) }
+                            else playCurrentZekr(1, false)
                         }) {
                             Icon(
                                 if (isPlaying) Icons.Default.Stop else Icons.Default.VolumeUp,
                                 contentDescription = if (isPlaying) "إيقاف" else "استماع"
                             )
                         }
-                        FilledTonalIconButton(onClick = { audioPlayer.playLoop(currentZekr.text, 3) }) {
+                        FilledTonalIconButton(onClick = { playCurrentZekr(3, false) }) {
                             Icon(Icons.Default.Repeat, contentDescription = "تكرار 3 مرات")
                         }
-                        FilledTonalIconButton(onClick = { audioPlayer.playLoop(currentZekr.text, 5) }) {
+                        FilledTonalIconButton(onClick = { playCurrentZekr(5, false) }) {
                             Icon(Icons.Default.RepeatOne, contentDescription = "تكرار 5 مرات")
+                        }
+                    }
+                    if (!selectedAudioUrl.isNullOrBlank() && selectedAudioUrl.startsWith("https://")) {
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedButton(
+                            onClick = {
+                                if (!isDownloadingAudio) {
+                                    coroutineScope.launch {
+                                        isDownloadingAudio = true
+                                        val downloaded = audioPlayer.downloadRecording(selectedAudioUrl)
+                                        isDownloadingAudio = false
+                                        audioStatus = if (downloaded) {
+                                            "تم حفظ الصوت على الجهاز للاستماع دون إنترنت."
+                                        } else {
+                                            "تعذر تنزيل التسجيل. تحقق من الرابط والاتصال بالإنترنت."
+                                        }
+                                    }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !isDownloadingAudio
+                        ) {
+                            if (isDownloadingAudio) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp
+                                )
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                if (audioPlayer.hasCachedRecording(selectedAudioUrl)) {
+                                    "الصوت محفوظ دون إنترنت"
+                                } else {
+                                    "تنزيل صوت القارئ"
+                                }
+                            )
+                        }
+                        if (audioStatus.isNotBlank()) {
+                            Text(
+                                audioStatus,
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.Center,
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                     Spacer(Modifier.height(8.dp))

@@ -17,7 +17,16 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import android.app.Activity
 import androidx.compose.ui.Alignment
+import androidx.compose.material.icons.filled.BookmarkAdd
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Stop
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.DisposableEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.ui.AudioPlayer
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -34,6 +43,17 @@ fun AiServicesScreen(
 ) {
     val messages by viewModel.chatMessages.collectAsState()
     val isLoadingAi by viewModel.isLoadingAi.collectAsState()
+    val userSignedIn by viewModel.userSignedIn.collectAsState()
+    val savedAiAzkar by viewModel.savedAiAzkar.collectAsStateWithLifecycle()
+    val audioSpeed by viewModel.audioSpeed.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val activity = context as? Activity
+    val audioPlayer = remember(context.applicationContext) { AudioPlayer(context.applicationContext) }
+    val isAudioPlaying by audioPlayer.isPlaying.collectAsStateWithLifecycle()
+
+    DisposableEffect(audioPlayer) {
+        onDispose { audioPlayer.shutdown() }
+    }
 
     var inputText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
@@ -59,45 +79,67 @@ fun AiServicesScreen(
                 tonalElevation = 2.dp,
                 shadowElevation = 8.dp
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                        .navigationBarsPadding(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    OutlinedTextField(
-                        value = inputText,
-                        onValueChange = { inputText = it.take(500) },
-                        modifier = Modifier.weight(1f),
-                        placeholder = { Text("اسأل عن ذكر أو صف شعورك...") },
-                        maxLines = 3,
-                        shape = RoundedCornerShape(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    if (isLoadingAi) {
-                        TextButton(onClick = viewModel::cancelAiRequest) {
-                            Text("إلغاء")
-                        }
-                    } else {
-                        IconButton(
-                            onClick = {
-                                val t = inputText.trim()
-                                if (t.isNotEmpty()) {
-                                    viewModel.sendChatMessage(t)
-                                    inputText = ""
-                                }
-                            },
-                            modifier = Modifier
-                                .background(MaterialTheme.colorScheme.primary, CircleShape)
-                                .padding(4.dp),
-                            enabled = inputText.isNotBlank()
+                if (!userSignedIn) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                            .navigationBarsPadding(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            "يحتاج المساعد إلى تسجيل الدخول لحماية الاستخدام وتحديد الحصة اليومية.",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Button(
+                            onClick = { activity?.let(viewModel::signIn) },
+                            enabled = activity != null,
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.Send,
-                                contentDescription = "إرسال",
-                                tint = MaterialTheme.colorScheme.onPrimary
-                            )
+                            Text("تسجيل الدخول باستخدام Google")
+                        }
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                            .navigationBarsPadding(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedTextField(
+                            value = inputText,
+                            onValueChange = { inputText = it.take(500) },
+                            modifier = Modifier.weight(1f),
+                            placeholder = { Text("اسأل عن ذكر أو صف شعورك...") },
+                            maxLines = 3,
+                            shape = RoundedCornerShape(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        if (isLoadingAi) {
+                            TextButton(onClick = viewModel::cancelAiRequest) {
+                                Text("إلغاء")
+                            }
+                        } else {
+                            IconButton(
+                                onClick = {
+                                    val t = inputText.trim()
+                                    if (t.isNotEmpty()) {
+                                        viewModel.sendChatMessage(t)
+                                        inputText = ""
+                                    }
+                                },
+                                modifier = Modifier
+                                    .background(MaterialTheme.colorScheme.primary, CircleShape)
+                                    .padding(4.dp),
+                                enabled = inputText.isNotBlank()
+                            ) {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.Send,
+                                    contentDescription = "إرسال",
+                                    tint = MaterialTheme.colorScheme.onPrimary
+                                )
+                            }
                         }
                     }
                 }
@@ -114,9 +156,34 @@ fun AiServicesScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             items(messages) { message ->
-                ChatBubble(message)
+                ChatBubble(
+                    message = message,
+                    isSaved = savedAiAzkar.contains(message.text),
+                    isAudioPlaying = isAudioPlaying,
+                    onSave = { viewModel.saveAiZekr(message.text) },
+                    onPlay = {
+                        if (isAudioPlaying) {
+                            audioPlayer.stop()
+                        } else {
+                            audioPlayer.playLoop(extractDuaForSpeech(message.text), 1, rate = audioSpeed)
+                        }
+                    }
+                )
             }
-            if (messages.size <= 1 && !isLoadingAi) {
+            if (!userSignedIn) {
+                item {
+                    Card(
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                    ) {
+                        Text(
+                            "بعد تسجيل الدخول ستتمكن من طرح أسئلة عن الأذكار والحصول على الإجابات مع المراجع المتاحة.",
+                            modifier = Modifier.padding(18.dp),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            } else if (messages.size <= 1 && !isLoadingAi) {
                 item { MoodChips(onPick = { viewModel.sendChatMessage(it) }) }
             }
         }
@@ -160,7 +227,13 @@ private fun MoodChips(onPick: (String) -> Unit) {
 }
 
 @Composable
-fun ChatBubble(message: ChatMessage) {
+fun ChatBubble(
+    message: ChatMessage,
+    isSaved: Boolean = false,
+    isAudioPlaying: Boolean = false,
+    onSave: () -> Unit = {},
+    onPlay: () -> Unit = {}
+) {
     val alignment = if (message.isUser) Alignment.CenterStart else Alignment.CenterEnd
     val bubbleColor = if (message.isUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
     val textColor = if (message.isUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
@@ -187,10 +260,48 @@ fun ChatBubble(message: ChatMessage) {
                         fontSize = 16.sp,
                         lineHeight = 24.sp
                     )
+                    if (message.actionsEnabled && !message.isUser && !message.isLoading) {
+                        Spacer(Modifier.height(10.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            TextButton(onClick = onPlay) {
+                                androidx.compose.material3.Icon(
+                                    if (isAudioPlaying) Icons.Default.Stop
+                                    else Icons.Default.PlayArrow,
+                                    contentDescription = null
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text(if (isAudioPlaying) "إيقاف الصوت" else "استماع")
+                            }
+                            TextButton(onClick = onSave, enabled = !isSaved) {
+                                androidx.compose.material3.Icon(
+                                    if (isSaved) Icons.Default.Check
+                                    else Icons.Default.BookmarkAdd,
+                                    contentDescription = null
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text(if (isSaved) "محفوظ في أذكاري" else "أضف إلى أذكاري")
+                            }
+                        }
+                    }
                 }
             }
         }
     }
+}
+
+private fun extractDuaForSpeech(reply: String): String {
+    val heading = Regex("(?m)^\\s*(?:\\*\\*)?الذكر(?:\\*\\*)?\\s*[:：]\\s*")
+    val match = heading.find(reply) ?: return reply
+    val start = match.range.last + 1
+    val tail = reply.substring(start)
+    val nextSection = Regex("(?m)^\\s*(?:\\*\\*)?(?:فضله|الفضل|المصدر|المرجع)(?:\\*\\*)?\\s*[:：]")
+        .find(tail)
+    val dua = if (nextSection == null) tail else tail.substring(0, nextSection.range.first)
+    return dua.trim().ifBlank { reply }
 }
 
 @Composable

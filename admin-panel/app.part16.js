@@ -32,6 +32,11 @@
     $("#field-repeat").value = z?.repeat || 1;
     $("#field-fadl").value = z?.fadl || "";
     $("#field-source").value = z?.source || "";
+    $("#field-audio-url").value = z?.audioUrl || "";
+    $("#field-audio-mishary").value = z?.audioUrlsByReciter?.mishary || "";
+    $("#field-audio-abdulbasit").value = z?.audioUrlsByReciter?.abdulbasit || "";
+    $("#field-audio-maher").value = z?.audioUrlsByReciter?.maher || "";
+    $("#field-audio-yasser").value = z?.audioUrlsByReciter?.yasser || "";
     $("#field-published").checked = z ? !!z.published : true;
     const modal = $("#editor-modal");
     modal.classList.add("open");

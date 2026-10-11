@@ -47,18 +47,36 @@ service cloud.firestore {
       return true;
     }
 
+    function validAudioUrl(url) {
+      return url is string
+        && url.size() < 2048
+        && (url == '' || url.matches('^https://.*'));
+    }
+
+    function validReciterAudio(data) {
+      let audio = data.get('audioUrlsByReciter', {});
+      return audio is map
+        && audio.keys().hasOnly(['mishary', 'abdulbasit', 'maher', 'yasser'])
+        && (!audio.keys().hasAny(['mishary']) || validAudioUrl(audio.mishary))
+        && (!audio.keys().hasAny(['abdulbasit']) || validAudioUrl(audio.abdulbasit))
+        && (!audio.keys().hasAny(['maher']) || validAudioUrl(audio.maher))
+        && (!audio.keys().hasAny(['yasser']) || validAudioUrl(audio.yasser));
+    }
+
     function validZekr() {
       let d = request.resource.data;
       return d.keys().hasAll(['text', 'category', 'published'])
         && d.text is string
         && d.text.size() > 0
         && d.text.size() < 4000
-        && (d.category in ['sabah', 'masaa', 'sleep', 'travel']
+        && (d.category in ['sabah', 'masaa', 'sleep', 'travel', 'worry', 'rizq', 'illness', 'waking']
           || (d.category is string
               && exists(/databases/$(database)/documents/content/categories/items/$(d.category))))
         && (d.get('repeat', 1) is int || d.get('repeat', 1) is float)
         && d.get('repeat', 1) >= 1
-        && d.get('repeat', 1) <= 1000;
+        && d.get('repeat', 1) <= 1000
+        && validAudioUrl(d.get('audioUrl', ''))
+        && validReciterAudio(d);
     }
 
     // تصنيفات ديناميكية يديرها المشرف: content/categories/items/{id}
@@ -66,7 +84,7 @@ service cloud.firestore {
       let d = request.resource.data;
       return categoryId.matches('^[a-z0-9_-]{2,30}$')
         && !categoryId.matches('^wird_.*')
-        && !(categoryId in ['sabah', 'masaa', 'sleep', 'travel', 'favorites'])
+        && !(categoryId in ['sabah', 'masaa', 'sleep', 'travel', 'worry', 'rizq', 'illness', 'waking', 'favorites'])
         && d.keys().hasOnly(['title', 'subtitle', 'icon', 'order', 'published', 'createdAt', 'updatedAt'])
         && d.title is string
         && d.title.size() > 0
