@@ -38,6 +38,8 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     private val REMINDER_SLEEP_TIME = stringPreferencesKey("reminder_sleep_time")
     private val REMINDER_FRIDAY_TIME = stringPreferencesKey("reminder_friday_time")
     private val AUTO_PLAY = booleanPreferencesKey("auto_play")
+    private val AUDIO_SPEED = floatPreferencesKey("audio_speed")
+    private val RECITER_ID = stringPreferencesKey("reciter_id")
     private val CUSTOM_WIRDS = stringPreferencesKey("custom_wirds")
     private val WEEKLY_GOAL = intPreferencesKey("weekly_days_goal")
     private val ACCENT = stringPreferencesKey("accent_theme")
@@ -64,6 +66,8 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     val reminderSleepTimeFlow: Flow<String> = dataStore.data.map { it[REMINDER_SLEEP_TIME] ?: "22:00" }
     val reminderFridayTimeFlow: Flow<String> = dataStore.data.map { it[REMINDER_FRIDAY_TIME] ?: "09:00" }
     val autoPlayFlow: Flow<Boolean> = dataStore.data.map { it[AUTO_PLAY] ?: false }
+    val audioSpeedFlow: Flow<Float> = dataStore.data.map { it[AUDIO_SPEED] ?: 1.0f }
+    val reciterIdFlow: Flow<String> = dataStore.data.map { it[RECITER_ID] ?: "mishary" }
     val customWirdsFlow: Flow<List<CustomWird>> = dataStore.data.map { CustomWirds.decode(it[CUSTOM_WIRDS]) }
     val weeklyGoalFlow: Flow<Int> = dataStore.data.map { it[WEEKLY_GOAL] ?: 5 }
     val accentFlow: Flow<String> = dataStore.data.map { it[ACCENT] ?: "gold" }
@@ -144,6 +148,17 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         return claimed
     }
     suspend fun setAutoPlay(enabled: Boolean) { dataStore.edit { it[AUTO_PLAY] = enabled } }
+    suspend fun setAudioSpeed(speed: Float) {
+        val allowed = listOf(0.75f, 1.0f, 1.25f)
+        val selected = allowed.minByOrNull { kotlin.math.abs(it - speed) } ?: 1.0f
+        dataStore.edit { it[AUDIO_SPEED] = selected }
+    }
+
+    suspend fun setReciterId(id: String) {
+        val allowed = setOf("mishary", "abdulbasit", "maher", "yasser")
+        if (id !in allowed) return
+        dataStore.edit { it[RECITER_ID] = id }
+    }
     suspend fun saveCustomWird(wird: CustomWird) {
         dataStore.edit { prefs ->
             val current = CustomWirds.decode(prefs[CUSTOM_WIRDS])
