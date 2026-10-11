@@ -104,11 +104,8 @@ class AudioPlayer(context: Context) : TextToSpeech.OnInitListener {
                             if (continuation.isActive) continuation.resume(false) { _, _, _ -> }
                         }
                     }
-                    if (interrupted) {
-                        ttsRemaining.set(0)
-                        ttsSequenceCompletion = null
-                        _isPlaying.value = false
-                    }
+                    // stop() owns queue-state resets. A delayed callback from an old
+                    // utterance must not cancel a newer playback sequence.
                 }
             }
         )
