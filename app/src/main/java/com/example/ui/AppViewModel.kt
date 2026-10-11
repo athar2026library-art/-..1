@@ -77,6 +77,9 @@ class AppViewModel(
     val autoPlayEnabled: StateFlow<Boolean> = settingsRepository.autoPlayFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
+    val audioSpeed: StateFlow<Float> = settingsRepository.audioSpeedFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, 1.0f)
+
     /** الأذكار المفضلة (معرّفات). Eagerly كي تكون جاهزة عند فتح القارئ. */
     val favorites: StateFlow<Set<Int>> = settingsRepository.favoritesFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
@@ -250,6 +253,10 @@ class AppViewModel(
 
     fun setAutoPlay(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setAutoPlay(enabled) }
+    }
+
+    fun setAudioSpeed(speed: Float) {
+        viewModelScope.launch { settingsRepository.setAudioSpeed(speed) }
     }
 
     fun setWeeklyDaysGoal(days: Int) {
