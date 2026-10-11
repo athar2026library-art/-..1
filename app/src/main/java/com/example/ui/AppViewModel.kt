@@ -19,6 +19,7 @@ import com.example.data.UserProgress
 import com.example.data.Zekr
 import com.example.ui.theme.AccentTheme
 import com.example.ui.theme.ReaderFont
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.functions.FirebaseFunctions
 import com.google.firebase.functions.FirebaseFunctionsException
 import kotlinx.coroutines.CancellationException
@@ -162,6 +163,35 @@ class AppViewModel(
     init {
         viewModelScope.launch {
             progressRepository.initTodayProgress()
+        }
+    }
+
+    /**
+     * Records one completed supplication through a rate-limited, App Check-protected callable.
+     * Anonymous auth enables aggregate statistics without requiring Google sign-in.
+     */
+    fun recordAzkarRead(category: String, zekr: Zekr) {
+        viewModelScope.launch {
+            try {
+                val auth = FirebaseAuth.getInstance()
+                if (auth.currentUser == null) {
+                    auth.signInAnonymously().await()
+                }
+                FirebaseFunctions.getInstance("europe-west1")
+                    .getHttpsCallable("recordAzkarRead")
+                    .call(
+                        mapOf(
+                            "zekrId" to zekr.id.toString(),
+                            "category" to category,
+                            "text" to zekr.text.take(300)
+                        )
+                    )
+                    .await()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                // Reading progress remains local if analytics are offline or not configured.
+            }
         }
     }
 
