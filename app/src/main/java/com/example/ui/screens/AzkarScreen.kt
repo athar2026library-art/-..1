@@ -61,6 +61,7 @@ fun AzkarScreen(
     val isVibrationEnabled by viewModel.isVibrationEnabled.collectAsState()
     val keepScreenOn by viewModel.keepScreenOn.collectAsState()
     val autoDnd by viewModel.autoDnd.collectAsState()
+    val audioSpeed by viewModel.audioSpeed.collectAsState()
 
     var currentIndex by remember { mutableStateOf(0) }
     var countRemaining by remember { mutableStateOf(1) }
@@ -70,6 +71,8 @@ fun AzkarScreen(
     val context = LocalContext.current
     val audioPlayer = remember { AudioPlayer(context) }
     val isPlaying by audioPlayer.isPlaying.collectAsState()
+
+    LaunchedEffect(audioSpeed) { audioPlayer.setSpeechRate(audioSpeed) }
     val coroutineScope = rememberCoroutineScope()
 
     DisposableEffect(Unit) {
