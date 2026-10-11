@@ -135,9 +135,9 @@ fun AzkarScreen(
         }
     }
 
-    LaunchedEffect(currentIndex) {
+    LaunchedEffect(currentIndex, countRemaining) {
         if (isInitialized && currentIndex < azkarList.size) {
-            viewModel.saveLastReadState(category, currentIndex, azkarList[currentIndex].repeatCount)
+            viewModel.saveLastReadState(category, currentIndex, countRemaining)
         }
     }
 
@@ -146,6 +146,7 @@ fun AzkarScreen(
     if (currentIndex >= azkarList.size) {
         LaunchedEffect(Unit) {
             if (category == "sabah") viewModel.completeSabah() else viewModel.completeMasaa()
+            viewModel.markCategoryCompleted(category)
             viewModel.clearLastReadState()
         }
         Scaffold(containerColor = MaterialTheme.colorScheme.background) { padding ->
