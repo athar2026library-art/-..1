@@ -1,4 +1,6 @@
 import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
+import java.util.Properties
+import java.io.FileInputStream
 
 plugins {
   alias(libs.plugins.android.application)
@@ -16,13 +18,15 @@ android {
     applicationId = "com.baqiyat.azkar"
     minSdk = 24
     targetSdk = 36
-    // Local-only key from local.properties; never commit the key itself.
-    val localProps = java.util.Properties().apply {
+    // Read the Gemini key from local.properties or the CI environment.
+    val localProps = Properties().apply {
       val localPropsFile = rootProject.file("local.properties")
-      if (localPropsFile.exists()) localPropsFile.inputStream().use { load(it) }
+      if (localPropsFile.exists()) {
+        FileInputStream(localPropsFile).use { load(it) }
+      }
     }
-    val geminiKey = localProps.getProperty("geminiApiKey", "")
-      .replace("\\", "\\\\").replace("\"", "\\\"")
+    val rawGeminiKey = localProps.getProperty("geminiApiKey") ?: System.getenv("GEMINI_API_KEY") ?: ""
+    val geminiKey = rawGeminiKey.replace("\\", "\\\\").replace("\"", "\\\"")
     buildConfigField("String", "GEMINI_API_KEY", "\"$geminiKey\"")
     versionCode = 1
     versionName = "1.0"
