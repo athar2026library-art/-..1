@@ -260,6 +260,7 @@ fun AzkarScreen(
         if (isInitialized) {
             countRemaining = currentZekr.repeatCount
             audioPlayer.stop()
+            recordedAudioPlayer.stop()
             if (autoPlayEnabled) {
                 delay(350)
                 audioPlayer.playAndWait(currentZekr.text)
@@ -364,8 +365,12 @@ fun AzkarScreen(
                                 ) {
                                     Button(
                                         onClick = {
-                                            if (isRecordedPlaying) recordedAudioPlayer.stop()
-                                            else recordedAudioPlayer.play(category)
+                                            if (isRecordedPlaying) {
+                                                recordedAudioPlayer.stop()
+                                            } else {
+                                                audioPlayer.stop()
+                                                recordedAudioPlayer.play(category)
+                                            }
                                         },
                                         modifier = Modifier.weight(1f)
                                     ) {
@@ -424,18 +429,28 @@ fun AzkarScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         FilledTonalIconButton(onClick = {
-                            if (isPlaying) audioPlayer.stop()
-                            else coroutineScope.launch { audioPlayer.playAndWait(currentZekr.text) }
+                            if (isPlaying) {
+                                audioPlayer.stop()
+                            } else {
+                                recordedAudioPlayer.stop()
+                                coroutineScope.launch { audioPlayer.playAndWait(currentZekr.text) }
+                            }
                         }) {
                             Icon(
                                 if (isPlaying) Icons.Default.Stop else Icons.Default.VolumeUp,
                                 contentDescription = if (isPlaying) "إيقاف" else "استماع"
                             )
                         }
-                        FilledTonalIconButton(onClick = { audioPlayer.playLoop(currentZekr.text, 3) }) {
+                        FilledTonalIconButton(onClick = {
+                            recordedAudioPlayer.stop()
+                            audioPlayer.playLoop(currentZekr.text, 3)
+                        }) {
                             Icon(Icons.Default.Repeat, contentDescription = "تكرار 3 مرات")
                         }
-                        FilledTonalIconButton(onClick = { audioPlayer.playLoop(currentZekr.text, 5) }) {
+                        FilledTonalIconButton(onClick = {
+                            recordedAudioPlayer.stop()
+                            audioPlayer.playLoop(currentZekr.text, 5)
+                        }) {
                             Icon(Icons.Default.RepeatOne, contentDescription = "تكرار 5 مرات")
                         }
                     }
