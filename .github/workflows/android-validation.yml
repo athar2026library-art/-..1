@@ -71,6 +71,9 @@ jobs:
           }
           JSON
 
+      - name: Add Gemini API Key for CI
+        run: echo "geminiApiKey=${{ secrets.GEMINI_API_KEY }}" >> local.properties
+
       - name: Check patch whitespace
         run: git diff --check
 
