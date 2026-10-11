@@ -362,18 +362,63 @@ fun AzkarScreen(
                     ) {
                         FilledTonalIconButton(onClick = {
                             if (isPlaying) audioPlayer.stop()
-                            else coroutineScope.launch { audioPlayer.playAndWait(currentZekr.text) }
+                            else playCurrentZekr(1, false)
                         }) {
                             Icon(
                                 if (isPlaying) Icons.Default.Stop else Icons.Default.VolumeUp,
                                 contentDescription = if (isPlaying) "إيقاف" else "استماع"
                             )
                         }
-                        FilledTonalIconButton(onClick = { audioPlayer.playLoop(currentZekr.text, 3) }) {
+                        FilledTonalIconButton(onClick = { playCurrentZekr(3, false) }) {
                             Icon(Icons.Default.Repeat, contentDescription = "تكرار 3 مرات")
                         }
-                        FilledTonalIconButton(onClick = { audioPlayer.playLoop(currentZekr.text, 5) }) {
+                        FilledTonalIconButton(onClick = { playCurrentZekr(5, false) }) {
                             Icon(Icons.Default.RepeatOne, contentDescription = "تكرار 5 مرات")
+                        }
+                    }
+                    if (!selectedAudioUrl.isNullOrBlank() && selectedAudioUrl.startsWith("https://")) {
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedButton(
+                            onClick = {
+                                if (!isDownloadingAudio) {
+                                    coroutineScope.launch {
+                                        isDownloadingAudio = true
+                                        val downloaded = audioPlayer.downloadRecording(selectedAudioUrl)
+                                        isDownloadingAudio = false
+                                        audioStatus = if (downloaded) {
+                                            "تم حفظ الصوت على الجهاز للاستماع دون إنترنت."
+                                        } else {
+                                            "تعذر تنزيل التسجيل. تحقق من الرابط والاتصال بالإنترنت."
+                                        }
+                                    }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !isDownloadingAudio
+                        ) {
+                            if (isDownloadingAudio) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp
+                                )
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                if (audioPlayer.hasCachedRecording(selectedAudioUrl)) {
+                                    "الصوت محفوظ دون إنترنت"
+                                } else {
+                                    "تنزيل صوت القارئ"
+                                }
+                            )
+                        }
+                        if (audioStatus.isNotBlank()) {
+                            Text(
+                                audioStatus,
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.Center,
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                     Spacer(Modifier.height(8.dp))
