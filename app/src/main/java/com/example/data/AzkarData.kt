@@ -79,8 +79,14 @@ object AzkarData {
         else -> "الأذكار"
     }
 
-    private fun hasAnyTopic(query: String, vararg aliases: String): Boolean =
-        aliases.any { alias -> query.contains(ArabicText.normalize(alias)) }
+    private fun hasAnyTopic(query: String, vararg aliases: String): Boolean {
+        val queryTokens = query.split(Regex("\\s+")).filter(String::isNotBlank).toSet()
+        return aliases.any { alias ->
+            val normalized = ArabicText.normalize(alias)
+            if (normalized.length <= 2) normalized in queryTokens
+            else query.contains(normalized)
+        }
+    }
 
     /**
      * Offline topic matching complements literal text search. The result still
