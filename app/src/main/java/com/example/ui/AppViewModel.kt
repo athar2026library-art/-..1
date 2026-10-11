@@ -102,6 +102,9 @@ class AppViewModel(
     val favorites: StateFlow<Set<Int>> = settingsRepository.favoritesFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
 
+    val savedAiAzkar: StateFlow<List<String>> = settingsRepository.savedAiAzkarFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     val readerFont: StateFlow<ReaderFont> = settingsRepository.readerFontFlow
         .map { ReaderFont.from(it) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ReaderFont.AMIRI)
@@ -295,6 +298,16 @@ class AppViewModel(
     fun toggleFavorite(id: Int) {
         viewModelScope.launch { settingsRepository.toggleFavorite(id) }
     }
+    fun saveAiZekr(text: String) {
+        viewModelScope.launch {
+            settingsRepository.saveAiZekr(text)
+            _statusMessage.value = "تم حفظ إجابة المساعد في «أذكاري»."
+        }
+    }
+
+    fun removeAiZekr(text: String) {
+        viewModelScope.launch { settingsRepository.removeAiZekr(text) }
+    }
 
     fun setReaderFont(key: String) {
         viewModelScope.launch { settingsRepository.setReaderFont(key) }
@@ -336,7 +349,7 @@ class AppViewModel(
                 }
                 _lastAiLatencyMs.value = android.os.SystemClock.elapsedRealtime() - startedAt
                 _chatMessages.update { list ->
-                    list.filterNot { it.isLoading } + ChatMessage(reply, isUser = false)
+                    list.filterNot { it.isLoading } + ChatMessage(reply, isUser = false, actionsEnabled = true)
                 }
             } finally {
                 _isLoadingAi.value = false
