@@ -1,24 +1,19 @@
 package com.example.data
 
 import android.util.Log
-import com.example.BuildConfig
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.job
-import kotlinx.coroutines.withContext
-import org.json.JSONObject
-import java.io.IOException
-import java.net.HttpURLConnection
-import java.net.URL
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.functions.FirebaseFunctions
+import com.google.firebase.functions.FirebaseFunctionsException
+import kotlinx.coroutines.tasks.await
+import kotlin.coroutines.cancellation.CancellationException
 
 /**
- * عميل Gemini مباشر للتطوير المحلي فقط.
- *
- * يقرأ المفتاح من local.properties عبر BuildConfig؛ لا تضع المفتاح في Git
- * ولا توزع نسخة release مبنية بهذا المسار على المستخدمين.
+ * Calls the authenticated Firebase callable function.
+ * The Gemini API key stays in Cloud Functions Secret Manager and is never shipped in the APK.
  */
 class AiRepository {
+    private val auth by lazy { FirebaseAuth.getInstance() }
+    private val functions by lazy { FirebaseFunctions.getInstance(FUNCTIONS_REGION) }
 
     suspend fun ask(message: String): String = callGemini("suggest", message)
 
@@ -26,94 +21,76 @@ class AiRepository {
 
     suspend fun suggestZekrForFeeling(feeling: String): String = callGemini("suggest", feeling)
 
-    private suspend fun callGemini(mode: String, text: String): String = withContext(Dispatchers.IO) {
+    private suspend fun callGemini(mode: String, text: String): String {
         val clean = text.trim().take(MAX_INPUT_CHARS)
-        if (clean.length < 2) return@withContext "اكتب سؤالك أو شعورك أولاً."
+        if (clean.length < 2) return "اكتب سؤالك أو شعورك أولاً."
 
-        val apiKey = BuildConfig.GEMINI_API_KEY.trim()
-        if (apiKey.isEmpty()) {
-            return@withContext "المساعد غير مهيأ للتطوير المحلي. أضف GEMINI_API_KEY إلى local.properties."
-        }
+        return try {
+            ensureAuthenticated()
 
-        val prompt = when (mode) {
-            "explain" -> "اشرح هذا الذكر باختصار وبلغة عربية واضحة، مع بيان معناه وفائدته دون اختلاق مصادر:\n$clean"
-            else -> "أجب بالعربية بإيجاز وبأسلوب داعم حول طلب المستخدم التالي، ولا تقدم فتوى أو مصدرًا غير متأكد منه:\n$clean"
-        }
+            val response = functions
+                .getHttpsCallable(FUNCTION_NAME)
+                .call(mapOf("mode" to mode, "text" to clean))
+                .await()
 
-        var connection: HttpURLConnection? = null
-        val startedAt = android.os.SystemClock.elapsedRealtime()
-        val cancellationHandle = currentCoroutineContext().job.invokeOnCompletion {
-            connection?.disconnect()
+            val data = response.data as? Map<*, *>
+            val answer = data?.get("text") as? String
+            if (answer.isNullOrBlank()) {
+                Log.w(TAG, "Callable returned an empty or unexpected response")
+                "عذراً، لم أتمكن من استخراج الإجابة. حاول مرة أخرى."
+            } else {
+                answer.trim()
+            }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: FirebaseFunctionsException) {
+            Log.e(TAG, "Callable $FUNCTION_NAME failed with code=${error.code}", error)
+            when (error.code) {
+                FirebaseFunctionsException.Code.UNAUTHENTICATED ->
+                    "لم تكتمل جلسة المساعد. سجّل الدخول بحساب Google أو فعّل تسجيل الدخول المجهول في Firebase."
+                FirebaseFunctionsException.Code.PERMISSION_DENIED ->
+                    "رفض Firebase الطلب. تحقق من إعداد App Check وصلاحيات المشروع."
+                FirebaseFunctionsException.Code.RESOURCE_EXHAUSTED ->
+                    "وصلت إلى حد استخدام المساعد مؤقتاً. حاول بعد قليل."
+                FirebaseFunctionsException.Code.INVALID_ARGUMENT ->
+                    "لم يُقبل نص السؤال. اختصره ثم حاول مرة أخرى."
+                FirebaseFunctionsException.Code.UNAVAILABLE,
+                FirebaseFunctionsException.Code.DEADLINE_EXCEEDED ->
+                    "تعذر الاتصال بالمساعد الآن. تحقق من الإنترنت وحاول مرة أخرى."
+                FirebaseFunctionsException.Code.FAILED_PRECONDITION ->
+                    "المساعد غير مهيأ على الخادم. يلزم إعداد سر GEMINI_API_KEY في Firebase Functions."
+                else -> "تعذر الحصول على إجابة من المساعد. حاول مرة أخرى."
+            }
+        } catch (error: Exception) {
+            Log.e(TAG, "Failed to prepare or call Firebase AI function", error)
+            if (auth.currentUser == null) {
+                "لتشغيل المساعد دون تسجيل Google، فعّل مزوّد Anonymous في Firebase Authentication. أو سجّل الدخول بحساب Google."
+            } else {
+                "حدث خطأ أثناء الاتصال بالمساعد. تحقق من إعداد Firebase والإنترنت."
+            }
         }
+    }
+
+    /**
+     * The callable function rate-limits by UID and requires Firebase Auth.
+     * Use anonymous auth only when the user has not chosen to sign in with Google.
+     */
+    private suspend fun ensureAuthenticated() {
+        if (auth.currentUser != null) return
         try {
-            val endpoint = URL(
-                "https://generativelanguage.googleapis.com/v1beta/models/" +
-                    "$MODEL:generateContent?key=$apiKey"
-            )
-            connection = (endpoint.openConnection() as HttpURLConnection).apply {
-                requestMethod = "POST"
-                connectTimeout = TIMEOUT_MS
-                readTimeout = TIMEOUT_MS
-                doOutput = true
-                setRequestProperty("Content-Type", "application/json; charset=UTF-8")
-            }
-
-            val body = JSONObject()
-                .put("contents", org.json.JSONArray().put(
-                    JSONObject().put("parts", org.json.JSONArray().put(JSONObject().put("text", prompt)))
-                ))
-                .put("generationConfig", JSONObject()
-                    .put("temperature", 0.7)
-                    .put("maxOutputTokens", 512))
-                .toString()
-
-            connection.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
-            val status = connection.responseCode
-            Log.d("AiRepository", "Gemini HTTP response in ${android.os.SystemClock.elapsedRealtime() - startedAt}ms (status=$status)")
-            val stream = if (status in 200..299) connection.inputStream else connection.errorStream
-            val responseText = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
-
-            if (status !in 200..299) {
-                Log.e("AiRepository", "Gemini HTTP $status: ${responseText.take(300)}")
-                return@withContext when (status) {
-                    400 -> "طلب غير صالح إلى Gemini. تحقق من إعداد التطوير."
-                    401, 403 -> "مفتاح Gemini غير صالح أو غير مصرح به."
-                    429 -> "تم تجاوز حد الاستخدام. حاول لاحقاً."
-                    else -> "تعذر الاتصال بالمساعد. حاول لاحقاً."
-                }
-            }
-
-            val output = JSONObject(responseText)
-                .optJSONArray("candidates")
-                ?.optJSONObject(0)
-                ?.optJSONObject("content")
-                ?.optJSONArray("parts")
-                ?.optJSONObject(0)
-                ?.optString("text")
-                ?.trim()
-                .orEmpty()
-
-            output.ifEmpty { "عذراً، لم أتمكن من استخراج الإجابة." }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: java.net.SocketTimeoutException) {
-            Log.e("AiRepository", "Gemini timeout", e)
-            "انتهت مهلة الاتصال. تحقق من الشبكة وحاول مرة أخرى."
-        } catch (e: IOException) {
-            Log.e("AiRepository", "Gemini network failure", e)
-            "لا يوجد اتصال بالإنترنت. تحقق من الشبكة وحاول مرة أخرى."
-        } catch (e: Exception) {
-            Log.e("AiRepository", "Gemini request failed", e)
-            "حدث خطأ غير متوقع أثناء الاتصال بالمساعد."
-        } finally {
-            cancellationHandle.dispose()
-            connection?.disconnect()
+            auth.signInAnonymously().await()
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            Log.e(TAG, "Anonymous Firebase auth is unavailable", error)
+            throw IllegalStateException("AI authentication is not configured", error)
         }
     }
 
     private companion object {
-        const val MODEL = "gemini-3.8-flash"
+        const val TAG = "AiRepository"
+        const val FUNCTION_NAME = "generateGemini"
+        const val FUNCTIONS_REGION = "europe-west1"
         const val MAX_INPUT_CHARS = 500
-        const val TIMEOUT_MS = 20_000
     }
 }
