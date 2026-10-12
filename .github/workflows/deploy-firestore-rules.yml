@@ -1,0 +1,46 @@
+name: Deploy Firestore Rules
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-firestore-rules
+  cancel-in-progress: false
+
+jobs:
+  deploy-rules:
+    name: Test and deploy Firestore rules
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: firebase/package-lock.json
+
+      - name: Install Firebase dependencies
+        working-directory: firebase
+        run: npm ci
+
+      - name: Run Firestore rules tests
+        working-directory: firebase
+        run: npm run test:rules
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_CREDENTIALS }}
+
+      - name: Deploy Firestore rules
+        working-directory: firebase
+        run: npx firebase-tools deploy --only firestore:rules --project svrpmtt --non-interactive
