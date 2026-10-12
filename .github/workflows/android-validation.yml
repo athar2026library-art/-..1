@@ -86,6 +86,14 @@ jobs:
       - name: Run Android unit tests and compile APK
         run: gradle :app:testDebugUnitTest :app:assembleDebug --no-daemon --stacktrace
 
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: baqiyat-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Run Cloud Functions tests
         working-directory: firebase/functions
         run: |
