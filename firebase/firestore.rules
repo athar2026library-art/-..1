@@ -20,7 +20,7 @@ service cloud.firestore {
 
     function isSuperAdmin() {
       return signedIn() && (
-        request.auth.token.admin == true
+        request.auth.token.super_admin == true
         || (
           exists(/databases/$(database)/documents/admins/$(request.auth.uid))
           && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.get('role', '') == 'super_admin'
