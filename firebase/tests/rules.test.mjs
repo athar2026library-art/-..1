@@ -346,6 +346,14 @@ describe('admins RBAC', () => {
     await assertSucceeds(setDoc(doc(adminClaim(), 'content', 'azkar', 'items', 'from-claim'), ZEK_PUB));
   });
 
+  it('مطالبة admin وحدها لا تمنح صلاحيات super_admin', async () => {
+    await assertFails(setDoc(doc(adminClaim(), 'admins', 'new-admin'), { role: 'admin' }));
+  });
+
+  it('مطالبة super_admin تسمح بإدارة المشرفين', async () => {
+    await assertSucceeds(setDoc(doc(user('claim-super-admin', { super_admin: true }), 'admins', 'claim-created'), { role: 'admin' }));
+  });
+
   it('زائر لا يقرأ مجموعة المشرفين', async () => {
     await assertFails(getDocs(collection(unauth(), 'admins')));
   });
