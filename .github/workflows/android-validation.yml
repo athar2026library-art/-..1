@@ -2,7 +2,7 @@ name: Baqiyat validation
 
 on:
   push:
-    branches: [fix/baqiyat-secure-ai]
+    branches: [main, fix/baqiyat-secure-ai]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -76,6 +76,12 @@ jobs:
 
       - name: Check patch whitespace
         run: git diff --check
+
+      - name: Run Firestore security rules tests
+        working-directory: firebase
+        run: |
+          npm ci
+          npm run test:rules
 
       - name: Run Android unit tests and compile APK
         run: gradle :app:testDebugUnitTest :app:assembleDebug --no-daemon --stacktrace
