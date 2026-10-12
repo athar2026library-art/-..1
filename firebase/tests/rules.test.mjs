@@ -26,6 +26,7 @@ import {
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const rules = readFileSync(join(__dir, '../firestore.rules'), 'utf8');
+const rootRules = readFileSync(join(__dir, '../../firestore.rules'), 'utf8');
 
 const ZEK_PUB = {
   text: 'سبحان الله وبحمده',
@@ -90,6 +91,9 @@ async function seed() {
 }
 
 before(async () => {
+  if (rootRules !== rules) {
+    throw new Error('Root firestore.rules must exactly match firebase/firestore.rules (the deployed rules file).');
+  }
   env = await initializeTestEnvironment({
     projectId: 'baqiyat-rules-test',
     firestore: { rules, host: '127.0.0.1', port: 8181 },
