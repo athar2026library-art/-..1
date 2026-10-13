@@ -12,5 +12,10 @@
       if (user) startSession(user).catch((e) => toast(e.message));
       else stopSession();
     });
-  });
+  };
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initializeAdminPanel, { once: true });
+  } else {
+    initializeAdminPanel();
+  }
 })();
