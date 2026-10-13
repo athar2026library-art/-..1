@@ -1,0 +1,1547 @@
+BAQIYAT — SOURCE EXPORT FOR AI REVIEW
+Component: FIREBASE-BACKEND
+Part: 01
+Source branch: main (export generated on a separate branch)
+Encoding: UTF-8. Original relative paths are marked per file.
+This is a review/export format, not a compilable project folder.
+
+========================================================================================
+SOURCE FILE: .env.example
+========================================================================================
+# لا تضع مفاتيح حقيقية هنا.
+# المساعد يستخدم Firebase AI Logic (لا مفتاح في الـ APK).
+# احذف أي GEMINI_API_KEY قديم من .env وأبطِل المفتاح إن كان قد تسرّب.
+END SOURCE FILE: .env.example
+
+========================================================================================
+SOURCE FILE: firebase/.firebaserc
+========================================================================================
+{
+  "projects": {
+    "default": "svrpmtt"
+  }
+}
+END SOURCE FILE: firebase/.firebaserc
+
+========================================================================================
+SOURCE FILE: firebase/DEPLOY_NOTIFICATIONS.md
+========================================================================================
+# نشر الإشعارات والمرفقات
+
+## نشر القواعد
+
+من مجلد Firebase الذي يحتوي على `firebase.json`:
+
+```bash
+firebase deploy --only firestore:rules,storage
+```
+
+تأكد أن `firebase.json` يشير إلى `firebase/storage.rules` ضمن قسم `storage.rules`.
+
+## نشر Cloud Function
+
+```bash
+cd firebase/functions
+npm install
+firebase deploy --only functions:dispatchOwnerNotification
+```
+
+## اختبار الإشعار
+
+بعد نشر الوظيفة وتسجيل جهاز Android بحساب مستخدم، افتح لوحة المالك وأنشئ إشعاراً بعنوان:
+
+```text
+تجربة الإشعارات
+```
+
+ونص:
+
+```text
+هذا إشعار تجريبي من لوحة المالك
+```
+
+اختر "جميع المستخدمين". سيُحفظ السجل بحالة `queued`، ثم تحوله Cloud Function إلى `sent`.
+
+## ملاحظة أمنية
+
+لا تستخدم Server Key أو Service Account داخل Android أو لوحة الويب. الوظيفة وحدها تستخدم Firebase Admin SDK.
+END SOURCE FILE: firebase/DEPLOY_NOTIFICATIONS.md
+
+========================================================================================
+SOURCE FILE: firebase/README.md
+========================================================================================
+# Firebase deployment contract
+
+ضع ملف `google-services.json` في جذر `app/` بعد تنزيله من Firebase Console. لا ترفع الملف أو أي مفاتيح سرية إلى الدردشة أو ملفات الواجهة. ملف Android هذا ليس بديلاً عن إعداد Web App للوحة.
+
+## التفعيل المطلوب
+
+- Firebase Authentication: Google provider.
+- Cloud Firestore.
+- Custom claim للمشرف: `admin: true`، ويُمنح من Cloud Function أو Admin SDK موثوق فقط.
+- **أو** مستند `admins/{uid}` في Firestore (`role: super_admin` لأول مشرف).
+- **لا يوجد بريد مالك ثابت في القواعد.** أول مشرف يُمهَّد من Console / Admin SDK.
+- نشر `firestore.rules` قبل إدخال بيانات الإنتاج.
+
+## اختبار القواعد (محاكي محلي)
+
+من مجلد `firebase/`:
+
+```bash
+npm install
+npm run test:rules
+```
+
+`tests/rules.test.mjs` — 39 اختبارًا تغطي: الأذكار المنشورة/المسودات، ملف المستخدم، التقدم، الشكاوى، الإشعارات، `admin_jobs`، `system`، وRBAC (claim / staff / super_admin / بريد عادي لا يكفي).
+
+المحاكي يستمع على `127.0.0.1:8181` (انظر `firebase.json`) لتفادي تعارض المنفذ 8080.
+
+## النشر
+
+من مجلد `firebase/` (حيث `firebase.json`):
+
+```bash
+firebase deploy --only firestore:rules,firestore:indexes,storage
+```
+
+لا تستخدم `firebase deploy` قبل تسجيل الدخول وتحديد المشروع الصحيح. تحقق من مشروع Firebase قبل كل نشر لتجنب الكتابة في مشروع غير مقصود.
+END SOURCE FILE: firebase/README.md
+
+========================================================================================
+SOURCE FILE: firebase/firebase.json
+========================================================================================
+{
+  "functions": {
+    "source": "functions",
+    "runtime": "nodejs20"
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  },
+  "emulators": {
+    "firestore": {
+      "host": "127.0.0.1",
+      "port": 8181
+    },
+    "ui": {
+      "enabled": false
+    }
+  },
+  "hosting": {
+    "public": "../admin-panel",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}
+END SOURCE FILE: firebase/firebase.json
+
+========================================================================================
+SOURCE FILE: firebase/firestore.indexes.json
+========================================================================================
+{
+  "indexes": [
+    {
+      "collectionGroup": "items",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "category", "order": "ASCENDING" },
+        { "fieldPath": "published", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "feedback",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
+END SOURCE FILE: firebase/firestore.indexes.json
+
+========================================================================================
+SOURCE FILE: firebase/firestore.rules
+========================================================================================
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    // Keep custom claims and the server-managed admins collection in sync.
+    function isAdmin() {
+      return signedIn() && (
+        request.auth.token.admin == true
+        || exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isSuperAdmin() {
+      return signedIn() && (
+        request.auth.token.super_admin == true
+        || (
+          exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+          && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.get('role', '') == 'super_admin'
+        )
+      );
+    }
+
+    function noPrivilegeKeys(data) {
+      return !data.keys().hasAny(['role', 'admin', 'isAdmin', 'permissions', 'super_admin']);
+    }
+
+    function validAudioUrl(url) {
+      return url is string
+        && url.size() < 2048
+        && (url == '' || url.matches('^https://.*'));
+    }
+
+    function validReciterAudio(data) {
+      let audio = data.get('audioUrlsByReciter', {});
+      return audio is map
+        && audio.keys().hasOnly(['mishary', 'abdulbasit', 'maher', 'yasser'])
+        && (!audio.keys().hasAny(['mishary']) || validAudioUrl(audio.mishary))
+        && (!audio.keys().hasAny(['abdulbasit']) || validAudioUrl(audio.abdulbasit))
+        && (!audio.keys().hasAny(['maher']) || validAudioUrl(audio.maher))
+        && (!audio.keys().hasAny(['yasser']) || validAudioUrl(audio.yasser));
+    }
+
+    function validCategory(categoryId) {
+      let d = request.resource.data;
+      return categoryId.matches('^[a-z0-9_-]{2,30}$')
+        && !categoryId.matches('^wird_.*')
+        && !(categoryId in ['sabah', 'masaa', 'sleep', 'travel', 'worry', 'rizq', 'illness', 'waking', 'favorites'])
+        && d.keys().hasOnly(['title', 'subtitle', 'icon', 'order', 'published', 'createdAt', 'updatedAt'])
+        && d.title is string
+        && d.title.size() > 0
+        && d.title.size() <= 40
+        && d.get('subtitle', '') is string
+        && d.get('subtitle', '').size() <= 80
+        && d.get('icon', 'star') in ['sun', 'moon', 'bed', 'car', 'heart', 'book', 'star', 'home', 'food', 'rain', 'shield', 'mosque']
+        && (d.get('order', 0) is int || d.get('order', 0) is float)
+        && d.get('published', true) is bool;
+    }
+
+    function validZekr() {
+      let d = request.resource.data;
+      return d.keys().hasAll(['text', 'category'])
+        && d.text is string
+        && d.text.size() > 0
+        && d.text.size() < 4000
+        && (d.category in ['sabah', 'masaa', 'sleep', 'travel', 'worry', 'rizq', 'illness', 'waking']
+          || (d.category is string
+              && exists(/databases/$(database)/documents/content/categories/items/$(d.category))))
+        && (d.get('repeat', 1) is int || d.get('repeat', 1) is float)
+        && d.get('repeat', 1) >= 1
+        && d.get('repeat', 1) <= 1000
+        && d.get('published', false) is bool
+        && d.get('fadl', '') is string
+        && d.get('source', '') is string
+        && d.get('fadl', '').size() < 4000
+        && d.get('source', '').size() < 500
+        && validAudioUrl(d.get('audioUrl', ''))
+        && validReciterAudio(d);
+    }
+
+    function validFeedbackCreate() {
+      let d = request.resource.data;
+      return d.userId == request.auth.uid
+        && d.keys().hasOnly(['userId', 'message', 'title', 'type', 'status', 'adminReply', 'replyUnread', 'createdAt', 'updatedAt', 'attachmentUrl', 'priority'])
+        && d.message is string
+        && d.message.size() > 0
+        && d.message.size() <= 1000
+        && d.get('title', '') is string
+        && d.get('title', '').size() < 200
+        && d.get('type', 'suggestion') in ['suggestion', 'complaint', 'technical', 'bug', 'other', 'feature', 'content']
+        && d.get('status', 'new') in ['new', 'open']
+        && d.get('adminReply', '') == ''
+        && d.get('replyUnread', false) == false
+        && noPrivilegeKeys(d);
+    }
+
+    function userFeedbackUpdate() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['replyUnread', 'updatedAt'])
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.replyUnread is bool;
+    }
+
+    function adminFeedbackUpdate() {
+      let d = request.resource.data;
+      return d.userId == resource.data.userId
+        && d.diff(resource.data).affectedKeys()
+          .hasOnly(['adminReply', 'status', 'replyUnread', 'updatedAt', 'priority', 'aiSummary', 'aiCategory'])
+        && (!d.keys().hasAny(['adminReply']) || d.adminReply is string)
+        && (!d.keys().hasAny(['status']) || d.status in ['new', 'open', 'replied', 'closed', 'in_progress'])
+        && (!d.keys().hasAny(['replyUnread']) || d.replyUnread is bool);
+    }
+
+    function validProgress(date) {
+      let d = request.resource.data;
+      return date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && d.keys().hasOnly(['date', 'completedSabah', 'completedMasaa', 'completedSleep', 'totalTasbeeh'])
+        && d.date == date
+        && d.completedSabah is bool
+        && d.completedMasaa is bool
+        && (!d.keys().hasAny(['completedSleep']) || d.completedSleep is bool)
+        && d.totalTasbeeh is int
+        && d.totalTasbeeh >= 0
+        && d.totalTasbeeh < 1000000;
+    }
+
+    match /admins/{adminId} {
+      allow read: if isAdmin() || isOwner(adminId);
+      allow create, update, delete: if isSuperAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId)
+        && noPrivilegeKeys(request.resource.data)
+        && request.resource.data.keys().size() < 30;
+      allow update: if isOwner(userId)
+        && noPrivilegeKeys(request.resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['fcmTokens', 'updatedAt', 'notificationsEnabled', 'notificationAudience', 'displayName', 'email']);
+      allow delete: if isOwner(userId);
+
+      match /progress/{date} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create, update: if isOwner(userId) && validProgress(date);
+        allow delete: if isOwner(userId);
+      }
+
+      match /feedback/{feedbackId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && validFeedbackCreate();
+        allow update: if (isOwner(userId) && userFeedbackUpdate())
+          || (isAdmin() && adminFeedbackUpdate());
+        allow delete: if isAdmin();
+      }
+
+      match /notifications/{notificationId} {
+        allow read: if isOwner(userId);
+        allow create, update, delete: if false;
+      }
+    }
+
+    match /content/azkar {
+      allow read: if true;
+      allow write: if isAdmin();
+
+      match /items/{itemId} {
+        allow read: if isAdmin() || resource.data.published == true;
+        allow create, update: if isAdmin() && validZekr();
+        allow delete: if isAdmin();
+      }
+    }
+
+    match /content/categories {
+      allow read: if true;
+
+      match /items/{categoryId} {
+        allow read: if isAdmin() || resource.data.get('published', true) == true;
+        allow create, update: if isAdmin() && validCategory(categoryId);
+        allow delete: if isAdmin();
+      }
+    }
+
+    match /content/categories/{categoryId} {
+      allow read: if isAdmin() || resource.data.get('published', true) == true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /feedback/{feedbackId} {
+      allow create: if signedIn() && validFeedbackCreate();
+      allow read: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
+      allow update: if (isAdmin() && adminFeedbackUpdate())
+        || (signedIn() && resource.data.userId == request.auth.uid && userFeedbackUpdate());
+      allow delete: if isAdmin();
+
+      match /timeline/{eventId} {
+        allow read: if isAdmin()
+          || (signedIn()
+            && get(/databases/$(database)/documents/feedback/$(feedbackId)).data.userId == request.auth.uid);
+        allow create: if isAdmin();
+        allow update, delete: if false;
+      }
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin()
+        && request.resource.data.keys().hasAll(['title', 'body', 'status'])
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() < 120
+        && request.resource.data.body is string
+        && request.resource.data.body.size() > 0
+        && request.resource.data.body.size() < 500
+        && request.resource.data.status == 'queued';
+      allow update, delete: if false;
+    }
+
+    match /admin_jobs/{jobId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin()
+        && request.resource.data.keys().hasAll(['type', 'status'])
+        && request.resource.data.status == 'pending'
+        && request.resource.data.type in ['fcm_broadcast', 'feedback_reply', 'broadcast'];
+      allow update, delete: if false;
+    }
+
+    match /rateLimits/{uid} {
+      allow read, write: if false;
+    }
+
+    match /audit_logs/{logId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /system/{docId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+END SOURCE FILE: firebase/firestore.rules
+
+========================================================================================
+SOURCE FILE: firebase/functions/README.md
+========================================================================================
+# إشعارات المالك
+
+هذه الوظيفة تراقب `notifications/{notificationId}`. عندما تكون قيمة `status` مساوية لـ`queued`، تجمع رموز FCM من المستخدمين الذين فعّلوا الإشعارات، وترسل الرسالة عبر Firebase Admin SDK، ثم تحدّث سجل الإشعار إلى `sent` مع أعداد النجاح والفشل.
+
+## النشر
+
+من جذر إعداد Firebase:
+
+```bash
+cd firebase/functions
+npm install
+firebase deploy --only functions:dispatchOwnerNotification
+```
+
+لا تضع Service Account JSON أو أي مفتاح خاص داخل المستودع. يجب أن يتم النشر من حساب يملك صلاحية Firebase Functions وCloud Build.
+END SOURCE FILE: firebase/functions/README.md
+
+========================================================================================
+SOURCE FILE: firebase/functions/index.js
+========================================================================================
+const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
+const { defineSecret } = require("firebase-functions/params");
+const { initializeApp } = require("firebase-admin/app");
+const { getFirestore, FieldValue } = require("firebase-admin/firestore");
+const { getAuth } = require("firebase-admin/auth");
+const { getMessaging } = require("firebase-admin/messaging");
+const { getStorage } = require("firebase-admin/storage");
+const { uniqueTokens, buildUserPrompt } = require("./lib/helpers");
+
+initializeApp();
+
+const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
+const GEMINI_MODEL = "gemini-2.5-flash";
+const REGION = "europe-west1";
+
+const SYSTEM_INSTRUCTION =
+  "أنت مساعد إسلامي متخصص في الأذكار والدعاء. اعتمد فقط على الأحاديث الصحيحة وكتاب حصن المسلم. " +
+  "قدم إجاباتك بأسلوب ميسر، مختصر جداً، وهادئ. لا تفتِ ولا تصدر أحكاماً شرعية من عندك. " +
+  "في نهاية كل إجابة أضف سطراً: (إجابة آلية، ليست فتوى).";
+
+async function sendToTokens(tokens, message) {
+  const unique = uniqueTokens(tokens);
+  let successCount = 0;
+  let failureCount = 0;
+  for (let index = 0; index < unique.length; index += 500) {
+    const result = await getMessaging().sendEachForMulticast({
+      tokens: unique.slice(index, index + 500),
+      ...message,
+    });
+    successCount += result.successCount;
+    failureCount += result.failureCount;
+  }
+  return { successCount, failureCount };
+}
+
+async function getBroadcastTokens(audience = "all") {
+  const db = getFirestore();
+  let usersQuery = db.collection("users").where("notificationsEnabled", "==", true);
+  if (audience !== "all") {
+    usersQuery = usersQuery.where("notificationAudience", "==", audience);
+  }
+  const users = await usersQuery.get();
+  return users.docs.flatMap((user) => user.data().fcmTokens || []);
+}
+
+async function enforceRateLimit(uid, { perMinute = 3, perDay = 30 } = {}) {
+  const db = getFirestore();
+  const ref = db.collection("rateLimits").doc(uid);
+  const now = Date.now();
+  const minuteKey = Math.floor(now / 60000);
+  const dayKey = Math.floor(now / 86400000);
+
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const data = snap.exists ? snap.data() : {};
+    let minuteCount = data.minuteKey === minuteKey ? data.minuteCount || 0 : 0;
+    let dayCount = data.dayKey === dayKey ? data.dayCount || 0 : 0;
+    if (minuteCount >= perMinute || dayCount >= perDay) {
+      throw new HttpsError("resource-exhausted", "وصلت لحد الاستخدام. حاول بعد قليل.");
+    }
+    tx.set(
+      ref,
+      {
+        minuteKey,
+        minuteCount: minuteCount + 1,
+        dayKey,
+        dayCount: dayCount + 1,
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
+  });
+}
+
+/** Refund one unit if Gemini call failed after consuming quota. */
+async function refundRateLimit(uid) {
+  const db = getFirestore();
+  const ref = db.collection("rateLimits").doc(uid);
+  const now = Date.now();
+  const minuteKey = Math.floor(now / 60000);
+  const dayKey = Math.floor(now / 86400000);
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists) return;
+    const data = snap.data() || {};
+    const minuteCount =
+      data.minuteKey === minuteKey ? Math.max(0, (data.minuteCount || 0) - 1) : data.minuteCount || 0;
+    const dayCount =
+      data.dayKey === dayKey ? Math.max(0, (data.dayCount || 0) - 1) : data.dayCount || 0;
+    tx.set(ref, { minuteCount, dayCount, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+  });
+}
+
+exports.generateGemini = onCall(
+  {
+    region: REGION,
+    enforceAppCheck: true,
+    secrets: [GEMINI_API_KEY],
+    timeoutSeconds: 30,
+    maxInstances: 10,
+  },
+  async (req) => {
+    if (!req.auth?.uid) {
+      throw new HttpsError("unauthenticated", "سجّل الدخول أولاً");
+    }
+
+    const { mode, text } = req.data || {};
+    if (!["explain", "suggest"].includes(mode)) {
+      throw new HttpsError("invalid-argument", "mode");
+    }
+    if (typeof text !== "string" || text.trim().length < 2 || text.length > 500) {
+      throw new HttpsError("invalid-argument", "طول النص غير مقبول");
+    }
+
+    await enforceRateLimit(req.auth.uid, { perMinute: 3, perDay: 30 });
+
+    const userPrompt = buildUserPrompt(mode, text.trim());
+
+    let response;
+    try {
+      response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-goog-api-key": GEMINI_API_KEY.value(),
+          },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: userPrompt }] }],
+            systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
+            generationConfig: { temperature: 0.4 },
+          }),
+          signal: AbortSignal.timeout(20000),
+        },
+      );
+    } catch (_e) {
+      await refundRateLimit(req.auth.uid).catch(() => {});
+      throw new HttpsError("unavailable", "لا اتصال");
+    }
+
+    if (response.status === 429) {
+      await refundRateLimit(req.auth.uid).catch(() => {});
+      throw new HttpsError("resource-exhausted", "وصلت لحد الاستخدام. حاول بعد قليل.");
+    }
+    if (!response.ok) {
+      await refundRateLimit(req.auth.uid).catch(() => {});
+      throw new HttpsError("internal", "تعذر الحصول على إجابة من المساعد.");
+    }
+
+    const payload = await response.json();
+    const out = payload.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!out) {
+      await refundRateLimit(req.auth.uid).catch(() => {});
+      throw new HttpsError("internal", "لم يتم العثور على إجابة صالحة.");
+    }
+    return { text: out, disclaimer: true };
+  },
+);
+
+exports.deleteAccount = onCall(
+  { region: REGION, enforceAppCheck: true, timeoutSeconds: 120 },
+  async (req) => {
+    if (!req.auth?.uid) {
+      throw new HttpsError("unauthenticated", "سجّل الدخول أولاً");
+    }
+    const uid = req.auth.uid;
+    const db = getFirestore();
+
+    // 1) Feedback (+ timeline subcollections) before Auth delete
+    const fb = await db.collection("feedback").where("userId", "==", uid).get();
+    for (const d of fb.docs) {
+      await db.recursiveDelete(d.ref);
+    }
+
+    // 2) User tree
+    await db.recursiveDelete(db.collection("users").doc(uid));
+
+    // 3) Ancillary docs
+    await db.collection("rateLimits").doc(uid).delete().catch(() => {});
+    await db.collection("admins").doc(uid).delete().catch(() => {});
+
+    // 4) Storage attachments
+    await getStorage()
+      .bucket()
+      .deleteFiles({ prefix: `feedback/${uid}/` })
+      .catch(() => {});
+
+    // 5) Auth last so retries remain possible if earlier steps fail
+    await getAuth().deleteUser(uid);
+    return { ok: true };
+  },
+);
+
+exports.dispatchOwnerNotification = onDocumentCreated(
+  { document: "notifications/{notificationId}", region: REGION },
+  async (event) => {
+    const snapshot = event.data;
+    if (!snapshot) return;
+    const notification = snapshot.data();
+    if (notification.status !== "queued") return;
+
+    const tokens = await getBroadcastTokens(notification.audience || "all");
+    const result = await sendToTokens(tokens, {
+      notification: { title: notification.title, body: notification.body },
+      data: {
+        notificationId: event.params.notificationId,
+        title: notification.title,
+        body: notification.body,
+      },
+      android: { priority: "high", notification: { channelId: "owner_updates" } },
+    });
+    await snapshot.ref.update({
+      status: "sent",
+      deliveryCount: result.successCount,
+      failedCount: result.failureCount,
+      sentAt: FieldValue.serverTimestamp(),
+    });
+    await getFirestore().collection("audit_logs").add({
+      type: "broadcast",
+      notificationId: event.params.notificationId,
+      recipients: result.successCount,
+      failed: result.failureCount,
+      at: FieldValue.serverTimestamp(),
+    });
+  },
+);
+
+exports.processAdminJob = onDocumentCreated(
+  { document: "admin_jobs/{jobId}", region: REGION },
+  async (event) => {
+    const snapshot = event.data;
+    if (!snapshot) return;
+    const job = snapshot.data();
+    if (job.status && job.status !== "pending") return;
+
+    await snapshot.ref.update({ status: "processing", processingStartedAt: FieldValue.serverTimestamp() });
+    try {
+      const payload = job.payload || {};
+      let tokens = [];
+      let message;
+      if (job.type === "broadcast" || job.type === "fcm_broadcast") {
+        tokens = await getBroadcastTokens(payload.audience || "all");
+        message = {
+          notification: { title: payload.title || "الباقيات", body: payload.body || "لديك تحديث جديد" },
+          data: { type: "broadcast", jobId: event.params.jobId },
+          android: { priority: "high", notification: { channelId: "owner_updates" } },
+        };
+      } else if (job.type === "feedback_reply") {
+        if (!payload.userId) throw new Error("feedback_reply requires userId");
+        const user = await getFirestore().collection("users").doc(payload.userId).get();
+        tokens = user.data()?.fcmTokens || [];
+        message = {
+          notification: { title: payload.title || "رد جديد من الباقيات", body: payload.body || "لديك رد جديد" },
+          data: { type: "feedback_reply", feedbackId: payload.feedbackId || "", jobId: event.params.jobId },
+          android: { priority: "high", notification: { channelId: "owner_updates" } },
+        };
+      } else {
+        throw new Error(`Unsupported admin job type: ${job.type}`);
+      }
+
+      const result = await sendToTokens(tokens, message);
+      await snapshot.ref.update({
+        status: "completed",
+        deliveryCount: result.successCount,
+        failedCount: result.failureCount,
+        completedAt: FieldValue.serverTimestamp(),
+      });
+    } catch (error) {
+      console.error("admin_jobs processing failed", event.params.jobId);
+      await snapshot.ref.update({
+        status: "failed",
+        error: error.message || "Unknown error",
+        failedAt: FieldValue.serverTimestamp(),
+      });
+    }
+  },
+);
+
+exports.notifyUserOnFeedbackReply = onDocumentUpdated(
+  { document: "feedback/{feedbackId}", region: REGION },
+  async (event) => {
+    const before = event.data.before.data();
+    const after = event.data.after.data();
+    if (!after || !after.adminReply || after.adminReply === before.adminReply || !after.userId) return;
+    const db = getFirestore();
+    const userRef = db.collection("users").doc(after.userId);
+    await event.data.after.ref.update({ replyUnread: true });
+    const user = await userRef.get();
+    const title = "تم الرد على شكواك";
+    const body = String(after.adminReply).slice(0, 160);
+    await userRef.collection("notifications").add({
+      title,
+      body,
+      feedbackId: event.params.feedbackId,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+    await sendToTokens(user.data()?.fcmTokens || [], {
+      notification: { title, body },
+      data: { feedbackId: event.params.feedbackId, type: "feedback_reply" },
+      android: { priority: "high", notification: { channelId: "owner_updates" } },
+    });
+  },
+);
+END SOURCE FILE: firebase/functions/index.js
+
+========================================================================================
+SOURCE FILE: firebase/functions/lib/helpers.js
+========================================================================================
+function uniqueTokens(tokens) {
+  return [...new Set((tokens || []).filter((token) => typeof token === "string" && token.trim()))];
+}
+
+function buildUserPrompt(mode, text) {
+  if (mode === "explain") {
+    return `قم بشرح وتدبر هذا الذكر بأسلوب إيماني، ميسر ومختصر جداً:\n\n"${text}"`;
+  }
+  return (
+    `أشعر بـ (${text}) أو أحتاج إلى دعاء بهذا الخصوص. اقترح لي ذكراً أو دعاءً من الأحاديث الصحيحة وحصن المسلم يناسب حالتي.\n` +
+    "نرجو الرد بالتنسيق التالي حصراً:\nالذكر: [النص]\nفضله: [شرح مبسط]\nالمصدر: [المرجع]"
+  );
+}
+
+module.exports = { uniqueTokens, buildUserPrompt };
+END SOURCE FILE: firebase/functions/lib/helpers.js
+
+========================================================================================
+SOURCE FILE: firebase/functions/make_admin.js
+========================================================================================
+const { initializeApp } = require("firebase-admin/app");
+const { getAuth } = require("firebase-admin/auth");
+const { getFirestore, FieldValue } = require("firebase-admin/firestore");
+
+const email = (process.argv[2] || "mgedh.9ali@gmail.com").trim().toLowerCase();
+if (!email || !email.includes("@")) {
+  console.error("Usage: node make_admin.js owner@example.com");
+  process.exit(2);
+}
+
+initializeApp({ projectId: process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT || "svrpmtt" });
+
+(async () => {
+  const auth = getAuth();
+  const user = await auth.getUserByEmail(email);
+  await auth.setCustomUserClaims(user.uid, { ...(user.customClaims || {}), admin: true });
+  await getFirestore().collection("admins").doc(user.uid).set(
+    { email, role: "super_admin", updatedAt: FieldValue.serverTimestamp() },
+    { merge: true },
+  );
+  console.log(`Admin claims and admins/${user.uid} updated for ${email}`);
+  console.log("The user must sign out and sign in again for the claim to refresh.");
+})().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
+END SOURCE FILE: firebase/functions/make_admin.js
+
+========================================================================================
+SOURCE FILE: firebase/functions/package.json
+========================================================================================
+{
+  "name": "azkar-functions",
+  "private": true,
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": { "node": "20" },
+  "main": "index.js",
+  "dependencies": {
+    "firebase-admin": "^13.0.0",
+    "firebase-functions": "^6.0.0"
+  }
+}
+END SOURCE FILE: firebase/functions/package.json
+
+========================================================================================
+SOURCE FILE: firebase/functions/test/helpers.test.js
+========================================================================================
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const { uniqueTokens, buildUserPrompt } = require("../lib/helpers");
+
+test("uniqueTokens removes blanks, non-strings, and duplicates", () => {
+  assert.deepEqual(
+    uniqueTokens(["token-a", "", " token-a ", null, 42, "token-b"]),
+    ["token-a", " token-a ", "token-b"],
+  );
+});
+
+test("uniqueTokens accepts missing input", () => {
+  assert.deepEqual(uniqueTokens(), []);
+});
+
+test("buildUserPrompt creates an explanation prompt", () => {
+  const prompt = buildUserPrompt("explain", "آية الكرسي");
+  assert.match(prompt, /آية الكرسي/);
+  assert.match(prompt, /شرح وتدبر/);
+});
+
+test("buildUserPrompt creates a suggestion prompt with required sections", () => {
+  const prompt = buildUserPrompt("suggest", "القلق");
+  assert.match(prompt, /القلق/);
+  assert.match(prompt, /الذكر: \[النص\]/);
+  assert.match(prompt, /المصدر: \[المرجع\]/);
+});
+END SOURCE FILE: firebase/functions/test/helpers.test.js
+
+========================================================================================
+SOURCE FILE: firebase/package.json
+========================================================================================
+{
+  "name": "baqiyat-firebase",
+  "private": true,
+  "scripts": {
+    "test:rules": "firebase emulators:exec --only firestore --project baqiyat-rules-test \"node --test tests/rules.test.mjs\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^4.0.1",
+    "firebase": "^11.0.0",
+    "firebase-tools": "^13.29.3"
+  }
+}
+END SOURCE FILE: firebase/package.json
+
+========================================================================================
+SOURCE FILE: firebase/storage.rules
+========================================================================================
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+    // موحّد مع Firestore: claim أو وثيقة admins/{uid}
+    function isAdmin() {
+      return signedIn() && (
+        request.auth.token.admin == true
+        || firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid))
+      );
+    }
+    function isOwner(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+    function validImage() {
+      return request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    match /content/azkar/{assetId}/{fileName} {
+      allow read: if true;
+      allow write: if isAdmin() && validImage();
+      allow delete: if isAdmin();
+    }
+
+    match /feedback/{userId}/{feedbackId}/{fileName} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow write: if isOwner(userId) && validImage();
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
+END SOURCE FILE: firebase/storage.rules
+
+========================================================================================
+SOURCE FILE: firebase/tests/rules.test.mjs
+========================================================================================
+/**
+ * Firestore rules — path-by-path tests matching the Android app + admin panel.
+ * Run from firebase/: npm run test:rules
+ */
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { after, before, beforeEach, describe, it } from 'node:test';
+import {
+  assertFails,
+  assertSucceeds,
+  initializeTestEnvironment,
+} from '@firebase/rules-unit-testing';
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  setDoc,
+  updateDoc,
+  where,
+} from 'firebase/firestore';
+
+const __dir = dirname(fileURLToPath(import.meta.url));
+const rules = readFileSync(join(__dir, '../firestore.rules'), 'utf8');
+const rootRules = readFileSync(join(__dir, '../../firestore.rules'), 'utf8');
+
+const ZEK_PUB = {
+  text: 'سبحان الله وبحمده',
+  category: 'sabah',
+  published: true,
+  repeat: 1,
+  fadl: '',
+  source: 'مسلم',
+};
+const ZEK_DRAFT = { ...ZEK_PUB, published: false, text: 'مسودة غير ظاهرة' };
+const FEEDBACK = {
+  userId: 'user-a',
+  message: 'اقتراح لتحسين الورد',
+  title: 'اقتراح مستخدم',
+  type: 'suggestion',
+  status: 'new',
+  adminReply: '',
+  replyUnread: false,
+};
+
+let env;
+
+function unauth() {
+  return env.unauthenticatedContext().firestore();
+}
+function user(uid = 'user-a', claims = {}) {
+  return env.authenticatedContext(uid, { email: `${uid}@mail.test`, email_verified: true, ...claims }).firestore();
+}
+function adminClaim() {
+  return user('claim-admin', { admin: true, email: 'claim-admin@mail.test' });
+}
+function ownerEmail() {
+  return env.authenticatedContext('owner-mail', {
+    email: 'someone@gmail.com',
+    email_verified: true,
+  }).firestore();
+}
+function staff() {
+  return user('staff1', { email: 'staff@mail.test' });
+}
+function superStaff() {
+  return user('super1', { email: 'super@mail.test' });
+}
+
+async function seed() {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore();
+    await db.doc('content/azkar/items/pub1').set(ZEK_PUB);
+    await db.doc('content/azkar/items/draft1').set(ZEK_DRAFT);
+    await db.doc('admins/staff1').set({ role: 'admin', email: 'staff@mail.test' });
+    await db.doc('admins/super1').set({ role: 'super_admin' });
+    await db.doc('users/user-a').set({ fcmTokens: ['tok-a'], updatedAt: new Date() });
+    await db.doc('users/user-a/progress/2026-09-26').set({
+      date: '2026-09-26',
+      completedSabah: true,
+      completedMasaa: false,
+      totalTasbeeh: 12,
+    });
+    await db.doc('feedback/fb1').set(FEEDBACK);
+    await db.doc('users/user-a/feedback/fb1').set(FEEDBACK);
+  });
+}
+
+before(async () => {
+  if (rootRules !== rules) {
+    throw new Error('Root firestore.rules must exactly match firebase/firestore.rules (the deployed rules file).');
+  }
+  env = await initializeTestEnvironment({
+    projectId: 'baqiyat-rules-test',
+    firestore: { rules, host: '127.0.0.1', port: 8181 },
+  });
+});
+
+after(async () => {
+  await env?.cleanup();
+});
+
+beforeEach(async () => {
+  await env.clearFirestore();
+  await seed();
+});
+
+describe('content / azkar', () => {
+  it('زائر يقرأ ذكراً منشوراً', async () => {
+    await assertSucceeds(getDoc(doc(unauth(), 'content', 'azkar', 'items', 'pub1')));
+  });
+
+  it('زائر لا يقرأ مسودة', async () => {
+    await assertFails(getDoc(doc(unauth(), 'content', 'azkar', 'items', 'draft1')));
+  });
+
+  it('استعلام المنشورة ينجح للزائر', async () => {
+    const q = query(collection(unauth(), 'content', 'azkar', 'items'), where('published', '==', true));
+    await assertSucceeds(getDocs(q));
+  });
+
+  it('استعلام بلا فلتر published يفشل للزائر', async () => {
+    await assertFails(getDocs(collection(unauth(), 'content', 'azkar', 'items')));
+  });
+
+  it('مستخدم عادي لا يكتب أذكاراً', async () => {
+    await assertFails(setDoc(doc(user(), 'content', 'azkar', 'items', 'x'), ZEK_PUB));
+  });
+
+  it('مشرف يضيف ذكراً صالحاً', async () => {
+    await assertSucceeds(setDoc(doc(staff(), 'content', 'azkar', 'items', 'new1'), ZEK_PUB));
+  });
+
+  it('مشرف يقرأ المسودة', async () => {
+    await assertSucceeds(getDoc(doc(staff(), 'content', 'azkar', 'items', 'draft1')));
+  });
+
+  it('مشرف لا يضيف تصنيفاً بلا مستند تصنيف', async () => {
+    await assertFails(setDoc(doc(staff(), 'content', 'azkar', 'items', 'bad'), { ...ZEK_PUB, category: 'free' }));
+  });
+
+  it('مشرف لا يضيف نصاً فارغاً', async () => {
+    await assertFails(setDoc(doc(staff(), 'content', 'azkar', 'items', 'bad'), { ...ZEK_PUB, text: '' }));
+  });
+});
+
+describe('content / categories (ديناميكية)', () => {
+  const CAT = { title: 'أذكار المنزل', subtitle: 'عند الدخول والخروج', icon: 'home', order: 5, published: true };
+
+  it('زائر يقرأ تصنيفاً منشوراً', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'content', 'categories', 'items', 'home'), CAT);
+    });
+    await assertSucceeds(getDoc(doc(unauth(), 'content', 'categories', 'items', 'home')));
+  });
+
+  it('مشرف ينشئ تصنيفاً صالحاً', async () => {
+    await assertSucceeds(setDoc(doc(staff(), 'content', 'categories', 'items', 'home'), CAT));
+  });
+
+  it('مستخدم عادي لا ينشئ تصنيفاً', async () => {
+    await assertFails(setDoc(doc(user(), 'content', 'categories', 'items', 'home'), CAT));
+  });
+
+  it('معرّفات محجوزة ومخالفة مرفوضة', async () => {
+    for (const id of ['sabah', 'favorites', 'wird_x', 'ABC', 'a']) {
+      await assertFails(setDoc(doc(staff(), 'content', 'categories', 'items', id), CAT));
+    }
+  });
+
+  it('أيقونة أو حقل غير معروف مرفوض', async () => {
+    await assertFails(setDoc(doc(staff(), 'content', 'categories', 'items', 'home'), { ...CAT, icon: 'rocket' }));
+    await assertFails(setDoc(doc(staff(), 'content', 'categories', 'items', 'home'), { ...CAT, extra: 1 }));
+  });
+
+  it('ذكر في تصنيف ديناميكي ينجح فقط إن وُجد التصنيف', async () => {
+    await assertFails(setDoc(doc(staff(), 'content', 'azkar', 'items', 'z-home'), { ...ZEK_PUB, category: 'home' }));
+    await assertSucceeds(setDoc(doc(staff(), 'content', 'categories', 'items', 'home'), CAT));
+    await assertSucceeds(setDoc(doc(staff(), 'content', 'azkar', 'items', 'z-home'), { ...ZEK_PUB, category: 'home' }));
+  });
+});
+
+describe('users / profile', () => {
+  it('المالك يدمج توكن FCM', async () => {
+    await assertSucceeds(setDoc(doc(user(), 'users', 'user-a'), { fcmTokens: ['tok-b'], updatedAt: new Date() }, { merge: true }));
+  });
+
+  it('المالك لا يمنح نفسه role', async () => {
+    await assertFails(setDoc(doc(user(), 'users', 'user-a'), { role: 'admin' }, { merge: true }));
+  });
+
+  it('مستخدم لا يكتب ملف غيره', async () => {
+    await assertFails(setDoc(doc(user('user-b'), 'users', 'user-a'), { fcmTokens: ['x'] }));
+  });
+
+  it('مشرف يقرأ ملف المستخدم', async () => {
+    await assertSucceeds(getDoc(doc(staff(), 'users', 'user-a')));
+  });
+
+  it('مشرف لا يكتب ملف المستخدم', async () => {
+    await assertFails(setDoc(doc(staff(), 'users', 'user-a'), { fcmTokens: ['hijack'] }, { merge: true }));
+  });
+});
+
+describe('users / progress', () => {
+  it('المالك يكتب تقدماً صالحاً', async () => {
+    await assertSucceeds(setDoc(doc(user(), 'users', 'user-a', 'progress', '2026-09-27'), {
+      date: '2026-09-27',
+      completedSabah: false,
+      completedMasaa: true,
+      totalTasbeeh: 3,
+    }));
+  });
+
+  it('تاريخ المستند يجب أن يطابق الحقل', async () => {
+    await assertFails(setDoc(doc(user(), 'users', 'user-a', 'progress', '2026-09-27'), {
+      date: '2026-01-01',
+      completedSabah: false,
+      completedMasaa: false,
+      totalTasbeeh: 0,
+    }));
+  });
+
+  it('تسبيح سالب مرفوض', async () => {
+    await assertFails(setDoc(doc(user(), 'users', 'user-a', 'progress', '2026-09-27'), {
+      date: '2026-09-27',
+      completedSabah: false,
+      completedMasaa: false,
+      totalTasbeeh: -1,
+    }));
+  });
+
+  it('لا مجموعات فرعية عشوائية تحت المستخدم', async () => {
+    await assertFails(setDoc(doc(user(), 'users', 'user-a', 'secrets', 'k'), { v: 1 }));
+  });
+});
+
+describe('feedback', () => {
+  it('المالك ينشئ شكوى صالحة (technical)', async () => {
+    await assertSucceeds(addDoc(collection(user(), 'feedback'), {
+      ...FEEDBACK,
+      type: 'technical',
+      message: 'مشكلة تقنية في الصوت',
+    }));
+  });
+
+  it('لا إنشاء برد إداري مزيف', async () => {
+    await assertFails(addDoc(collection(user(), 'feedback'), { ...FEEDBACK, adminReply: 'تم' }));
+  });
+
+  it('لا إنشاء بحالة closed', async () => {
+    await assertFails(addDoc(collection(user(), 'feedback'), { ...FEEDBACK, status: 'closed' }));
+  });
+
+  it('المالك يؤشر الرد كمقروء', async () => {
+    await assertSucceeds(updateDoc(doc(user(), 'feedback', 'fb1'), { replyUnread: true }));
+  });
+
+  it('المالك لا يغيّر رد المشرف', async () => {
+    await assertFails(updateDoc(doc(user(), 'feedback', 'fb1'), { adminReply: 'أنا المشرف' }));
+  });
+
+  it('مستخدم آخر لا يقرأ الشكوى', async () => {
+    await assertFails(getDoc(doc(user('user-b'), 'feedback', 'fb1')));
+  });
+
+  it('مشرف يقرأ ويرد', async () => {
+    await assertSucceeds(getDoc(doc(staff(), 'feedback', 'fb1')));
+    await assertSucceeds(updateDoc(doc(staff(), 'feedback', 'fb1'), {
+      adminReply: 'جزاك الله خيراً',
+      status: 'replied',
+      replyUnread: true,
+    }));
+  });
+
+  it('مشرف لا يغيّر userId', async () => {
+    await assertFails(updateDoc(doc(staff(), 'feedback', 'fb1'), { userId: 'user-b', adminReply: 'x' }));
+  });
+});
+
+describe('notifications + admin_jobs + system', () => {
+  it('مستخدم لا ينشئ إشعاراً عاماً', async () => {
+    await assertFails(addDoc(collection(user(), 'notifications'), {
+      title: 'تجربة', body: 'نص', status: 'queued',
+    }));
+  });
+
+  it('مشرف ينشئ إشعاراً queued', async () => {
+    await assertSucceeds(addDoc(collection(staff(), 'notifications'), {
+      title: 'تجربة الإشعارات', body: 'هذا إشعار تجريبي', status: 'queued',
+    }));
+  });
+
+  it('مشرف لا ينشئ إشعاراً بحالة sent', async () => {
+    await assertFails(addDoc(collection(staff(), 'notifications'), {
+      title: 'x', body: 'y', status: 'sent',
+    }));
+  });
+
+  it('مشرف لا يحدّث الإشعار (الدالة وحدها)', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await ctx.firestore().doc('notifications/n1').set({ title: 'a', body: 'b', status: 'queued' });
+    });
+    await assertFails(updateDoc(doc(staff(), 'notifications', 'n1'), { status: 'sent' }));
+  });
+
+  it('مشرف ينشئ admin_jobs pending', async () => {
+    await assertSucceeds(addDoc(collection(staff(), 'admin_jobs'), {
+      type: 'fcm_broadcast', status: 'pending',
+    }));
+  });
+
+  it('مشرف لا ينشئ مهمة done', async () => {
+    await assertFails(addDoc(collection(staff(), 'admin_jobs'), {
+      type: 'fcm_broadcast', status: 'done',
+    }));
+  });
+
+  it('مشرف لا يكتب system/fcm_rate', async () => {
+    await assertFails(setDoc(doc(staff(), 'system', 'fcm_rate'), { count: 0 }));
+  });
+});
+
+describe('admins RBAC', () => {
+  it('مستخدم لا ينشئ مشرفاً', async () => {
+    await assertFails(setDoc(doc(user(), 'admins', 'user-a'), { role: 'super_admin' }));
+  });
+
+  it('مشرف عادي لا يضيف مشرفاً', async () => {
+    await assertFails(setDoc(doc(staff(), 'admins', 'new-admin'), { role: 'admin' }));
+  });
+
+  it('super_admin يضيف مشرفاً', async () => {
+    await assertSucceeds(setDoc(doc(superStaff(), 'admins', 'new-admin'), { role: 'admin' }));
+  });
+
+  it('إيميل معروف بلا مطالبة ولا مستند admins لا يكفي', async () => {
+    await assertFails(setDoc(doc(ownerEmail(), 'admins', 'seeded'), { role: 'super_admin' }));
+  });
+
+  it('مطالبة admin تمنح صلاحية كتابة ذكر', async () => {
+    await assertSucceeds(setDoc(doc(adminClaim(), 'content', 'azkar', 'items', 'from-claim'), ZEK_PUB));
+  });
+
+  it('مطالبة admin وحدها لا تمنح صلاحيات super_admin', async () => {
+    await assertFails(setDoc(doc(adminClaim(), 'admins', 'new-admin'), { role: 'admin' }));
+  });
+
+  it('مطالبة super_admin تسمح بإدارة المشرفين', async () => {
+    await assertSucceeds(setDoc(doc(user('claim-super-admin', { super_admin: true }), 'admins', 'claim-created'), { role: 'admin' }));
+  });
+
+  it('زائر لا يقرأ مجموعة المشرفين', async () => {
+    await assertFails(getDocs(collection(unauth(), 'admins')));
+  });
+});
+END SOURCE FILE: firebase/tests/rules.test.mjs
+
+========================================================================================
+SOURCE FILE: firestore.rules
+========================================================================================
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    // Keep custom claims and the server-managed admins collection in sync.
+    function isAdmin() {
+      return signedIn() && (
+        request.auth.token.admin == true
+        || exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isSuperAdmin() {
+      return signedIn() && (
+        request.auth.token.super_admin == true
+        || (
+          exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+          && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.get('role', '') == 'super_admin'
+        )
+      );
+    }
+
+    function noPrivilegeKeys(data) {
+      return !data.keys().hasAny(['role', 'admin', 'isAdmin', 'permissions', 'super_admin']);
+    }
+
+    function validAudioUrl(url) {
+      return url is string
+        && url.size() < 2048
+        && (url == '' || url.matches('^https://.*'));
+    }
+
+    function validReciterAudio(data) {
+      let audio = data.get('audioUrlsByReciter', {});
+      return audio is map
+        && audio.keys().hasOnly(['mishary', 'abdulbasit', 'maher', 'yasser'])
+        && (!audio.keys().hasAny(['mishary']) || validAudioUrl(audio.mishary))
+        && (!audio.keys().hasAny(['abdulbasit']) || validAudioUrl(audio.abdulbasit))
+        && (!audio.keys().hasAny(['maher']) || validAudioUrl(audio.maher))
+        && (!audio.keys().hasAny(['yasser']) || validAudioUrl(audio.yasser));
+    }
+
+    function validCategory(categoryId) {
+      let d = request.resource.data;
+      return categoryId.matches('^[a-z0-9_-]{2,30}$')
+        && !categoryId.matches('^wird_.*')
+        && !(categoryId in ['sabah', 'masaa', 'sleep', 'travel', 'worry', 'rizq', 'illness', 'waking', 'favorites'])
+        && d.keys().hasOnly(['title', 'subtitle', 'icon', 'order', 'published', 'createdAt', 'updatedAt'])
+        && d.title is string
+        && d.title.size() > 0
+        && d.title.size() <= 40
+        && d.get('subtitle', '') is string
+        && d.get('subtitle', '').size() <= 80
+        && d.get('icon', 'star') in ['sun', 'moon', 'bed', 'car', 'heart', 'book', 'star', 'home', 'food', 'rain', 'shield', 'mosque']
+        && (d.get('order', 0) is int || d.get('order', 0) is float)
+        && d.get('published', true) is bool;
+    }
+
+    function validZekr() {
+      let d = request.resource.data;
+      return d.keys().hasAll(['text', 'category'])
+        && d.text is string
+        && d.text.size() > 0
+        && d.text.size() < 4000
+        && (d.category in ['sabah', 'masaa', 'sleep', 'travel', 'worry', 'rizq', 'illness', 'waking']
+          || (d.category is string
+              && exists(/databases/$(database)/documents/content/categories/items/$(d.category))))
+        && (d.get('repeat', 1) is int || d.get('repeat', 1) is float)
+        && d.get('repeat', 1) >= 1
+        && d.get('repeat', 1) <= 1000
+        && d.get('published', false) is bool
+        && d.get('fadl', '') is string
+        && d.get('source', '') is string
+        && d.get('fadl', '').size() < 4000
+        && d.get('source', '').size() < 500
+        && validAudioUrl(d.get('audioUrl', ''))
+        && validReciterAudio(d);
+    }
+
+    function validFeedbackCreate() {
+      let d = request.resource.data;
+      return d.userId == request.auth.uid
+        && d.keys().hasOnly(['userId', 'message', 'title', 'type', 'status', 'adminReply', 'replyUnread', 'createdAt', 'updatedAt', 'attachmentUrl', 'priority'])
+        && d.message is string
+        && d.message.size() > 0
+        && d.message.size() <= 1000
+        && d.get('title', '') is string
+        && d.get('title', '').size() < 200
+        && d.get('type', 'suggestion') in ['suggestion', 'complaint', 'technical', 'bug', 'other', 'feature', 'content']
+        && d.get('status', 'new') in ['new', 'open']
+        && d.get('adminReply', '') == ''
+        && d.get('replyUnread', false) == false
+        && noPrivilegeKeys(d);
+    }
+
+    function userFeedbackUpdate() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['replyUnread', 'updatedAt'])
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.replyUnread is bool;
+    }
+
+    function adminFeedbackUpdate() {
+      let d = request.resource.data;
+      return d.userId == resource.data.userId
+        && d.diff(resource.data).affectedKeys()
+          .hasOnly(['adminReply', 'status', 'replyUnread', 'updatedAt', 'priority', 'aiSummary', 'aiCategory'])
+        && (!d.keys().hasAny(['adminReply']) || d.adminReply is string)
+        && (!d.keys().hasAny(['status']) || d.status in ['new', 'open', 'replied', 'closed', 'in_progress'])
+        && (!d.keys().hasAny(['replyUnread']) || d.replyUnread is bool);
+    }
+
+    function validProgress(date) {
+      let d = request.resource.data;
+      return date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && d.keys().hasOnly(['date', 'completedSabah', 'completedMasaa', 'completedSleep', 'totalTasbeeh'])
+        && d.date == date
+        && d.completedSabah is bool
+        && d.completedMasaa is bool
+        && (!d.keys().hasAny(['completedSleep']) || d.completedSleep is bool)
+        && d.totalTasbeeh is int
+        && d.totalTasbeeh >= 0
+        && d.totalTasbeeh < 1000000;
+    }
+
+    match /admins/{adminId} {
+      allow read: if isAdmin() || isOwner(adminId);
+      allow create, update, delete: if isSuperAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId)
+        && noPrivilegeKeys(request.resource.data)
+        && request.resource.data.keys().size() < 30;
+      allow update: if isOwner(userId)
+        && noPrivilegeKeys(request.resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['fcmTokens', 'updatedAt', 'notificationsEnabled', 'notificationAudience', 'displayName', 'email']);
+      allow delete: if isOwner(userId);
+
+      match /progress/{date} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create, update: if isOwner(userId) && validProgress(date);
+        allow delete: if isOwner(userId);
+      }
+
+      match /feedback/{feedbackId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && validFeedbackCreate();
+        allow update: if (isOwner(userId) && userFeedbackUpdate())
+          || (isAdmin() && adminFeedbackUpdate());
+        allow delete: if isAdmin();
+      }
+
+      match /notifications/{notificationId} {
+        allow read: if isOwner(userId);
+        allow create, update, delete: if false;
+      }
+    }
+
+    match /content/azkar {
+      allow read: if true;
+      allow write: if isAdmin();
+
+      match /items/{itemId} {
+        allow read: if isAdmin() || resource.data.published == true;
+        allow create, update: if isAdmin() && validZekr();
+        allow delete: if isAdmin();
+      }
+    }
+
+    match /content/categories {
+      allow read: if true;
+
+      match /items/{categoryId} {
+        allow read: if isAdmin() || resource.data.get('published', true) == true;
+        allow create, update: if isAdmin() && validCategory(categoryId);
+        allow delete: if isAdmin();
+      }
+    }
+
+    match /content/categories/{categoryId} {
+      allow read: if isAdmin() || resource.data.get('published', true) == true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /feedback/{feedbackId} {
+      allow create: if signedIn() && validFeedbackCreate();
+      allow read: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
+      allow update: if (isAdmin() && adminFeedbackUpdate())
+        || (signedIn() && resource.data.userId == request.auth.uid && userFeedbackUpdate());
+      allow delete: if isAdmin();
+
+      match /timeline/{eventId} {
+        allow read: if isAdmin()
+          || (signedIn()
+            && get(/databases/$(database)/documents/feedback/$(feedbackId)).data.userId == request.auth.uid);
+        allow create: if isAdmin();
+        allow update, delete: if false;
+      }
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin()
+        && request.resource.data.keys().hasAll(['title', 'body', 'status'])
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() < 120
+        && request.resource.data.body is string
+        && request.resource.data.body.size() > 0
+        && request.resource.data.body.size() < 500
+        && request.resource.data.status == 'queued';
+      allow update, delete: if false;
+    }
+
+    match /admin_jobs/{jobId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin()
+        && request.resource.data.keys().hasAll(['type', 'status'])
+        && request.resource.data.status == 'pending'
+        && request.resource.data.type in ['fcm_broadcast', 'feedback_reply', 'broadcast'];
+      allow update, delete: if false;
+    }
+
+    match /rateLimits/{uid} {
+      allow read, write: if false;
+    }
+
+    match /audit_logs/{logId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /system/{docId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+END SOURCE FILE: firestore.rules

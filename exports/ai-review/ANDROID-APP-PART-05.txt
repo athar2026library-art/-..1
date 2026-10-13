@@ -1,0 +1,1653 @@
+BAQIYAT — SOURCE EXPORT FOR AI REVIEW
+Component: ANDROID-APP
+Part: 05
+Source branch: main (export generated on a separate branch)
+Encoding: UTF-8. Original relative paths are marked per file.
+This is a review/export format, not a compilable project folder.
+
+========================================================================================
+SOURCE FILE: app/src/main/java/com/example/ui/screens/WirdEditorScreen.kt
+========================================================================================
+package com.example.ui.screens
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import com.example.data.ArabicText
+import com.example.data.AzkarData
+import com.example.data.CustomWird
+import com.example.data.CustomWirds
+import com.example.ui.AppViewModel
+import com.example.ui.components.BaqiyatBackButton
+import com.example.ui.components.BaqiyatButton
+import com.example.ui.components.GlassCard
+import com.example.ui.theme.Baqiyat
+import com.example.ui.theme.ReaderFont
+import com.example.ui.theme.zekrStyle
+
+/** محرر الورد: اسم واختيار أذكار بالترتيب الذي تُضغط به. wirdId = null لورد جديد. */
+@androidx.compose.material3.ExperimentalMaterial3Api
+@Composable
+fun WirdEditorScreen(viewModel: AppViewModel, wirdId: String?, onDone: () -> Unit) {
+    val existing = remember(wirdId) { viewModel.customWirds.value.firstOrNull { it.id == wirdId } }
+    var name by rememberSaveable(wirdId) { mutableStateOf(existing?.name.orEmpty()) }
+    var selected by rememberSaveable(wirdId) { mutableStateOf(ArrayList(existing?.ids.orEmpty())) }
+    var query by rememberSaveable { mutableStateOf("") }
+    val all = remember { AzkarData.all() }
+    val shown = remember(query) {
+        val q = ArabicText.normalize(query)
+        if (q.isEmpty()) all
+        else all.filter {
+            ArabicText.normalize(it.text).contains(q) ||
+                ArabicText.normalize(it.source).contains(q) ||
+                ArabicText.normalize(AzkarData.titleFor(it.category)).contains(q)
+        }
+    }
+    val p = Baqiyat.colors
+    val canSave = CustomWirds.cleanName(name).isNotEmpty() && selected.isNotEmpty()
+
+    Scaffold(
+        containerColor = Color.Transparent,
+        topBar = {
+            TopAppBar(
+                title = { Text(if (existing != null) "تعديل الورد" else "ورد جديد", style = MaterialTheme.typography.titleLarge) },
+                navigationIcon = { BaqiyatBackButton(onDone) },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+            )
+        },
+        bottomBar = {
+            Column(Modifier.padding(horizontal = 20.dp, vertical = 12.dp)) {
+                BaqiyatButton(
+                    text = "حفظ الورد (${selected.size})",
+                    enabled = canSave,
+                    onClick = {
+                        viewModel.saveCustomWird(
+                            CustomWird(
+                                id = wirdId ?: CustomWirds.newId(),
+                                name = CustomWirds.cleanName(name),
+                                ids = selected.toList()
+                            )
+                        )
+                        onDone()
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp),
+            contentPadding = PaddingValues(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            item {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it.take(CustomWirds.MAX_NAME) },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("اسم الورد") },
+                    singleLine = true,
+                    shape = RoundedCornerShape(16.dp)
+                )
+            }
+            item {
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("ابحث لتضيف أذكاراً…") },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    singleLine = true,
+                    shape = RoundedCornerShape(50)
+                )
+            }
+            item {
+                Text(
+                    "اختر الأذكار بالترتيب الذي تريد قراءتها به. المختار: ${selected.size}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            items(shown, key = { it.id }) { z ->
+                val index = selected.indexOf(z.id)
+                val checked = index >= 0
+                GlassCard(
+                    Modifier.fillMaxWidth().clickable(role = Role.Checkbox) {
+                        selected = if (checked) ArrayList(selected - z.id) else ArrayList(selected + z.id)
+                    },
+                    contentPadding = PaddingValues(14.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = checked, onCheckedChange = null)
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                AzkarData.titleFor(z.category) + if (checked) " · رقم ${index + 1}" else "",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = p.accent
+                            )
+                            Text(
+                                z.text,
+                                style = zekrStyle(ReaderFont.AMIRI, 17f),
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+END SOURCE FILE: app/src/main/java/com/example/ui/screens/WirdEditorScreen.kt
+
+========================================================================================
+SOURCE FILE: app/src/main/java/com/example/ui/screens/WirdsScreen.kt
+========================================================================================
+package com.example.ui.screens
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.data.CustomWird
+import com.example.ui.AppViewModel
+import com.example.ui.components.BaqiyatBackButton
+import com.example.ui.components.BaqiyatButton
+import com.example.ui.components.GlassCard
+import com.example.ui.theme.Baqiyat
+
+/** «أوردي»: أوراد يرتبها المستخدم من أذكار التطبيق ويقرؤها كوردٍ واحد. */
+@androidx.compose.material3.ExperimentalMaterial3Api
+@Composable
+fun WirdsScreen(
+    viewModel: AppViewModel,
+    onNavigateBack: () -> Unit,
+    onRead: (String) -> Unit,
+    onEdit: (String?) -> Unit
+) {
+    val wirds by viewModel.customWirds.collectAsStateWithLifecycle()
+    var toDelete by remember { mutableStateOf<CustomWird?>(null) }
+    val p = Baqiyat.colors
+
+    toDelete?.let { w ->
+        AlertDialog(
+            onDismissRequest = { toDelete = null },
+            title = { Text("حذف الورد") },
+            text = { Text("سيُحذف «${w.name}» نهائياً. الأذكار نفسها لا تتأثر.") },
+            confirmButton = {
+                TextButton(onClick = { viewModel.deleteCustomWird(w.id); toDelete = null }) { Text("حذف") }
+            },
+            dismissButton = { TextButton(onClick = { toDelete = null }) { Text("إلغاء") } }
+        )
+    }
+
+    Scaffold(
+        containerColor = Color.Transparent,
+        topBar = {
+            TopAppBar(
+                title = { Text("أوردي", style = MaterialTheme.typography.titleLarge) },
+                navigationIcon = { BaqiyatBackButton(onNavigateBack) },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+            )
+        }
+    ) { padding ->
+        if (wirds.isEmpty()) {
+            Column(
+                Modifier.fillMaxSize().padding(padding).padding(32.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Icon(Icons.Default.AutoAwesome, null, Modifier.size(56.dp), tint = p.accent.copy(alpha = .6f))
+                Spacer(Modifier.height(16.dp))
+                Text("لا أوراد بعد", style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "اجمع أذكاراً تحبها بترتيبك، واقرأها كوردٍ واحد: وردك بعد الفجر، أو قبل النوم.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(Modifier.height(20.dp))
+                BaqiyatButton(text = "أنشئ وردك الأول", onClick = { onEdit(null) })
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp),
+                contentPadding = PaddingValues(top = 8.dp, bottom = 32.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                item { BaqiyatButton(text = "ورد جديد", onClick = { onEdit(null) }, modifier = Modifier.fillMaxWidth()) }
+                items(wirds, key = { it.id }) { w ->
+                    GlassCard(
+                        Modifier.fillMaxWidth(),
+                        onClick = { onRead(w.id) },
+                        clickLabel = "اقرأ ${w.name}",
+                        contentPadding = PaddingValues(start = 20.dp, top = 16.dp, bottom = 8.dp, end = 8.dp)
+                    ) {
+                        Text(w.name, style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            "${w.ids.size} أذكار",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                            IconButton(onClick = { onEdit(w.id) }) {
+                                Icon(Icons.Default.Edit, contentDescription = "تعديل", tint = p.primary)
+                            }
+                            IconButton(onClick = { toDelete = w }) {
+                                Icon(Icons.Default.Delete, contentDescription = "حذف", tint = MaterialTheme.colorScheme.error)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+END SOURCE FILE: app/src/main/java/com/example/ui/screens/WirdsScreen.kt
+
+========================================================================================
+SOURCE FILE: app/src/main/java/com/example/ui/theme/Color.kt
+========================================================================================
+package com.example.ui.theme
+
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.Color
+
+/**
+ * أوقات اليوم الأربعة. النهار فاتح، والباقي داكن بدرجات مختلفة.
+ * المصدر المرجعي للقيم: design/tokens.json
+ */
+enum class TimeMode { DAY, FAJR, MAGHRIB, NIGHT }
+
+/**
+ * يحدد الوضع حسب تفضيل المستخدم والساعة.
+ * الوضع الفاتح يبقى نهاراً دائماً. الوضع الداكن يتبدل بين فجر ومغرب وليل.
+ * (ستُستبدل الساعات الثابتة بمواقيت الصلاة في المرحلة 7)
+ */
+fun resolveTimeMode(isDark: Boolean, hour: Int): TimeMode = when {
+    !isDark -> TimeMode.DAY
+    hour in 3..6 -> TimeMode.FAJR
+    hour in 17..18 -> TimeMode.MAGHRIB
+    else -> TimeMode.NIGHT
+}
+
+@Immutable
+data class BaqiyatPalette(
+    val isLight: Boolean,
+    val background: Color,
+    val backgroundDeep: Color,
+    /** سطح زجاجي شبه شفاف يوضع فوق الخلفية. */
+    val glass: Color,
+    val glassHighlight: Color,
+    val ink: Color,
+    val muted: Color,
+    val primary: Color,
+    val onPrimary: Color,
+    val accent: Color,
+    val line: Color,
+    val mint: Color,
+    val onMint: Color,
+    val buttonFrom: Color,
+    val buttonTo: Color,
+    val onButton: Color,
+    val glow: Color,
+    val success: Color,
+    val warning: Color
+)
+
+val DayPalette = BaqiyatPalette(
+    isLight = true,
+    background = Color(0xFFF1F3E8),
+    backgroundDeep = Color(0xFFE4EAD8),
+    glass = Color(0xB8FFFFFF),
+    glassHighlight = Color(0xCCFFFFFF),
+    ink = Color(0xFF16362A),
+    muted = Color(0xFF4F6A5D),
+    primary = Color(0xFF1B4B3A),
+    onPrimary = Color(0xFFF8F6EA),
+    accent = Color(0xFFB28A22),
+    line = Color(0x291B4B3A),
+    mint = Color(0xFFDCE7D3),
+    onMint = Color(0xFF16362A),
+    buttonFrom = Color(0xFF1B4B3A),
+    buttonTo = Color(0xFF2F6B52),
+    onButton = Color(0xFFF8F6EA),
+    glow = Color(0x47B28A22),
+    success = Color(0xFF2E7D32),
+    warning = Color(0xFFB26A00)
+)
+
+val FajrPalette = BaqiyatPalette(
+    isLight = false,
+    background = Color(0xFF0D2A30),
+    backgroundDeep = Color(0xFF081C21),
+    glass = Color(0x12FFFFFF),
+    glassHighlight = Color(0x2EFFFFFF),
+    ink = Color(0xFFEAF2EE),
+    muted = Color(0xFFA9C5C0),
+    primary = Color(0xFF8FD3C2),
+    onPrimary = Color(0xFF0D2A30),
+    accent = Color(0xFFE2C968),
+    line = Color(0x3D8FD3C2),
+    mint = Color(0xFFB9DDD3),
+    onMint = Color(0xFF0D2A30),
+    buttonFrom = Color(0xFF8FD3C2),
+    buttonTo = Color(0xFF5FB5A3),
+    onButton = Color(0xFF0D2A30),
+    glow = Color(0x38E2C968),
+    success = Color(0xFF8FD3A0),
+    warning = Color(0xFFF0B45A)
+)
+
+val MaghribPalette = BaqiyatPalette(
+    isLight = false,
+    background = Color(0xFF262A1B),
+    backgroundDeep = Color(0xFF1A1C12),
+    glass = Color(0x12FFF4D6),
+    glassHighlight = Color(0x2EFFF4D6),
+    ink = Color(0xFFF7ECD3),
+    muted = Color(0xFFCDBF9C),
+    primary = Color(0xFFEDB84F),
+    onPrimary = Color(0xFF2A220F),
+    accent = Color(0xFFF0C96A),
+    line = Color(0x42F0C96A),
+    mint = Color(0xFFE6D8A8),
+    onMint = Color(0xFF2A220F),
+    buttonFrom = Color(0xFFF0C96A),
+    buttonTo = Color(0xFFD49A33),
+    onButton = Color(0xFF2A220F),
+    glow = Color(0x42EDB84F),
+    success = Color(0xFFA6D58A),
+    warning = Color(0xFFF2A65A)
+)
+
+val NightPalette = BaqiyatPalette(
+    isLight = false,
+    background = Color(0xFF0F2920),
+    backgroundDeep = Color(0xFF081A13),
+    glass = Color(0x12FFFFFF),
+    glassHighlight = Color(0x2EFFFFFF),
+    ink = Color(0xFFF4F2E7),
+    muted = Color(0xFFB4C7B9),
+    primary = Color(0xFFE2C968),
+    onPrimary = Color(0xFF1A2A1F),
+    accent = Color(0xFFE2C968),
+    line = Color(0x38E2C968),
+    mint = Color(0xFFB9D4B6),
+    onMint = Color(0xFF1A2A1F),
+    buttonFrom = Color(0xFFE2C968),
+    buttonTo = Color(0xFFC9A63D),
+    onButton = Color(0xFF1A2A1F),
+    glow = Color(0x33E2C968),
+    success = Color(0xFF9AD59A),
+    warning = Color(0xFFF0B45A)
+)
+
+fun paletteFor(mode: TimeMode): BaqiyatPalette = when (mode) {
+    TimeMode.DAY -> DayPalette
+    TimeMode.FAJR -> FajrPalette
+    TimeMode.MAGHRIB -> MaghribPalette
+    TimeMode.NIGHT -> NightPalette
+}
+
+/**
+ * ثيمات لون تُفتح بالشارات. الذهبي افتراضي ومفتوح دائماً.
+ * unlockBadge = معرّف الشارة في Journey.kt.
+ */
+enum class AccentTheme(val key: String, val label: String, val unlockBadge: String?, val unlockHint: String) {
+    GOLD("gold", "ذهبي", null, ""),
+    ROSE("rose", "وردي", "week", "تُفتح بشارة «أسبوع ثابت»"),
+    SKY("sky", "سماوي", "tasbih1k", "تُفتح بشارة «ألف تسبيحة»"),
+    VIOLET("violet", "بنفسجي", "month", "تُفتح بشارة «شهر من النور»");
+
+    companion object {
+        fun from(key: String): AccentTheme = entries.firstOrNull { it.key == key } ?: GOLD
+    }
+}
+
+private class AccentSpec(
+    val dark: Color, val darkTo: Color,
+    val dayPrimary: Color, val dayTo: Color, val dayAccent: Color, val dayMint: Color
+)
+
+/** يستبدل ألوان التمييز (الأساسي والذهبي والأزرار) بلون الثيم، ويترك الخلفيات والنصوص. */
+fun BaqiyatPalette.withAccent(theme: AccentTheme): BaqiyatPalette {
+    val s = when (theme) {
+        AccentTheme.GOLD -> return this
+        AccentTheme.ROSE -> AccentSpec(Color(0xFFF2B6B0), Color(0xFFDC8C86), Color(0xFF8A3F46), Color(0xFFB05A60), Color(0xFFB8645F), Color(0xFFF5DEDC))
+        AccentTheme.SKY -> AccentSpec(Color(0xFF9FD0F0), Color(0xFF6FB1DA), Color(0xFF1F5F8B), Color(0xFF3F82AD), Color(0xFF2F6F9A), Color(0xFFDCEBF5))
+        AccentTheme.VIOLET -> AccentSpec(Color(0xFFC9B6F0), Color(0xFFA78BE0), Color(0xFF4B3A8C), Color(0xFF6A58B0), Color(0xFF6A58B0), Color(0xFFE6DFF5))
+    }
+    return if (isLight) {
+        copy(
+            primary = s.dayPrimary, accent = s.dayAccent,
+            buttonFrom = s.dayPrimary, buttonTo = s.dayTo,
+            mint = s.dayMint,
+            line = s.dayPrimary.copy(alpha = 0.16f), glow = s.dayAccent.copy(alpha = 0.28f)
+        )
+    } else {
+        copy(
+            primary = s.dark, accent = s.dark,
+            buttonFrom = s.dark, buttonTo = s.darkTo,
+            mint = s.dark,
+            line = s.dark.copy(alpha = 0.22f), glow = s.dark.copy(alpha = 0.2f)
+        )
+    }
+}
+
+val LocalBaqiyat = staticCompositionLocalOf { NightPalette }
+
+/** وصول مختصر: `Baqiyat.colors.accent` */
+object Baqiyat {
+    val colors: BaqiyatPalette
+        @androidx.compose.runtime.Composable
+        @androidx.compose.runtime.ReadOnlyComposable
+        get() = LocalBaqiyat.current
+}
+END SOURCE FILE: app/src/main/java/com/example/ui/theme/Color.kt
+
+========================================================================================
+SOURCE FILE: app/src/main/java/com/example/ui/theme/Shapes.kt
+========================================================================================
+package com.example.ui.theme
+
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Shapes
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.dp
+import kotlin.math.min
+
+/** أنصاف الأقطار: 8 · 12 · 20 · 28 · 36. الأزرار حبّة كاملة. */
+val BaqiyatShapes = Shapes(
+    extraSmall = RoundedCornerShape(8.dp),
+    small = RoundedCornerShape(12.dp),
+    medium = RoundedCornerShape(20.dp),
+    large = RoundedCornerShape(28.dp),
+    extraLarge = RoundedCornerShape(36.dp)
+)
+
+/**
+ * شكل المحراب: قوس مدبب في الأعلى وجانبان مستقيمان وقاعدة بزوايا مدوّرة.
+ * ارتفاع القوس ثابت نسبةً للعرض، فيبقى شكله متزناً مهما طال النص داخله.
+ * يُستعمل لبطاقة الذكر فقط.
+ */
+class MihrabShape(private val baseRadius: Float = 28f) : Shape {
+    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
+        val w = size.width
+        val h = size.height
+        val r = with(density) { baseRadius.dp.toPx() }.coerceAtMost(min(w, h) / 4f)
+        val arch = min(h * 0.55f, w * 0.66f)
+        val shoulder = arch * 0.4234f
+        val path = Path().apply {
+            moveTo(0f, h - r)
+            lineTo(0f, shoulder)
+            cubicTo(0f, arch * 0.2162f, w * 0.2808f, arch * 0.0991f, w * 0.5f, 0f)
+            cubicTo(w * 0.7192f, arch * 0.0991f, w, arch * 0.2162f, w, shoulder)
+            lineTo(w, h - r)
+            quadraticBezierTo(w, h, w - r, h)
+            lineTo(r, h)
+            quadraticBezierTo(0f, h, 0f, h - r)
+            close()
+        }
+        return Outline.Generic(path)
+    }
+}
+END SOURCE FILE: app/src/main/java/com/example/ui/theme/Shapes.kt
+
+========================================================================================
+SOURCE FILE: app/src/main/java/com/example/ui/theme/Theme.kt
+========================================================================================
+package com.example.ui.theme
+
+import android.provider.Settings
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.AnimationSpec
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
+import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
+import kotlinx.coroutines.delay
+import java.util.Calendar
+
+/** هل الحركة مفعّلة في النظام؟ (إعداد «تقليل الحركة» يضبط مقياس الأنيميشن على صفر). */
+@Composable
+fun rememberMotionEnabled(): Boolean {
+    val context = LocalContext.current
+    return remember {
+        Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) != 0f
+    }
+}
+
+/** الساعة الحالية، تُحدَّث كل دقيقة. */
+@Composable
+fun rememberHour(): Int {
+    var hour by remember { mutableIntStateOf(Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(60_000)
+            hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+        }
+    }
+    return hour
+}
+
+/** الوضع الحالي حسب التفضيل والساعة؛ يتبدل أثناء فتح التطبيق. */
+@Composable
+fun rememberTimeMode(isDark: Boolean): TimeMode = resolveTimeMode(isDark, rememberHour())
+
+@Composable
+private fun Color.animatedTo(spec: AnimationSpec<Color>): Color =
+    animateColorAsState(this, spec, label = "baqiyatPalette").value
+
+@Composable
+private fun animatedPalette(target: BaqiyatPalette): BaqiyatPalette {
+    val spec: AnimationSpec<Color> = if (rememberMotionEnabled()) tween(500) else snap()
+    return target.copy(
+        background = target.background.animatedTo(spec),
+        backgroundDeep = target.backgroundDeep.animatedTo(spec),
+        glass = target.glass.animatedTo(spec),
+        glassHighlight = target.glassHighlight.animatedTo(spec),
+        ink = target.ink.animatedTo(spec),
+        muted = target.muted.animatedTo(spec),
+        primary = target.primary.animatedTo(spec),
+        onPrimary = target.onPrimary.animatedTo(spec),
+        accent = target.accent.animatedTo(spec),
+        line = target.line.animatedTo(spec),
+        mint = target.mint.animatedTo(spec),
+        onMint = target.onMint.animatedTo(spec),
+        buttonFrom = target.buttonFrom.animatedTo(spec),
+        buttonTo = target.buttonTo.animatedTo(spec),
+        onButton = target.onButton.animatedTo(spec),
+        glow = target.glow.animatedTo(spec)
+    )
+}
+
+private fun BaqiyatPalette.toColorScheme(): ColorScheme {
+    val base = if (isLight) lightColorScheme() else darkColorScheme()
+    val surfaceSolid = glass.compositeOver(background)
+    val surfaceTint = ink.copy(alpha = 0.06f).compositeOver(surfaceSolid)
+    val mintSoft = mint.copy(alpha = if (isLight) 1f else 0.18f).compositeOver(background)
+    return base.copy(
+        primary = primary,
+        onPrimary = onPrimary,
+        primaryContainer = mintSoft,
+        onPrimaryContainer = ink,
+        secondary = accent,
+        onSecondary = onPrimary,
+        secondaryContainer = mintSoft,
+        onSecondaryContainer = ink,
+        tertiary = accent,
+        onTertiary = onPrimary,
+        tertiaryContainer = mintSoft,
+        onTertiaryContainer = ink,
+        background = background,
+        onBackground = ink,
+        surface = surfaceSolid,
+        onSurface = ink,
+        surfaceVariant = surfaceTint,
+        onSurfaceVariant = muted,
+        surfaceContainerLowest = surfaceSolid,
+        surfaceContainerLow = surfaceSolid,
+        surfaceContainer = surfaceSolid,
+        surfaceContainerHigh = surfaceTint,
+        surfaceContainerHighest = surfaceTint,
+        outline = line.copy(alpha = 1f),
+        outlineVariant = line
+    )
+}
+
+@Composable
+fun BaqiyatTheme(mode: TimeMode, accent: AccentTheme = AccentTheme.GOLD, content: @Composable () -> Unit) {
+    val palette = animatedPalette(paletteFor(mode).withAccent(accent))
+    val scheme = remember(palette) { palette.toColorScheme() }
+    // التطبيق عربي بالكامل: نثبّت الاتجاه من اليمين لليسار كي تبقى الأسهم والتخطيط صحيحة مهما كانت لغة الجهاز.
+    CompositionLocalProvider(
+        LocalBaqiyat provides palette,
+        LocalLayoutDirection provides LayoutDirection.Rtl
+    ) {
+        MaterialTheme(
+            colorScheme = scheme,
+            typography = Typography,
+            shapes = BaqiyatShapes,
+            content = content
+        )
+    }
+}
+
+/** للتوافق مع الاستدعاءات القديمة (الاختبارات والمعاينات). */
+@Composable
+fun MyApplicationTheme(
+    darkTheme: Boolean = androidx.compose.foundation.isSystemInDarkTheme(),
+    isFajrMode: Boolean = false,
+    dynamicColor: Boolean = false,
+    content: @Composable () -> Unit,
+) {
+    val mode = when {
+        isFajrMode -> TimeMode.FAJR
+        darkTheme -> TimeMode.NIGHT
+        else -> TimeMode.DAY
+    }
+    BaqiyatTheme(mode = mode, content = content)
+}
+END SOURCE FILE: app/src/main/java/com/example/ui/theme/Theme.kt
+
+========================================================================================
+SOURCE FILE: app/src/main/java/com/example/ui/theme/Type.kt
+========================================================================================
+package com.example.ui.theme
+
+import androidx.compose.material3.Typography as M3Typography
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import com.example.R
+
+/** خط الذكر: Amiri (مضمَّن في التطبيق ليعمل دون اتصال). */
+val AmiriFamily = FontFamily(
+    Font(R.font.amiri_regular, FontWeight.Normal),
+    Font(R.font.amiri_bold, FontWeight.Bold)
+)
+
+/** خط بديل للذكر: شهرزاد (نسخ واضح بتباعد حروف أوسع). */
+val ScheherazadeFamily = FontFamily(
+    Font(R.font.amiri_regular, FontWeight.Normal),
+    Font(R.font.amiri_bold, FontWeight.Bold)
+)
+
+/** خط الواجهة: IBM Plex Sans Arabic. */
+val PlexArabicFamily = FontFamily(
+    Font(R.font.plex_arabic_regular, FontWeight.Normal),
+    Font(R.font.plex_arabic_medium, FontWeight.Medium),
+    Font(R.font.plex_arabic_semibold, FontWeight.SemiBold),
+    Font(R.font.plex_arabic_semibold, FontWeight.Bold)
+)
+
+/** نمط نص الذكر: تباعد أسطر 1.95 من الحجم كي لا تتزاحم حركات التشكيل. */
+val ZekrTextStyle = TextStyle(
+    fontFamily = AmiriFamily,
+    fontWeight = FontWeight.Normal,
+    fontSize = 28.sp,
+    lineHeight = 54.sp
+)
+
+/** خيارات خط القراءة. المفتاح هو القيمة المحفوظة في الإعدادات. */
+enum class ReaderFont(val key: String, val label: String, val family: FontFamily, val lineRatio: Float) {
+    AMIRI("amiri", "أميري", AmiriFamily, 1.95f),
+    SCHEHERAZADE("scheherazade", "شهرزاد", ScheherazadeFamily, 1.95f),
+    PLEX("plex", "حديث", PlexArabicFamily, 1.75f);
+
+    companion object {
+        fun from(key: String): ReaderFont = entries.firstOrNull { it.key == key } ?: AMIRI
+    }
+}
+
+/** نمط نص الذكر حسب الخط والحجم المختارين. */
+fun zekrStyle(font: ReaderFont, size: Float): TextStyle = ZekrTextStyle.copy(
+    fontFamily = font.family,
+    fontSize = size.sp,
+    lineHeight = (size * font.lineRatio).sp
+)
+
+private val Base = M3Typography()
+
+val Typography = Base.copy(
+    displayLarge = Base.displayLarge.copy(fontFamily = PlexArabicFamily),
+    displayMedium = Base.displayMedium.copy(fontFamily = PlexArabicFamily),
+    displaySmall = TextStyle(fontFamily = PlexArabicFamily, fontWeight = FontWeight.SemiBold, fontSize = 30.sp, lineHeight = 42.sp),
+    headlineLarge = Base.headlineLarge.copy(fontFamily = PlexArabicFamily),
+    headlineMedium = Base.headlineMedium.copy(fontFamily = PlexArabicFamily),
+    headlineSmall = TextStyle(fontFamily = PlexArabicFamily, fontWeight = FontWeight.SemiBold, fontSize = 24.sp, lineHeight = 34.sp),
+    titleLarge = TextStyle(fontFamily = PlexArabicFamily, fontWeight = FontWeight.SemiBold, fontSize = 22.sp, lineHeight = 32.sp),
+    titleMedium = TextStyle(fontFamily = PlexArabicFamily, fontWeight = FontWeight.SemiBold, fontSize = 18.sp, lineHeight = 28.sp),
+    titleSmall = Base.titleSmall.copy(fontFamily = PlexArabicFamily),
+    bodyLarge = TextStyle(fontFamily = PlexArabicFamily, fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 29.sp),
+    bodyMedium = TextStyle(fontFamily = PlexArabicFamily, fontWeight = FontWeight.Normal, fontSize = 14.sp, lineHeight = 25.sp),
+    bodySmall = TextStyle(fontFamily = PlexArabicFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp, lineHeight = 20.sp),
+    labelLarge = TextStyle(fontFamily = PlexArabicFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp, lineHeight = 20.sp),
+    labelMedium = TextStyle(fontFamily = PlexArabicFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp, lineHeight = 20.sp),
+    labelSmall = TextStyle(fontFamily = PlexArabicFamily, fontWeight = FontWeight.Medium, fontSize = 11.sp, lineHeight = 16.sp)
+)
+END SOURCE FILE: app/src/main/java/com/example/ui/theme/Type.kt
+
+========================================================================================
+SOURCE FILE: app/src/main/java/com/example/widget/BaqiyatGlanceWidget.kt
+========================================================================================
+package com.example.widget
+
+import android.content.Context
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.glance.GlanceId
+import androidx.glance.GlanceModifier
+import androidx.glance.GlanceTheme
+import androidx.glance.action.actionStartActivity
+import androidx.glance.action.clickable
+import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.GlanceAppWidgetReceiver
+import androidx.glance.appwidget.provideContent
+import androidx.glance.background
+import androidx.glance.layout.Alignment
+import androidx.glance.layout.Column
+import androidx.glance.layout.Row
+import androidx.glance.layout.Spacer
+import androidx.glance.layout.fillMaxSize
+import androidx.glance.layout.fillMaxWidth
+import androidx.glance.layout.height
+import androidx.glance.layout.padding
+import androidx.glance.layout.width
+import androidx.glance.text.FontWeight
+import androidx.glance.text.Text
+import androidx.glance.text.TextStyle
+import androidx.glance.unit.ColorProvider
+import com.example.MainActivity
+import com.example.data.ProgressRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+/**
+ * Lightweight Glance widget – reads Room once and shows today's progress.
+ * Designed for low battery / fast update (no continuous work).
+ */
+class BaqiyatGlanceWidget : GlanceAppWidget() {
+
+    override suspend fun provideGlance(context: Context, id: GlanceId) {
+        val summary = withContext(Dispatchers.IO) {
+            loadTodaySummary(context)
+        }
+
+        provideContent {
+            GlanceTheme {
+                WidgetContent(summary)
+            }
+        }
+    }
+
+    private suspend fun loadTodaySummary(context: Context): WidgetSummary {
+        return try {
+            val repo = ProgressRepository.getInstance(context)
+            val date = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+            val progress = repo.getTodayProgressSync(date)
+            WidgetSummary(
+                sabahDone = progress?.completedSabah == true,
+                masaaDone = progress?.completedMasaa == true,
+                tasbeeh = progress?.totalTasbeeh ?: 0
+            )
+        } catch (_: Exception) {
+            WidgetSummary()
+        }
+    }
+}
+
+data class WidgetSummary(
+    val sabahDone: Boolean = false,
+    val masaaDone: Boolean = false,
+    val tasbeeh: Int = 0
+)
+
+@Composable
+private fun WidgetContent(summary: WidgetSummary) {
+    Column(
+        modifier = GlanceModifier
+            .fillMaxSize()
+            .background(GlanceTheme.colors.background)
+            .padding(16.dp)
+            .clickable(actionStartActivity<MainActivity>()),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "الباقيات",
+            style = TextStyle(
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp,
+                color = GlanceTheme.colors.primary
+            )
+        )
+        Spacer(GlanceModifier.height(12.dp))
+        Row(modifier = GlanceModifier.fillMaxWidth()) {
+            StatusChip("صباح", summary.sabahDone)
+            Spacer(GlanceModifier.width(8.dp))
+            StatusChip("مساء", summary.masaaDone)
+        }
+        Spacer(GlanceModifier.height(10.dp))
+        Text(
+            text = "التسبيح اليوم: ${summary.tasbeeh}",
+            style = TextStyle(
+                fontSize = 14.sp,
+                color = GlanceTheme.colors.onSurface
+            )
+        )
+        Spacer(GlanceModifier.height(6.dp))
+        Text(
+            text = "اضغط لفتح التطبيق",
+            style = TextStyle(
+                fontSize = 11.sp,
+                color = GlanceTheme.colors.onSurfaceVariant
+            )
+        )
+    }
+}
+
+@Composable
+private fun StatusChip(label: String, done: Boolean) {
+    Text(
+        text = if (done) "$label ✓" else "$label ○",
+        style = TextStyle(
+            fontWeight = FontWeight.Medium,
+            fontSize = 13.sp,
+            color = if (done) GlanceTheme.colors.primary else GlanceTheme.colors.onSurfaceVariant
+        )
+    )
+}
+
+class BaqiyatGlanceWidgetReceiver : GlanceAppWidgetReceiver() {
+    override val glanceAppWidget: GlanceAppWidget = BaqiyatGlanceWidget()
+}
+END SOURCE FILE: app/src/main/java/com/example/widget/BaqiyatGlanceWidget.kt
+
+========================================================================================
+SOURCE FILE: app/src/main/res/drawable/ic_launcher_background.xml
+========================================================================================
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:startColor="#0F172A"
+        android:endColor="#1E293B"
+        android:angle="315"/>
+</shape>
+END SOURCE FILE: app/src/main/res/drawable/ic_launcher_background.xml
+
+========================================================================================
+SOURCE FILE: app/src/main/res/drawable/ic_launcher_foreground.xml
+========================================================================================
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:width="66dp"
+        android:height="66dp"
+        android:drawable="@drawable/img_app_icon_1789073843676"
+        android:gravity="center" />
+</layer-list>
+END SOURCE FILE: app/src/main/res/drawable/ic_launcher_foreground.xml
+
+========================================================================================
+SOURCE FILE: app/src/main/res/drawable/ic_stat_azkar.xml
+========================================================================================
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,3c-4.97,0 -9,4.03 -9,9s4.03,9 9,9 9,-4.03 9,-9c0,-0.46 -0.04,-0.92 -0.1,-1.36 -0.98,1.37 -2.58,2.26 -4.4,2.26 -2.98,0 -5.4,-2.42 -5.4,-5.4 0,-1.81 0.89,-3.42 2.26,-4.4 -0.44,-0.06 -0.9,-0.1 -1.36,-0.1z" />
+</vector>
+END SOURCE FILE: app/src/main/res/drawable/ic_stat_azkar.xml
+
+========================================================================================
+SOURCE FILE: app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+========================================================================================
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android"><background android:drawable="@color/icon_background"/><foreground android:drawable="@drawable/logo_baqiyat"/></adaptive-icon>
+END SOURCE FILE: app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+
+========================================================================================
+SOURCE FILE: app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+========================================================================================
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android"><background android:drawable="@color/icon_background"/><foreground android:drawable="@drawable/logo_baqiyat"/></adaptive-icon>
+END SOURCE FILE: app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+
+========================================================================================
+SOURCE FILE: app/src/main/res/values/colors.xml
+========================================================================================
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="purple_200">#FFBB86FC</color>
+    <color name="purple_500">#FF6200EE</color>
+    <color name="purple_700">#FF3700B3</color>
+    <color name="teal_200">#FF03DAC5</color>
+    <color name="teal_700">#FF018786</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="icon_background">#FBFAF3</color>
+</resources>
+END SOURCE FILE: app/src/main/res/values/colors.xml
+
+========================================================================================
+SOURCE FILE: app/src/main/res/values/font_certs.xml
+========================================================================================
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+ Copyright 2017 The Android Open Source Project
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-->
+<resources>
+    <array name="com_google_android_gms_fonts_certs">
+        <item>@array/com_google_android_gms_fonts_certs_dev</item>
+        <item>@array/com_google_android_gms_fonts_certs_prod</item>
+    </array>
+    <string-array name="com_google_android_gms_fonts_certs_dev">
+        <item>
+            MIIEqDCCA5CgAwIBAgIJANWFuGx90071MA0GCSqGSIb3DQEBBAUAMIGUMQswCQYDVQQGEwJVUzETMBEGA1UECBMKQ2FsaWZvcm5pYTEWMBQGA1UEBxMNTW91bnRhaW4gVmlldzEQMA4GA1UEChMHQW5kcm9pZDEQMA4GA1UECxMHQW5kcm9pZDEQMA4GA1UEAxMHQW5kcm9pZDEiMCAGCSqGSIb3DQEJARYTYW5kcm9pZEBhbmRyb2lkLmNvbTAeFw0wODA0MTUyMzM2NTZaFw0zNTA5MDEyMzM2NTZaMIGUMQswCQYDVQQGEwJVUzETMBEGA1UECBMKQ2FsaWZvcm5pYTEWMBQGA1UEBxMNTW91bnRhaW4gVmlldzEQMA4GA1UEChMHQW5kcm9pZDEQMA4GA1UECxMHQW5kcm9pZDEQMA4GA1UEAxMHQW5kcm9pZDEiMCAGCSqGSIb3DQEJARYTYW5kcm9pZEBhbmRyb2lkLmNvbTCCASAwDQYJKoZIhvcNAQEBBQADggENADCCAQgCggEBANbOLggKv+IxTdGNs8/TGFy0PTP6DHThvbbR24kT9ixcOd9W+EaBPWW+wPPKQmsHxajtWjmQwWfna8mZuSeJS48LIgAZlKkpFeVyxW0qMBujb8X8ETrWy550NaFtI6t9+u7hZeTfHwqNvacKhp1RbE6dBRGWynwMVX8XW8N1+UjFaq6GCJukT4qmpN2afb8sCjUigq0GuMwYXrFVee74bQgLHWGJwPmvmLHC69EH6kWr22ijx4OKXlSIx2xT1AsSHee70w5iDBiK4aph27yH3TxkXy9V89TDdexAcKk/cVHYNnDBapcavl7y0RiQ4biu8ymM8Ga/nmzhRKya6G0cGw8CAQOjgfwwgfkwHQYDVR0OBBYEFI0cxb6VTEM8YYY6FbBMvAPyT+CyMIHJBgNVHSMEgcEwgb6AFI0cxb6VTEM8YYY6FbBMvAPyT+CyoYGapIGXMIGUMQswCQYDVQQGEwJVUzETMBEGA1UECBMKQ2FsaWZvcm5pYTEWMBQGA1UEBxMNTW91bnRhaW4gVmlldzEQMA4GA1UEChMHQW5kcm9pZDEQMA4GA1UECxMHQW5kcm9pZDEQMA4GA1UEAxMHQW5kcm9pZDEiMCAGCSqGSIb3DQEJARYTYW5kcm9pZEBhbmRyb2lkLmNvbYIJANWFuGx90071MAwGA1UdEwQFMAMBAf8wDQYJKoZIhvcNAQEEBQADggEBABnTDPEF+3iSP0wNfdIjIz1AlnrPzgAIHVvXxunW7SBrDhEglQZBbKJEk5kT0mtKoOD1JMrSu1xuTKEBahWRbqHsXclaXjoBADb0kkjVEJu/Lh5hgYZnOjvlba8Ld7HCKePCVePoTJBdI4fvugnL8TsgK05aIskyY0hKI9L8KfqfGTl1lzOv2KoWD0KWwtAWPoGChZxmQ+nBli+gwYMzM1vAkP+aayLe0a1EQimlOalO762r0GXO0ks+UeXde2Z4e+8S/pf7pITEI/tP+MxJTALw9QUWEv9lKTk+jkbqxbsh8nfBUapfKqYn0eidpwq2AzVp3juYl7//fKnaPhJD9gs=
+        </item>
+    </string-array>
+    <string-array name="com_google_android_gms_fonts_certs_prod">
+        <item>
+            MIIEQzCCAyugAwIBAgIJAMLgh0ZkSjCNMA0GCSqGSIb3DQEBBAUAMHQxCzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpDYWxpZm9ybmlhMRYwFAYDVQQHEw1Nb3VudGFpbiBWaWV3MRQwEgYDVQQKEwtHb29nbGUgSW5jLjEQMA4GA1UECxMHQW5kcm9pZDEQMA4GA1UEAxMHQW5kcm9pZDAeFw0wODA4MjEyMzEzMzRaFw0zNjAxMDcyMzEzMzRaMHQxCzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpDYWxpZm9ybmlhMRYwFAYDVQQHEw1Nb3VudGFpbiBWaWV3MRQwEgYDVQQKEwtHb29nbGUgSW5jLjEQMA4GA1UECxMHQW5kcm9pZDEQMA4GA1UEAxMHQW5kcm9pZDCCASAwDQYJKoZIhvcNAQEBBQADggENADCCAQgCggEBAKtWLgDYO6IIrgqWbxJOKdoR8qtW0I9Y4sypEwPpt1TTcvZApxsdyxMJZ2JORland2qSGT2y5b+3JKkedxiLDmpHpDsz2WCbdxgxRczfey5YZnTJ4VZbH0xqWVW/8lGmPav5xVwnIiJS6HXk+BVKZF+JcWjAsb/GEuq/eFdpuzSqeYTcfi6idkyugwfYwXFU1+5fZKUaRKYCwkkFQVfcAs1fXA5V+++FGfvjJ/CxURaSxaBvGdGDhfXE28LWuT9ozCl5xw4Yq5OGazvV24mZVSoOO0yZ31j7kYvtwYK6NeADwbSxDdJEqO4k//0zOHKrUiGYXtqw/A0LFFtqoZKFjnkCAQOjgdkwgdYwHQYDVR0OBBYEFMd9jMIhF1Ylmn/Tgt9r45jk14alMIGmBgNVHSMEgZ4wgZuAFMd9jMIhF1Ylmn/Tgt9r45jk14aloXikdjB0MQswCQYDVQQGEwJVUzETMBEGA1UECBMKQ2FsaWZvcm5pYTEWMBQGA1UEBxMNTW91bnRhaW4gVmlldzEUMBIGA1UEChMLR29vZ2xlIEluYy4xEDAOBgNVBAsTB0FuZHJvaWQxEDAOBgNVBAMTB0FuZHJvaWSCCQDC4IdGZEowjTAMBgNVHRMEBTADAQH/MA0GCSqGSIb3DQEBBAUAA4IBAQBt0lLO74UwLDYKqs6Tm8/yzKkEu116FmH4rkaymUIE0P9KaMftGlMexFlaYjzmB2OxZyl6euNXEsQH8gjwyxCUKRJNexBiGcCEyj6z+a1fuHHvkiaai+KL8W1EyNmgjmyy8AW7P+LLlkR+ho5zEHatRbM/YAnqGcFh5iZBqpknHf1SKMXFh4dd239FJ1jWYfbMDMy3NS5CTMQ2XFI1MvcyUTdZPErjQfTbQe3aDQsQcafEQPD+nqActifKZ0Np0IS9L9kR/wbNvyz6ENwPiTrjV2KRkEjH78ZMcUQXg0L3BYHJ3lc69Vs5Ddf9uUGGMYldX3WfMBEmh/9iFBDAaTCK
+        </item>
+    </string-array>
+</resources>
+END SOURCE FILE: app/src/main/res/values/font_certs.xml
+
+========================================================================================
+SOURCE FILE: app/src/main/res/values/strings.xml
+========================================================================================
+<resources>
+    <string name="app_name">الباقيات</string>
+    <!-- default_web_client_id يُولَّد من google-services.json (client_type 3).
+         نُبقي قيمة صريحة كاحتياطي إن غاب التوليد في بعض بيئات البناء. -->
+    <string name="default_web_client_id" translatable="false">372887186106-ori5bj4fde42ovqabuh34eedt3f1dcta.apps.googleusercontent.com</string>
+</resources>
+END SOURCE FILE: app/src/main/res/values/strings.xml
+
+========================================================================================
+SOURCE FILE: app/src/main/res/values/themes.xml
+========================================================================================
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="Theme.MyApplication" parent="android:Theme.DeviceDefault.NoActionBar" />
+</resources>
+END SOURCE FILE: app/src/main/res/values/themes.xml
+
+========================================================================================
+SOURCE FILE: app/src/main/res/xml/backup_rules.xml
+========================================================================================
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- استبعد قاعدة Room من Auto Backup لتجنب التعارض مع مزامنة Firebase -->
+    <exclude domain="database" path="." />
+</full-backup-content>
+END SOURCE FILE: app/src/main/res/xml/backup_rules.xml
+
+========================================================================================
+SOURCE FILE: app/src/main/res/xml/baqiyat_widget_info.xml
+========================================================================================
+<?xml version="1.0" encoding="utf-8"?>
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/app_name"
+    android:initialLayout="@layout/glance_default_loading_layout"
+    android:minWidth="180dp"
+    android:minHeight="110dp"
+    android:resizeMode="horizontal|vertical"
+    android:updatePeriodMillis="1800000"
+    android:widgetCategory="home_screen" />
+END SOURCE FILE: app/src/main/res/xml/baqiyat_widget_info.xml
+
+========================================================================================
+SOURCE FILE: app/src/main/res/xml/data_extraction_rules.xml
+========================================================================================
+<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+    <cloud-backup>
+        <!-- التقدم يُستعاد عبر Firebase Sync — استبعد قاعدة Room من النسخ السحابي -->
+        <exclude domain="database" path="." />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="database" path="." />
+    </device-transfer>
+</data-extraction-rules>
+END SOURCE FILE: app/src/main/res/xml/data_extraction_rules.xml
+
+========================================================================================
+SOURCE FILE: app/src/main/res/xml/file_paths.xml
+========================================================================================
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <cache-path name="share_cache" path="share/" />
+</paths>
+END SOURCE FILE: app/src/main/res/xml/file_paths.xml
+
+========================================================================================
+SOURCE FILE: app/src/release/java/com/example/AppCheckInstaller.kt
+========================================================================================
+package com.example
+
+import com.google.firebase.appcheck.FirebaseAppCheck
+import com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory
+
+/** نسخة release فقط: Play Integrity بلا أي رجوع صامت إلى مزوّد التصحيح. */
+object AppCheckInstaller {
+    fun install() {
+        FirebaseAppCheck.getInstance()
+            .installAppCheckProviderFactory(PlayIntegrityAppCheckProviderFactory.getInstance())
+    }
+}
+END SOURCE FILE: app/src/release/java/com/example/AppCheckInstaller.kt
+
+========================================================================================
+SOURCE FILE: app/src/release/java/com/example/AppCheckProviderInstaller.kt
+========================================================================================
+package com.example
+
+import android.content.Context
+import com.google.firebase.Firebase
+import com.google.firebase.appcheck.appCheck
+import com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory
+
+internal object AppCheckProviderInstaller {
+    fun install(context: Context) {
+        Firebase.appCheck.installAppCheckProviderFactory(
+            PlayIntegrityAppCheckProviderFactory.getInstance()
+        )
+    }
+}
+END SOURCE FILE: app/src/release/java/com/example/AppCheckProviderInstaller.kt
+
+========================================================================================
+SOURCE FILE: app/src/test/java/com/example/ArabicTextTest.kt
+========================================================================================
+package com.example
+
+import com.example.data.ArabicText
+import com.example.data.AzkarData
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class ArabicTextTest {
+    private val sample = "اللَّهُمَّ أَنْتَ رَبِّي لَا إِلَهَ إِلَّا أَنْتَ"
+
+    @Test fun normalizeStripsMarksAndFoldsLetters() {
+        assertEquals("اللهم", ArabicText.normalize("اللَّهُمَّ"))
+        assertEquals("اعوذ", ArabicText.normalize("أَعُوذُ"))
+        assertEquals("رحمه", ArabicText.normalize("رحمة"))
+    }
+
+    @Test fun matchesIgnoreTashkeelAndCoverMarks() {
+        val m = ArabicText.matches(sample, "الله")
+        assertEquals(1, m.size)
+        assertEquals("اللَّهُ", sample.substring(m[0].first, m[0].last + 1))
+        assertEquals(2, ArabicText.matches(sample, "انت").size)
+        assertTrue(ArabicText.matches(sample, "   ").isEmpty())
+    }
+
+    @Test fun searchFindsDhikrWithoutTypingTashkeel() {
+        assertTrue(AzkarData.search("اللهم").isNotEmpty())
+        assertEquals(AzkarData.search("اللهم").map { it.id }, AzkarData.search("اللَّهُمَّ").map { it.id })
+    }
+}
+END SOURCE FILE: app/src/test/java/com/example/ArabicTextTest.kt
+
+========================================================================================
+SOURCE FILE: app/src/test/java/com/example/BaqiyatComponentsScreenshotTest.kt
+========================================================================================
+package com.example
+
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Text
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.unit.dp
+import com.example.ui.components.BaqiyatBackground
+import com.example.ui.components.BaqiyatButton
+import com.example.ui.components.BaqiyatButtonStyle
+import com.example.ui.components.BaqiyatChip
+import com.example.ui.components.BaqiyatNavItem
+import com.example.ui.components.FloatingNavBar
+import com.example.ui.components.GlassCard
+import com.example.ui.components.MihrabCard
+import com.example.ui.components.ProgressRing
+import com.example.ui.theme.BaqiyatTheme
+import com.example.ui.theme.TimeMode
+import com.example.ui.theme.ZekrTextStyle
+import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
+import com.github.takahirom.roborazzi.captureRoboImage
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
+
+/** لقطات مرجعية للمكوّنات في الأوضاع الأربعة (تشغيل: ./gradlew recordRoborazziDebug). */
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(qualifiers = RobolectricDeviceQualifiers.Pixel8, sdk = [35])
+class BaqiyatComponentsScreenshotTest {
+
+    @get:Rule val composeTestRule = createComposeRule()
+
+    private fun shoot(mode: TimeMode) {
+        composeTestRule.setContent {
+            BaqiyatTheme(mode) {
+                BaqiyatBackground {
+                    Column(Modifier.fillMaxWidth().padding(20.dp)) {
+                        MihrabCard(Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(start = 26.dp, end = 26.dp, top = 92.dp, bottom = 24.dp)) {
+                                Text("رَضِيتُ بِاللَّهِ رَبًّا", style = ZekrTextStyle)
+                                ProgressRing(progress = 0.66f) { Text("1") }
+                            }
+                        }
+                        GlassCard(Modifier.fillMaxWidth().padding(top = 16.dp)) {
+                            Text("بطاقة زجاجية")
+                            BaqiyatChip("شكر", selected = true)
+                        }
+                        BaqiyatButton("ابدأ الورد", onClick = {})
+                        BaqiyatButton("مفضلة", onClick = {}, style = BaqiyatButtonStyle.Glass)
+                        FloatingNavBar(
+                            items = listOf(BaqiyatNavItem("الرئيسية", Icons.Default.Home), BaqiyatNavItem("الإعدادات", Icons.Default.Settings)),
+                            selectedIndex = 0,
+                            onSelect = {}
+                        )
+                    }
+                }
+            }
+        }
+        composeTestRule.onRoot().captureRoboImage("src/test/screenshots/components_${mode.name.lowercase()}.png")
+    }
+
+    @Test fun day() = shoot(TimeMode.DAY)
+    @Test fun fajr() = shoot(TimeMode.FAJR)
+    @Test fun maghrib() = shoot(TimeMode.MAGHRIB)
+    @Test fun night() = shoot(TimeMode.NIGHT)
+}
+END SOURCE FILE: app/src/test/java/com/example/BaqiyatComponentsScreenshotTest.kt
+
+========================================================================================
+SOURCE FILE: app/src/test/java/com/example/CategoriesAndWirdsTest.kt
+========================================================================================
+package com.example
+
+import com.example.data.AzkarCategory
+import com.example.data.CategoryDefaults
+import com.example.data.CustomWird
+import com.example.data.CustomWirds
+import com.example.data.Zekr
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class CategoriesAndWirdsTest {
+    private fun cat(id: String, order: Int = 0, title: String = "تصنيف $id") =
+        AzkarCategory(id, title, "", "star", order)
+
+    @Test fun mergeKeepsBuiltInsFirstAndSortsRemote() {
+        val merged = CategoryDefaults.merge(listOf(cat("home", 2), cat("food", 1)))
+        assertEquals(CategoryDefaults.builtIn.map { it.id } + listOf("food", "home"), merged.map { it.id })
+    }
+
+    @Test fun mergeDropsReservedDuplicateAndUntitled() {
+        val merged = CategoryDefaults.merge(
+            listOf(cat("sabah"), cat("favorites"), cat("wird_x"), cat("home"), cat("home", 9), cat("blank", title = " "))
+        )
+        assertEquals(CategoryDefaults.builtIn.map { it.id } + "home", merged.map { it.id })
+        assertTrue(merged.first { it.id == "sabah" }.builtIn)
+    }
+
+    @Test fun dynamicIdRules() {
+        assertTrue(CategoryDefaults.isDynamicId("home"))
+        assertFalse(CategoryDefaults.isDynamicId("sabah"))
+        assertFalse(CategoryDefaults.isDynamicId("wird_a1"))
+        assertFalse(CategoryDefaults.isDynamicId("favorites"))
+    }
+
+    private val z = (1..5).map { Zekr(it, "ذكر $it", "", "", 1, "sabah") }
+
+    @Test fun encodeDecodeRoundTrip() {
+        val list = listOf(CustomWird("w1", "وردي بعد الفجر", listOf(3, 1, 2)), CustomWird("w2", "قبل النوم", listOf(5)))
+        assertEquals(list, CustomWirds.decode(CustomWirds.encode(list)))
+    }
+
+    @Test fun namesAreSanitizedAndCorruptLinesIgnored() {
+        assertEquals("اسم بتبويب", CustomWirds.cleanName("  اسم\tبتبويب\n "))
+        val decoded = CustomWirds.decode("w1\tجيد\t1,2\nbroken line\n\tبلا معرّف\t1\nw3\tغلط\t1,x,3")
+        assertEquals(listOf("w1", "w3"), decoded.map { it.id })
+        assertEquals(listOf(1, 3), decoded.last().ids)
+        assertTrue(CustomWirds.decode(null).isEmpty())
+    }
+
+    @Test fun resolveKeepsSavedOrderAndSkipsMissing() {
+        val ids = CustomWirds.resolve(CustomWird("w", "x", listOf(4, 99, 2)), z).map { it.id }
+        assertEquals(listOf(4, 2), ids)
+    }
+
+    @Test fun upsertReplacesOrAppends() {
+        val a = CustomWird("a", "أ", listOf(1))
+        val b = CustomWird("b", "ب", listOf(2))
+        assertEquals(listOf(a, b), CustomWirds.upsert(listOf(a), b))
+        val a2 = a.copy(name = "جديد")
+        assertEquals(listOf(a2, b), CustomWirds.upsert(listOf(a, b), a2))
+        assertNull(CustomWirds.upsert(listOf(a), a2).firstOrNull { it.name == "أ" })
+    }
+}
+END SOURCE FILE: app/src/test/java/com/example/CategoriesAndWirdsTest.kt
+
+========================================================================================
+SOURCE FILE: app/src/test/java/com/example/ExampleRobolectricTest.kt
+========================================================================================
+package com.example
+
+import android.content.Context
+import androidx.test.core.app.ApplicationProvider
+import org.junit.Assert.assertEquals
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35])
+class ExampleRobolectricTest {
+
+  @Test
+  fun `read string from context`() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val appName = context.getString(R.string.app_name)
+    assertEquals("الباقيات", appName)
+  }
+}
+END SOURCE FILE: app/src/test/java/com/example/ExampleRobolectricTest.kt
+
+========================================================================================
+SOURCE FILE: app/src/test/java/com/example/ExampleUnitTest.kt
+========================================================================================
+package com.example
+
+import org.junit.Assert.*
+import org.junit.Test
+
+/**
+ * Example local unit test, which will execute on the development machine (host).
+ *
+ * See [testing documentation](http://d.android.com/tools/testing).
+ */
+class ExampleUnitTest {
+  @Test
+  fun addition_isCorrect() {
+    assertEquals(4, 2 + 2)
+  }
+}
+END SOURCE FILE: app/src/test/java/com/example/ExampleUnitTest.kt
+
+========================================================================================
+SOURCE FILE: app/src/test/java/com/example/JourneyTest.kt
+========================================================================================
+package com.example
+
+import com.example.data.UserProgress
+import com.example.ui.StreakInfo
+import com.example.ui.computeBadges
+import com.example.ui.computeStreak
+import com.example.ui.heatLevel
+import com.example.ui.heatmapDates
+import com.example.ui.shiftKey
+import com.example.ui.unlockedAccents
+import com.example.ui.weeklySummary
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+import java.text.SimpleDateFormat
+import java.util.Calendar
+
+class JourneyTest {
+    private val today = "2026-10-08"
+
+    private fun d(
+        daysAgo: Int, sabah: Boolean = true, masaa: Boolean = false, sleep: Boolean = false, tasbeeh: Int = 0
+    ) = UserProgress(shiftKey(today, -daysAgo), sabah, masaa, tasbeeh, sleep)
+
+    @Test fun emptyHistory() {
+        assertEquals(StreakInfo(0, 0, 0, 0), computeStreak(emptyList(), today))
+    }
+
+    @Test fun tenDaysEarnOneGraceDay() {
+        val info = computeStreak((0..9).map { d(it) }, today)
+        assertEquals(10, info.current); assertEquals(10, info.longest); assertEquals(1, info.graceTokens)
+    }
+
+    @Test fun graceDayProtectsOneMissedDay() {
+        val days = (listOf(9, 8, 7, 6, 5, 4, 3) + listOf(1, 0)).map { d(it) }
+        val info = computeStreak(days, today)
+        assertEquals(9, info.current); assertEquals(1, info.graceUsed); assertEquals(0, info.graceTokens)
+    }
+
+    @Test fun missWithoutGraceBreaksStreak() {
+        assertEquals(2, computeStreak((listOf(5, 4, 3) + listOf(1, 0)).map { d(it) }, today).current)
+    }
+
+    @Test fun unfinishedTodayDoesNotBreak() {
+        assertEquals(4, computeStreak((1..4).map { d(it) }, today).current)
+    }
+
+    @Test fun oneTokenCoversOnlyOneMiss() {
+        assertEquals(3, computeStreak((listOf(12, 11, 10, 9, 8, 7, 6) + listOf(2, 1, 0)).map { d(it) }, today).current)
+    }
+
+    @Test fun badgesAndAccents() {
+        val days = (0..9).map { d(it) }
+        val badges = computeBadges(days, computeStreak(days, today))
+        assertTrue(badges.first { it.id == "week" }.unlocked)
+        assertFalse(badges.first { it.id == "month" }.unlocked)
+        assertEquals(setOf("gold", "rose"), unlockedAccents(badges).map { it.key }.toSet())
+    }
+
+    @Test fun heatLevels() {
+        assertEquals(0, heatLevel(null))
+        assertEquals(1, heatLevel(UserProgress("x", totalTasbeeh = 5)))
+        assertEquals(3, heatLevel(UserProgress("x", true, true, 0, true)))
+    }
+
+    @Test fun heatmapEndsToday_andStartsSaturday() {
+        val cells = heatmapDates(today, 12)
+        assertEquals(84, cells.size)
+        assertEquals(today, cells.last { it != null })
+        val cal = Calendar.getInstance().apply { time = SimpleDateFormat("yyyy-MM-dd").parse(cells[0]!!)!! }
+        assertEquals(Calendar.SATURDAY, cal.get(Calendar.DAY_OF_WEEK))
+    }
+
+    @Test fun weeklySummaryCounts() {
+        val s = weeklySummary(listOf(d(0, masaa = true, sleep = true, tasbeeh = 100), d(1, tasbeeh = 50), d(9)), today)
+        assertEquals(2, s.activeDays); assertEquals(150, s.tasbeeh); assertEquals(4, s.wirds)
+        assertEquals(1, s.perfectDays); assertEquals(1, s.fullDays)
+    }
+}
+END SOURCE FILE: app/src/test/java/com/example/JourneyTest.kt
+
+========================================================================================
+SOURCE FILE: app/src/test/java/com/example/StreakCalculationTest.kt
+========================================================================================
+package com.example
+
+import com.example.data.UserProgress
+import com.example.ui.screens.calculateStreak
+import org.junit.Assert.assertEquals
+import org.junit.Test
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
+
+class StreakCalculationTest {
+    private val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+
+    private fun day(daysAgo: Int, done: Boolean = true): UserProgress {
+        val cal = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -daysAgo) }
+        return UserProgress(date = sdf.format(cal.time), completedSabah = done)
+    }
+
+    @Test
+    fun empty_returnsZero() {
+        assertEquals(0, calculateStreak(emptyList()))
+    }
+
+    @Test
+    fun consecutiveDays_areAllCounted() {
+        assertEquals(3, calculateStreak(listOf(day(0), day(1), day(2))))
+    }
+
+    @Test
+    fun gap_stopsTheStreak() {
+        assertEquals(2, calculateStreak(listOf(day(0), day(1), day(3))))
+    }
+
+    @Test
+    fun streakMayStartYesterday() {
+        assertEquals(2, calculateStreak(listOf(day(1), day(2))))
+    }
+
+    @Test
+    fun staleLatestDay_returnsZero() {
+        assertEquals(0, calculateStreak(listOf(day(3))))
+    }
+
+    @Test
+    fun emptyDay_breaksTheStreak() {
+        assertEquals(1, calculateStreak(listOf(day(0), day(1, done = false), day(2))))
+    }
+}
+END SOURCE FILE: app/src/test/java/com/example/StreakCalculationTest.kt
+
+========================================================================================
+SOURCE FILE: app/src/test/java/com/example/TimeModeTest.kt
+========================================================================================
+package com.example
+
+import com.example.ui.theme.TimeMode
+import com.example.ui.theme.resolveTimeMode
+import org.junit.Assert.assertEquals
+import org.junit.Test
+
+class TimeModeTest {
+    @Test fun lightPreferenceIsAlwaysDay() {
+        for (h in 0..23) assertEquals(TimeMode.DAY, resolveTimeMode(isDark = false, hour = h))
+    }
+
+    @Test fun darkPreferenceFollowsTheClock() {
+        assertEquals(TimeMode.FAJR, resolveTimeMode(true, 3))
+        assertEquals(TimeMode.FAJR, resolveTimeMode(true, 6))
+        assertEquals(TimeMode.NIGHT, resolveTimeMode(true, 7))
+        assertEquals(TimeMode.NIGHT, resolveTimeMode(true, 12))
+        assertEquals(TimeMode.MAGHRIB, resolveTimeMode(true, 17))
+        assertEquals(TimeMode.MAGHRIB, resolveTimeMode(true, 18))
+        assertEquals(TimeMode.NIGHT, resolveTimeMode(true, 19))
+        assertEquals(TimeMode.NIGHT, resolveTimeMode(true, 1))
+    }
+}
+END SOURCE FILE: app/src/test/java/com/example/TimeModeTest.kt
+
+========================================================================================
+SOURCE FILE: app/src/test/java/com/example/WirdSuggestionTest.kt
+========================================================================================
+package com.example
+
+import com.example.ui.WirdSlot
+import com.example.ui.suggestWird
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class WirdSuggestionTest {
+    @Test fun morningSuggestsSabah() {
+        val s = suggestWird(hour = 8, sabahDone = false, masaaDone = false)
+        assertEquals(WirdSlot.SABAH, s.slot); assertEquals("sabah", s.category); assertTrue(!s.done)
+        assertEquals(WirdSlot.SABAH, suggestWird(3, false, false).slot)
+        assertEquals(WirdSlot.SABAH, suggestWird(11, false, false).slot)
+    }
+
+    @Test fun doneMorningIsMarkedDone() {
+        assertTrue(suggestWird(8, sabahDone = true, masaaDone = false).done)
+    }
+
+    @Test fun middayFallsBackToTasbihWhenMorningDone() {
+        val s = suggestWird(13, sabahDone = true, masaaDone = false)
+        assertEquals(WirdSlot.FREE, s.slot); assertNull(s.category)
+    }
+
+    @Test fun middayStillOffersMissedMorning() {
+        assertEquals("sabah", suggestWird(13, sabahDone = false, masaaDone = false).category)
+    }
+
+    @Test fun afternoonSuggestsMasaa() {
+        assertEquals("masaa", suggestWird(16, false, false).category)
+        assertTrue(suggestWird(20, false, masaaDone = true).done)
+    }
+
+    @Test fun nightSuggestsSleep() {
+        for (h in listOf(21, 23, 0, 2)) assertEquals("sleep", suggestWird(h, true, true).category)
+    }
+}
+END SOURCE FILE: app/src/test/java/com/example/WirdSuggestionTest.kt
+
+========================================================================================
+SOURCE FILE: app/src/test/java/com/example/data/TopicAzkarSearchTest.kt
+========================================================================================
+package com.example.data
+
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class TopicAzkarSearchTest {
+    @Test
+    fun searchesCommonIntentWordsOffline() {
+        val cases = listOf(
+            "الصباح" to "sabah",
+            "evening" to "masaa",
+            "sleep" to "sleep",
+            "travel" to "travel",
+            "الخوف" to "worry",
+            "القلق" to "worry",
+            "الرزق" to "rizq",
+            "مرض" to "illness",
+            "الاستيقاظ" to "waking"
+        )
+
+        cases.forEach { (query, category) ->
+            assertTrue(
+                "Expected '$query' to return category '$category'",
+                AzkarData.search(query).any { it.category == category }
+            )
+        }
+    }
+
+    @Test
+    fun topicResultsKeepSourceAndRepeatCount() {
+        listOf("الخوف", "الرزق", "المرض", "الاستيقاظ").forEach { query ->
+            val result = AzkarData.search(query).first { it.category in setOf("worry", "rizq", "illness", "waking") }
+            assertFalse("Missing source for '$query'", result.source.isBlank())
+            assertTrue("Invalid repeat count for '$query'", result.repeatCount >= 1)
+        }
+    }
+
+    @Test
+    fun topicCategoriesOpenTheirOfflineContent() {
+        listOf("worry", "rizq", "illness", "waking").forEach { category ->
+            assertTrue(
+                "Expected built-in content for '$category'",
+                AzkarData.builtInOrEmpty(category).isNotEmpty()
+            )
+            assertTrue(CategoryDefaults.isBuiltIn(category))
+        }
+    }
+
+    @Test
+    fun emptyQueryDoesNotReturnEveryDhikr() {
+        assertTrue(AzkarData.search("   ").isEmpty())
+    }
+}
+END SOURCE FILE: app/src/test/java/com/example/data/TopicAzkarSearchTest.kt

@@ -1,0 +1,1910 @@
+BAQIYAT — SOURCE EXPORT FOR AI REVIEW
+Component: ANDROID-APP
+Part: 02
+Source branch: main (export generated on a separate branch)
+Encoding: UTF-8. Original relative paths are marked per file.
+This is a review/export format, not a compilable project folder.
+
+========================================================================================
+SOURCE FILE: app/src/main/java/com/example/data/TopicAzkarData.kt
+========================================================================================
+package com.example.data
+
+/**
+ * Small offline topic index. Every entry keeps its source beside the text,
+ * so search results can show the reference without a network request.
+ */
+object TopicAzkarData {
+    val items = listOf(
+        Zekr(
+            id = 101,
+            text = "اللَّهُمَّ إِنِّي أَعُوذُ بِكَ مِنَ الْهَمِّ وَالْحَزَنِ، وَالْعَجْزِ وَالْكَسَلِ، وَالْجُبْنِ وَالْبُخْلِ، وَضَلَعِ الدَّيْنِ وَغَلَبَةِ الرِّجَالِ",
+            source = "صحيح البخاري (6369)",
+            fadl = "دعاء للاستعاذة من الهم والحزن والعجز والكسل.",
+            repeatCount = 1,
+            category = "worry"
+        ),
+        Zekr(
+            id = 102,
+            text = "أَذْهِبِ الْبَأْسَ رَبَّ النَّاسِ، وَاشْفِ أَنْتَ الشَّافِي، لَا شِفَاءَ إِلَّا شِفَاؤُكَ، شِفَاءً لَا يُغَادِرُ سَقَمًا",
+            source = "صحيح البخاري (5743)، وصحيح مسلم (2191a)",
+            fadl = "دعاء نبوي ورد في رقية المريض.",
+            repeatCount = 1,
+            category = "illness"
+        ),
+        Zekr(
+            id = 103,
+            text = "رَبِّ إِنِّي لِمَا أَنْزَلْتَ إِلَيَّ مِنْ خَيْرٍ فَقِيرٌ",
+            source = "القرآن الكريم، سورة القصص (28:24)",
+            fadl = "دعاء موسى عليه السلام بطلب الخير من الله.",
+            repeatCount = 1,
+            category = "rizq"
+        ),
+        Zekr(
+            id = 104,
+            text = "الْحَمْدُ لِلَّهِ الَّذِي أَحْيَانَا بَعْدَ مَا أَمَاتَنَا وَإِلَيْهِ النُّشُورُ",
+            source = "صحيح البخاري (6312)",
+            fadl = "يقال عند الاستيقاظ من النوم.",
+            repeatCount = 1,
+            category = "waking"
+        )
+    )
+}
+END SOURCE FILE: app/src/main/java/com/example/data/TopicAzkarData.kt
+
+========================================================================================
+SOURCE FILE: app/src/main/java/com/example/data/UserProgress.kt
+========================================================================================
+package com.example.data
+
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+
+/**
+ * قيمة افتراضية لـ date مطلوبة لـ Firestore toObjects (constructor بلا معاملات).
+ */
+@Entity(tableName = "user_progress")
+data class UserProgress(
+    @PrimaryKey val date: String = "",
+    val completedSabah: Boolean = false,
+    val completedMasaa: Boolean = false,
+    val totalTasbeeh: Int = 0,
+    val completedSleep: Boolean = false
+)
+END SOURCE FILE: app/src/main/java/com/example/data/UserProgress.kt
+
+========================================================================================
+SOURCE FILE: app/src/main/java/com/example/notifications/AzkarMessagingService.kt
+========================================================================================
+package com.example.notifications
+
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Intent
+import android.os.Build
+import android.util.Log
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import com.example.MainActivity
+import com.example.R
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
+import com.google.firebase.messaging.FirebaseMessaging
+import com.google.firebase.messaging.FirebaseMessagingService
+import com.google.firebase.messaging.RemoteMessage
+
+class AzkarMessagingService : FirebaseMessagingService() {
+
+    override fun onNewToken(token: String) {
+        super.onNewToken(token)
+        Log.d(TAG, "FCM token refreshed")
+        FirebaseMessaging.getInstance().subscribeToTopic("all")
+            .addOnCompleteListener { task ->
+                Log.d(TAG, "subscribe all: ${task.isSuccessful}")
+            }
+        val user = FirebaseAuth.getInstance().currentUser ?: return
+        FirebaseFirestore.getInstance().collection("users").document(user.uid).set(
+            mapOf(
+                "fcmTokens" to FieldValue.arrayUnion(token),
+                "updatedAt" to FieldValue.serverTimestamp()
+            ),
+            SetOptions.merge()
+        ).addOnFailureListener { e ->
+            Log.w(TAG, "Failed to persist FCM token", e)
+        }
+    }
+
+    override fun onMessageReceived(message: RemoteMessage) {
+        val title = message.notification?.title ?: message.data["title"] ?: "الباقيات"
+        val body = message.notification?.body ?: message.data["body"].orEmpty()
+        val channelId = "owner_updates"
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                channelId,
+                "تحديثات الباقيات",
+                NotificationManager.IMPORTANCE_DEFAULT
+            ).apply {
+                description = "إشعارات المحتوى وردود الشكاوى من لوحة المالك"
+            }
+            getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+        }
+        val intent = PendingIntent.getActivity(
+            this, 0,
+            Intent(this, MainActivity::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val notification = NotificationCompat.Builder(this, channelId)
+            .setSmallIcon(R.drawable.ic_stat_azkar)
+            .setContentTitle(title)
+            .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setContentIntent(intent)
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .build()
+        NotificationManagerCompat.from(this).notify(System.currentTimeMillis().toInt(), notification)
+    }
+
+    companion object {
+        private const val TAG = "AzkarMessaging"
+    }
+}
+END SOURCE FILE: app/src/main/java/com/example/notifications/AzkarMessagingService.kt
+
+========================================================================================
+SOURCE FILE: app/src/main/java/com/example/ui/AppNavGraph.kt
+========================================================================================
+package com.example.ui
+
+import androidx.compose.animation.core.EaseOutCubic
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.Spa
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+import com.example.ui.components.BaqiyatNavItem
+import com.example.ui.components.FloatingNavBar
+import com.example.ui.screens.AiServicesScreen
+import com.example.ui.screens.AzkarScreen
+import com.example.ui.screens.FavoritesScreen
+import com.example.ui.screens.FeedbackScreen
+import com.example.ui.screens.HomeScreen
+import com.example.ui.screens.MoreScreen
+import com.example.ui.screens.SearchScreen
+import com.example.ui.screens.SettingsScreen
+import com.example.ui.screens.WirdEditorScreen
+import com.example.ui.screens.WirdsScreen
+import com.example.ui.screens.JourneyScreen
+import com.example.ui.screens.TasbihScreen
+
+sealed class Screen(
+    val route: String,
+    val title: String,
+    val icon: androidx.compose.ui.graphics.vector.ImageVector
+) {
+    object Home : Screen("home", "الرئيسية", Icons.Default.Home)
+    object Tasbih : Screen("tasbih", "المسبحة", Icons.Default.AutoAwesome)
+    /** المسار القديم "stats" محفوظ حتى لا ينكسر أي رابط داخلي. */
+    object Journey : Screen("stats", "رحلتي", Icons.Default.Spa)
+    object More : Screen("more", "المزيد", Icons.Default.MoreHoriz)
+}
+
+val bottomNavItems = listOf(Screen.Home, Screen.Tasbih, Screen.Journey, Screen.More)
+
+@androidx.compose.material3.ExperimentalMaterial3Api
+@Composable
+fun AppNavGraph(
+    viewModel: AppViewModel,
+    modifier: Modifier = Modifier,
+    navController: NavHostController = rememberNavController(),
+    startDestination: String = "home"
+) {
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentDestination = navBackStackEntry?.destination
+    val unreadFeedback by viewModel.unreadFeedbackCount.collectAsStateWithLifecycle()
+
+    val showBottomBar = currentDestination?.route in bottomNavItems.map { it.route }
+
+    fun openTab(route: String) {
+        navController.navigate(route) {
+            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
+
+    Scaffold(
+        containerColor = Color.Transparent,
+        bottomBar = {
+            if (showBottomBar) {
+                val navItems = remember(unreadFeedback) {
+                    bottomNavItems.map { BaqiyatNavItem(it.title, it.icon, badge = it == Screen.More && unreadFeedback > 0) }
+                }
+                val selectedIndex = bottomNavItems.indexOfFirst { screen ->
+                    currentDestination?.hierarchy?.any { it.route == screen.route } == true
+                }.coerceAtLeast(0)
+                FloatingNavBar(
+                    items = navItems,
+                    selectedIndex = selectedIndex,
+                    onSelect = { index -> openTab(bottomNavItems[index].route) }
+                )
+            }
+        }
+    ) { innerPadding ->
+        NavHost(
+            navController = navController,
+            startDestination = startDestination,
+            modifier = modifier.padding(innerPadding),
+            enterTransition = { fadeIn(tween(280)) + slideInHorizontally(tween(280, easing = EaseOutCubic)) { it / 10 } },
+            exitTransition = { fadeOut(tween(200)) + slideOutHorizontally(tween(280, easing = EaseOutCubic)) { -it / 10 } },
+            popEnterTransition = { fadeIn(tween(280)) },
+            popExitTransition = { fadeOut(tween(200)) }
+        ) {
+            composable("home") {
+                HomeScreen(
+                    viewModel = viewModel,
+                    onNavigateToAzkar = { category -> navController.navigate("azkar/$category") },
+                    onNavigateToSearch = { navController.navigate("search") },
+                    onNavigateToTasbih = { openTab("tasbih") },
+                    onNavigateToAssistant = { navController.navigate("ai_services") },
+                    onNavigateToJourney = { openTab("stats") },
+                    onNavigateToFavorites = { navController.navigate("favorites") }
+                )
+            }
+
+            composable("tasbih") { TasbihScreen(viewModel = viewModel) }
+
+            composable("stats") { JourneyScreen(viewModel = viewModel) }
+
+            composable("more") {
+                MoreScreen(
+                    viewModel = viewModel,
+                    onOpenAssistant = { navController.navigate("ai_services") },
+                    onOpenFeedback = { navController.navigate("feedback") },
+                    onOpenSettings = { navController.navigate("settings") },
+                    onOpenFavorites = { navController.navigate("favorites") },
+                    onOpenWirds = { navController.navigate("wirds") }
+                )
+            }
+
+            composable("wirds") {
+                WirdsScreen(
+                    viewModel = viewModel,
+                    onNavigateBack = { navController.popBackStack() },
+                    onRead = { id -> navController.navigate("azkar/wird_$id") },
+                    onEdit = { id -> navController.navigate("wird_edit/${id ?: "new"}") }
+                )
+            }
+
+            composable("wird_edit/{id}") { backStackEntry ->
+                val id = backStackEntry.arguments?.getString("id")?.takeIf { it != "new" }
+                WirdEditorScreen(
+                    viewModel = viewModel,
+                    wirdId = id,
+                    onDone = { navController.popBackStack() }
+                )
+            }
+
+            composable("favorites") {
+                FavoritesScreen(
+                    viewModel = viewModel,
+                    onNavigateBack = { navController.popBackStack() },
+                    onRead = { navController.navigate("azkar/favorites") }
+                )
+            }
+
+            composable("search") {
+                SearchScreen(
+                    viewModel = viewModel,
+                    onNavigateBack = { navController.popBackStack() },
+                    onOpenCategory = { category -> navController.navigate("azkar/$category") }
+                )
+            }
+
+            composable("azkar/{category}") { backStackEntry ->
+                val category = backStackEntry.arguments?.getString("category") ?: "sabah"
+                AzkarScreen(
+                    category = category,
+                    viewModel = viewModel,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            composable("feedback") {
+                FeedbackScreen(viewModel = viewModel)
+            }
+
+            composable("settings") {
+                SettingsScreen(viewModel = viewModel)
+            }
+
+            composable("ai_services") {
+                AiServicesScreen(viewModel = viewModel, onNavigateBack = { navController.popBackStack() })
+            }
+        }
+    }
+}
+END SOURCE FILE: app/src/main/java/com/example/ui/AppNavGraph.kt
+
+========================================================================================
+SOURCE FILE: app/src/main/java/com/example/ui/AppViewModel.kt
+========================================================================================
+package com.example.ui
+
+import android.content.Context
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
+import com.example.data.AiRepository
+import com.example.data.AuthRepository
+import com.example.data.AzkarCategory
+import com.example.data.CategoryDefaults
+import com.example.data.CustomWird
+import com.example.data.FeedbackDraft
+import com.example.data.FeedbackItem
+import com.example.data.FirestoreRepository
+import com.example.data.ProgressRepository
+import com.example.data.SettingsRepository
+import com.example.data.UserProgress
+import com.example.data.Zekr
+import com.example.ui.theme.AccentTheme
+import com.example.ui.theme.ReaderFont
+import com.google.firebase.functions.FirebaseFunctions
+import com.google.firebase.functions.FirebaseFunctionsException
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+
+class AppViewModel(
+    private val progressRepository: ProgressRepository,
+    private val settingsRepository: SettingsRepository,
+    private val aiRepository: AiRepository,
+    private val authRepository: AuthRepository,
+    private val firestoreRepository: FirestoreRepository
+) : ViewModel() {
+
+    val todayProgress: StateFlow<UserProgress?> = progressRepository.getTodayProgress()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    val recentProgress: StateFlow<List<UserProgress>> = progressRepository.getRecentProgress()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val fontSize: StateFlow<Float> = settingsRepository.fontSizeFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 24f)
+
+    val isDarkMode: StateFlow<Boolean> = settingsRepository.darkModeFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    val isVibrationEnabled: StateFlow<Boolean> = settingsRepository.vibrationFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    val keepScreenOn: StateFlow<Boolean> = settingsRepository.keepScreenOnFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    val autoDnd: StateFlow<Boolean> = settingsRepository.autoDndFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    val hideVirtues: StateFlow<Boolean> = settingsRepository.hideVirtuesFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    val hideSources: StateFlow<Boolean> = settingsRepository.hideSourcesFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    val notificationsEnabled: StateFlow<Boolean> = settingsRepository.notificationsEnabledFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    val remindSabah: StateFlow<Boolean> = settingsRepository.remindSabahFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+    val remindMasaa: StateFlow<Boolean> = settingsRepository.remindMasaaFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+    val remindSleep: StateFlow<Boolean> = settingsRepository.remindSleepFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+    val remindFriday: StateFlow<Boolean> = settingsRepository.remindFridayFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+    val reminderSabahTime: StateFlow<String> = settingsRepository.reminderSabahTimeFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "07:00")
+    val reminderMasaaTime: StateFlow<String> = settingsRepository.reminderMasaaTimeFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "18:00")
+    val reminderSleepTime: StateFlow<String> = settingsRepository.reminderSleepTimeFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "22:00")
+    val reminderFridayTime: StateFlow<String> = settingsRepository.reminderFridayTimeFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "09:00")
+
+    val autoPlayEnabled: StateFlow<Boolean> = settingsRepository.autoPlayFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    val audioSpeed: StateFlow<Float> = settingsRepository.audioSpeedFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 1.0f)
+    val reciterId: StateFlow<String> = settingsRepository.reciterIdFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "mishary")
+
+    /** الأذكار المفضلة (معرّفات). Eagerly كي تكون جاهزة عند فتح القارئ. */
+    val favorites: StateFlow<Set<Int>> = settingsRepository.favoritesFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
+
+    val savedAiAzkar: StateFlow<List<String>> = settingsRepository.savedAiAzkarFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val readerFont: StateFlow<ReaderFont> = settingsRepository.readerFontFlow
+        .map { ReaderFont.from(it) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ReaderFont.AMIRI)
+
+    /** كل الصفوف (الأحدث أولاً) لشاشة «رحلتي». */
+    val allProgress: StateFlow<List<UserProgress>> = progressRepository.getAllProgressFlow()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val weeklyDaysGoal: StateFlow<Int> = settingsRepository.weeklyGoalFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 5)
+
+    val accentTheme: StateFlow<AccentTheme> = settingsRepository.accentFlow
+        .map { AccentTheme.from(it) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, AccentTheme.GOLD)
+
+    val dailyTasbeehGoal: StateFlow<Int> = settingsRepository.dailyGoalFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 100)
+
+    val tasbihTarget: StateFlow<Int> = settingsRepository.tasbihTargetFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 33)
+
+    val lastReadCategory: StateFlow<String> = settingsRepository.lastReadCategoryFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
+
+    val lastReadIndex: StateFlow<Int> = settingsRepository.lastReadIndexFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    val lastReadRemaining: StateFlow<Int> = settingsRepository.lastReadRemainingFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    val customWirds: StateFlow<List<CustomWird>> = settingsRepository.customWirdsFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    /** تصنيفات مدمجة: الأساسية + الديناميكية من Firestore. */
+    val categories: StateFlow<List<AzkarCategory>> = firestoreRepository.observeCategories()
+        .map { CategoryDefaults.merge(it) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), CategoryDefaults.builtIn)
+
+    private val _statusMessage = MutableStateFlow("")
+    val statusMessage: StateFlow<String> = _statusMessage.asStateFlow()
+
+    private val _isLoadingAi = MutableStateFlow(false)
+    val isLoadingAi: StateFlow<Boolean> = _isLoadingAi.asStateFlow()
+
+    private var aiJob: Job? = null
+    private val _lastAiLatencyMs = MutableStateFlow<Long?>(null)
+    val lastAiLatencyMs: StateFlow<Long?> = _lastAiLatencyMs.asStateFlow()
+
+    private val _chatMessages = MutableStateFlow(
+        listOf(
+            ChatMessage(
+                "السلام عليكم، كيف يمكنني مساعدتك اليوم؟ (أذكار، أدعية، فضل ذكر معين...)",
+                isUser = false
+            )
+        )
+    )
+    val chatMessages: StateFlow<List<ChatMessage>> = _chatMessages.asStateFlow()
+
+    private val _userSignedIn = MutableStateFlow(authRepository.getCurrentUser() != null)
+    val userSignedIn: StateFlow<Boolean> = _userSignedIn.asStateFlow()
+
+    val myFeedback: StateFlow<List<FeedbackItem>> = firestoreRepository.observeMyFeedback()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val unreadFeedbackCount: StateFlow<Int> = myFeedback
+        .map { list -> list.count { it.replyUnread } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    private var pendingTasbeeh = 0
+    private var flushJob: Job? = null
+
+    init {
+        viewModelScope.launch {
+            progressRepository.initTodayProgress()
+        }
+    }
+
+    fun addTasbeeh(count: Int = 1) {
+        pendingTasbeeh += count
+        flushJob?.cancel()
+        flushJob = viewModelScope.launch {
+            delay(800)
+            flushTasbeeh()
+        }
+    }
+
+    private suspend fun flushTasbeeh() {
+        val toWrite = pendingTasbeeh
+        pendingTasbeeh = 0
+        if (toWrite > 0) {
+            progressRepository.addTasbeeh(toWrite)
+        }
+        flushJob = null
+    }
+
+    fun flushPendingTasbeeh() {
+        viewModelScope.launch { flushTasbeeh() }
+    }
+
+    override fun onCleared() {
+        flushPendingTasbeeh()
+        super.onCleared()
+    }
+
+    fun completeSabah() {
+        flushPendingTasbeeh()
+        viewModelScope.launch { progressRepository.completeSabah() }
+    }
+
+    fun completeMasaa() {
+        flushPendingTasbeeh()
+        viewModelScope.launch { progressRepository.completeMasaa() }
+    }
+
+    fun completeSleep() {
+        viewModelScope.launch { progressRepository.completeSleep() }
+    }
+
+    fun saveLastReadState(category: String, index: Int, remaining: Int) {
+        viewModelScope.launch {
+            settingsRepository.saveLastReadState(category, index, remaining)
+        }
+    }
+
+    fun clearLastReadState() {
+        viewModelScope.launch { settingsRepository.clearLastReadState() }
+    }
+
+    fun setFontSize(size: Float) {
+        viewModelScope.launch { settingsRepository.setFontSize(size) }
+    }
+
+    fun setDarkMode(isDark: Boolean) {
+        viewModelScope.launch { settingsRepository.setDarkMode(isDark) }
+    }
+
+    fun setVibration(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setVibration(enabled) }
+    }
+
+    fun setKeepScreenOn(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setKeepScreenOn(enabled) }
+    }
+
+    fun setAutoDnd(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setAutoDnd(enabled) }
+    }
+
+    fun setHideVirtues(hide: Boolean) {
+        viewModelScope.launch { settingsRepository.setHideVirtues(hide) }
+    }
+
+    fun setHideSources(hide: Boolean) {
+        viewModelScope.launch { settingsRepository.setHideSources(hide) }
+    }
+
+    fun setNotificationsEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setNotificationsEnabled(enabled)
+            firestoreRepository.updateNotificationPrefs(enabled)
+        }
+    }
+    fun setReminderEnabled(category: String, enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setReminderEnabled(category, enabled) }
+    }
+
+    fun setReminderTime(category: String, time: String) {
+        viewModelScope.launch { settingsRepository.setReminderTime(category, time) }
+    }
+
+
+    fun setAutoPlay(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setAutoPlay(enabled) }
+    }
+    fun setAudioSpeed(speed: Float) {
+        viewModelScope.launch { settingsRepository.setAudioSpeed(speed) }
+    }
+
+    fun setReciterId(id: String) {
+        viewModelScope.launch { settingsRepository.setReciterId(id) }
+    }
+
+    fun setWeeklyDaysGoal(days: Int) {
+        viewModelScope.launch { settingsRepository.setWeeklyGoal(days) }
+    }
+
+    fun setAccentTheme(key: String) {
+        viewModelScope.launch { settingsRepository.setAccent(key) }
+    }
+
+    fun toggleFavorite(id: Int) {
+        viewModelScope.launch { settingsRepository.toggleFavorite(id) }
+    }
+    fun saveAiZekr(text: String) {
+        viewModelScope.launch {
+            settingsRepository.saveAiZekr(text)
+            _statusMessage.value = "تم حفظ إجابة المساعد في «أذكاري»."
+        }
+    }
+
+    fun removeAiZekr(text: String) {
+        viewModelScope.launch { settingsRepository.removeAiZekr(text) }
+    }
+
+    fun setReaderFont(key: String) {
+        viewModelScope.launch { settingsRepository.setReaderFont(key) }
+    }
+
+    fun setDailyTasbeehGoal(goal: Int) {
+        viewModelScope.launch { settingsRepository.setDailyGoal(goal) }
+    }
+
+    fun setTasbihTarget(target: Int) {
+        viewModelScope.launch { settingsRepository.setTasbihTarget(target) }
+    }
+
+    fun saveCustomWird(wird: CustomWird) {
+        viewModelScope.launch { settingsRepository.saveCustomWird(wird) }
+    }
+
+    fun deleteCustomWird(id: String) {
+        viewModelScope.launch { settingsRepository.deleteCustomWird(id) }
+    }
+
+    fun sendChatMessage(text: String) {
+        val message = text.trim()
+        if (message.isEmpty() || _isLoadingAi.value) return
+        _isLoadingAi.value = true
+        _chatMessages.update {
+            it + ChatMessage(message, isUser = true) +
+                ChatMessage("جاري البحث...", isUser = false, isLoading = true)
+        }
+        aiJob = viewModelScope.launch {
+            val startedAt = android.os.SystemClock.elapsedRealtime()
+            try {
+                val reply = try {
+                    aiRepository.ask(message)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    "تعذر الاتصال. يرجى التأكد من اتصالك بالإنترنت للميزات الذكية 🌐"
+                }
+                _lastAiLatencyMs.value = android.os.SystemClock.elapsedRealtime() - startedAt
+                _chatMessages.update { list ->
+                    list.filterNot { it.isLoading } + ChatMessage(reply, isUser = false, actionsEnabled = true)
+                }
+            } finally {
+                _isLoadingAi.value = false
+                aiJob = null
+            }
+        }
+    }
+
+    fun cancelAiRequest() {
+        if (!_isLoadingAi.value) return
+        aiJob?.cancel()
+        _chatMessages.update { list ->
+            list.filterNot { it.isLoading } + ChatMessage("تم إلغاء الطلب.", isUser = false)
+        }
+        _isLoadingAi.value = false
+        aiJob = null
+    }
+
+    fun clearStatusMessage() { _statusMessage.value = "" }
+
+    fun signIn(context: Context) {
+        viewModelScope.launch {
+            val success = authRepository.signInWithGoogle(context)
+            if (success) {
+                _userSignedIn.value = true
+                _statusMessage.value = "تم تسجيل الدخول بنجاح!"
+                val enabled = settingsRepository.notificationsEnabledFlow.first()
+                firestoreRepository.saveFcmToken(notificationsEnabled = enabled)
+            } else {
+                _statusMessage.value = "فشل تسجيل الدخول أو تم إلغاؤه."
+            }
+        }
+    }
+
+    fun signOut() {
+        viewModelScope.launch {
+            authRepository.signOut()
+            _userSignedIn.value = false
+            _statusMessage.value = "تم تسجيل الخروج."
+        }
+    }
+
+    fun deleteAccount() {
+        viewModelScope.launch {
+            _statusMessage.value = "جاري حذف الحساب..."
+            try {
+                FirebaseFunctions.getInstance("europe-west1")
+                    .getHttpsCallable("deleteAccount")
+                    .call()
+                    .await()
+                progressRepository.clearLocalProgress()
+                progressRepository.initTodayProgress()
+                authRepository.signOut()
+                _userSignedIn.value = false
+                _statusMessage.value = "تم حذف الحساب نهائياً."
+            } catch (e: FirebaseFunctionsException) {
+                _statusMessage.value = when (e.code) {
+                    FirebaseFunctionsException.Code.UNAUTHENTICATED ->
+                        "سجّل الدخول مجدداً ثم أعد المحاولة."
+                    else -> "تعذر حذف الحساب. حاول لاحقاً."
+                }
+            } catch (_: Exception) {
+                _statusMessage.value = "تعذر حذف الحساب. تحقق من الاتصال."
+            }
+        }
+    }
+
+    fun markFeedbackReplyRead(feedbackId: String) {
+        viewModelScope.launch { firestoreRepository.markFeedbackReplyRead(feedbackId) }
+    }
+
+    fun submitFeedback(draft: FeedbackDraft, context: Context?) {
+        viewModelScope.launch {
+            if (authRepository.getCurrentUser() == null) {
+                if (context == null) {
+                    _statusMessage.value = "يجب تسجيل الدخول لإرسال الطلب."
+                    return@launch
+                }
+                val signedIn = authRepository.signInWithGoogle(context)
+                _userSignedIn.value = signedIn
+                if (!signedIn) {
+                    _statusMessage.value = "يجب تسجيل الدخول لإرسال الطلب."
+                    return@launch
+                }
+                val enabled = settingsRepository.notificationsEnabledFlow.first()
+                firestoreRepository.saveFcmToken(notificationsEnabled = enabled)
+            }
+            val result = firestoreRepository.submitFeedback(draft, draft.attachmentUri)
+            _statusMessage.value = if (result.isSuccess) {
+                "تم إرسال طلبك بنجاح، ويمكنك متابعة حالته من هنا."
+            } else {
+                "تعذر إرسال الطلب. حاول مرة أخرى."
+            }
+        }
+    }
+
+    fun syncData() {
+        viewModelScope.launch {
+            _statusMessage.value = "جاري المزامنة مع السحابة..."
+            val remote = firestoreRepository.fetchProgress()
+            if (remote == null) {
+                _statusMessage.value = "تعذرت المزامنة، تأكد من اتصالك وتسجيل الدخول 🌐"
+                return@launch
+            }
+            progressRepository.syncProgress(remote)
+            val local = progressRepository.getAllProgress().ifEmpty {
+                progressRepository.getRecentProgress().first()
+            }
+            val ok = firestoreRepository.backupProgress(local)
+            _statusMessage.value =
+                if (ok) "تمت مزامنة البستان بنجاح! 🌴" else "تعذر رفع التقدم إلى السحابة"
+        }
+    }
+
+    suspend fun fetchPublishedAzkar(category: String): List<Zekr> =
+        firestoreRepository.fetchPublishedAzkar(category)
+
+    fun observePublishedAzkar(category: String): Flow<List<Zekr>> =
+        firestoreRepository.observePublishedAzkar(category)
+}
+
+class AppViewModelFactory(
+    private val progressRepository: ProgressRepository,
+    private val settingsRepository: SettingsRepository,
+    private val aiRepository: AiRepository,
+    private val authRepository: AuthRepository,
+    private val firestoreRepository: FirestoreRepository
+) : ViewModelProvider.Factory {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(AppViewModel::class.java)) {
+            @Suppress("UNCHECKED_CAST")
+            return AppViewModel(
+                progressRepository,
+                settingsRepository,
+                aiRepository,
+                authRepository,
+                firestoreRepository
+            ) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
+    }
+}
+END SOURCE FILE: app/src/main/java/com/example/ui/AppViewModel.kt
+
+========================================================================================
+SOURCE FILE: app/src/main/java/com/example/ui/AudioPlayer.kt
+========================================================================================
+package com.example.ui
+
+import android.content.Context
+import android.media.AudioAttributes
+import android.media.MediaPlayer
+import android.os.Build
+import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
+import android.speech.tts.Voice
+import android.util.Log
+import java.io.File
+import java.io.IOException
+import java.net.HttpURLConnection
+import java.net.URL
+import java.security.MessageDigest
+import java.util.Locale
+import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
+import kotlinx.coroutines.CancellableContinuation
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
+
+/**
+ * Audio playback for Baqiyat:
+ * - prefers a supplied HTTPS recording when one exists,
+ * - caches recordings inside app-private storage for offline playback,
+ * - keeps Arabic Text-to-Speech as the offline fallback.
+ *
+ * Recording URLs are content metadata, not bundled API credentials.
+ */
+class AudioPlayer(context: Context) : TextToSpeech.OnInitListener {
+    private val appContext = context.applicationContext
+    private var tts: TextToSpeech? = null
+    private var isInitialized = false
+    private var speechRate = DEFAULT_TTS_RATE
+
+    private var mediaPlayer: MediaPlayer? = null
+    private var mediaGeneration = 0
+    private var recordingRepeatsRemaining = 0
+    private var recordingCompletion: (() -> Unit)? = null
+
+    private val _isPlaying = MutableStateFlow(false)
+    val isPlaying: StateFlow<Boolean> = _isPlaying.asStateFlow()
+
+    private val continuations = ConcurrentHashMap<String, CancellableContinuation<Boolean>>()
+    private val ttsRemaining = AtomicInteger(0)
+    private var ttsSequenceCompletion: (() -> Unit)? = null
+
+    private val audioCacheDirectory = File(appContext.filesDir, "reciter-audio")
+
+    init {
+        tts = TextToSpeech(appContext, this)
+    }
+
+    override fun onInit(status: Int) {
+        if (status != TextToSpeech.SUCCESS) {
+            Log.e(TAG, "TTS initialization failed with status=$status")
+            return
+        }
+
+        val engine = tts ?: return
+        val result = engine.setLanguage(Locale.forLanguageTag("ar"))
+        if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+            Log.w(TAG, "Arabic TTS is unavailable on this device")
+            return
+        }
+
+        engine.setSpeechRate(speechRate)
+        engine.setPitch(1.0f)
+        selectArabicVoice(engine)
+        engine.setOnUtteranceProgressListener(
+            object : UtteranceProgressListener() {
+                override fun onStart(utteranceId: String?) {
+                    _isPlaying.value = true
+                }
+
+                override fun onDone(utteranceId: String?) {
+                    utteranceId?.let { id ->
+                        continuations.remove(id)?.let { continuation ->
+                            if (continuation.isActive) continuation.resume(true) { _, _, _ -> }
+                        }
+                    }
+                    finishTtsUtterance()
+                }
+
+                @Deprecated("Deprecated in Java")
+                override fun onError(utteranceId: String?) {
+                    utteranceId?.let { id ->
+                        continuations.remove(id)?.let { continuation ->
+                            if (continuation.isActive) continuation.resume(false) { _, _, _ -> }
+                        }
+                    }
+                    finishTtsUtterance()
+                }
+
+                override fun onStop(utteranceId: String?, interrupted: Boolean) {
+                    utteranceId?.let { id ->
+                        continuations.remove(id)?.let { continuation ->
+                            if (continuation.isActive) continuation.resume(false) { _, _, _ -> }
+                        }
+                    }
+                    // stop() owns queue-state resets. A delayed callback from an old
+                    // utterance must not cancel a newer playback sequence.
+                }
+            }
+        )
+        isInitialized = true
+        Log.d(TAG, "Arabic TTS fallback is ready")
+    }
+
+    private fun selectArabicVoice(engine: TextToSpeech) {
+        val selected = engine.voices.orEmpty()
+            .filter { it.locale.language.equals("ar", ignoreCase = true) }
+            .sortedWith(
+                compareBy<Voice> { it.isNetworkConnectionRequired }
+                    .thenBy { if (it.locale == Locale("ar", "SA")) 0 else 1 }
+            )
+            .firstOrNull()
+
+        selected?.let { voice ->
+            runCatching { engine.voice = voice }
+                .onFailure { Log.w(TAG, "Unable to select Arabic TTS voice", it) }
+        }
+    }
+
+    /** Plays a verified HTTPS recording; downloaded copies are preferred when present. */
+    fun playRecording(
+        url: String,
+        speed: Float = 1.0f,
+        repetitions: Int = 1,
+        onCompletion: (() -> Unit)? = null
+    ) {
+        if (!isHttpsUrl(url)) {
+            Log.w(TAG, "Refusing a non-HTTPS recording URL")
+            return
+        }
+
+        stop()
+        val generation = mediaGeneration
+        recordingRepeatsRemaining = repetitions.coerceIn(1, MAX_REPETITIONS)
+        recordingCompletion = onCompletion
+
+        val cachedFile = cacheFileFor(url).takeIf { it.isFile && it.length() > 0L }
+        val source = cachedFile?.absolutePath ?: url.trim()
+        val player = MediaPlayer()
+        mediaPlayer = player
+
+        try {
+            player.setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                    .build()
+            )
+            player.setDataSource(source)
+            player.setOnPreparedListener { prepared ->
+                if (generation != mediaGeneration || mediaPlayer !== prepared) {
+                    runCatching { prepared.release() }
+                    return@setOnPreparedListener
+                }
+                runCatching {
+                    prepared.setPlaybackParams(
+                        prepared.playbackParams.setSpeed(speed.coerceIn(MIN_RECORDING_RATE, MAX_RECORDING_RATE))
+                    )
+                }.onFailure { Log.w(TAG, "Recording speed control is unavailable", it) }
+                _isPlaying.value = true
+                prepared.start()
+            }
+            player.setOnCompletionListener { completed ->
+                if (generation != mediaGeneration || mediaPlayer !== completed) return@setOnCompletionListener
+                if (recordingRepeatsRemaining > 1) {
+                    recordingRepeatsRemaining--
+                    runCatching {
+                        completed.seekTo(0)
+                        completed.start()
+                    }.onFailure { finishRecording(generation, completed) }
+                } else {
+                    finishRecording(generation, completed)
+                }
+            }
+            player.setOnErrorListener { failed, what, extra ->
+                Log.w(TAG, "Recording playback failed (what=$what, extra=$extra)")
+                finishRecording(generation, failed)
+                true
+            }
+            player.prepareAsync()
+        } catch (error: Exception) {
+            Log.e(TAG, "Unable to start recording playback", error)
+            finishRecording(generation, player)
+        }
+    }
+
+    private fun finishRecording(generation: Int, player: MediaPlayer) {
+        if (generation != mediaGeneration) {
+            runCatching { player.release() }
+            return
+        }
+        _isPlaying.value = false
+        recordingRepeatsRemaining = 0
+        if (mediaPlayer === player) mediaPlayer = null
+        runCatching { player.setOnCompletionListener(null) }
+        runCatching { player.setOnErrorListener(null) }
+        runCatching { player.release() }
+        val callback = recordingCompletion
+        recordingCompletion = null
+        callback?.invoke()
+    }
+
+    /**
+     * Downloads an HTTPS recording into app-private storage. A completed file is moved
+     * into place atomically; partial downloads are never treated as an offline copy.
+     */
+    suspend fun downloadRecording(url: String): Boolean = withContext(Dispatchers.IO) {
+        if (!isHttpsUrl(url)) return@withContext false
+
+        val destination = cacheFileFor(url)
+        if (destination.isFile && destination.length() > 0L) return@withContext true
+        if (!audioCacheDirectory.exists() && !audioCacheDirectory.mkdirs()) return@withContext false
+
+        val temporary = File(audioCacheDirectory, destination.name + ".part")
+        var connection: HttpURLConnection? = null
+        try {
+            connection = (URL(url.trim()).openConnection() as? HttpURLConnection)
+                ?: return@withContext false
+            connection.connectTimeout = CONNECT_TIMEOUT_MS
+            connection.readTimeout = READ_TIMEOUT_MS
+            connection.instanceFollowRedirects = true
+            connection.setRequestProperty("User-Agent", "Baqiyat/1.0")
+            connection.connect()
+
+            if (connection.responseCode !in 200..299 ||
+                !connection.url.protocol.equals("https", ignoreCase = true)
+            ) return@withContext false
+
+            if (connection.contentLengthLong > MAX_RECORDING_BYTES) return@withContext false
+
+            var downloaded = 0L
+            connection.inputStream.buffered().use { input ->
+                temporary.outputStream().buffered().use { output ->
+                    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                    while (true) {
+                        val count = input.read(buffer)
+                        if (count < 0) break
+                        downloaded += count
+                        if (downloaded > MAX_RECORDING_BYTES) {
+                            throw IOException("Recording exceeds the configured download limit")
+                        }
+                        output.write(buffer, 0, count)
+                    }
+                }
+            }
+            if (downloaded == 0L) return@withContext false
+
+            if (destination.exists()) destination.delete()
+            if (!temporary.renameTo(destination)) {
+                temporary.copyTo(destination, overwrite = true)
+                temporary.delete()
+            }
+            destination.isFile && destination.length() > 0L
+        } catch (error: Exception) {
+            Log.w(TAG, "Recording download failed", error)
+            false
+        } finally {
+            connection?.disconnect()
+            if (temporary.exists()) temporary.delete()
+        }
+    }
+
+    fun hasCachedRecording(url: String): Boolean {
+        val file = cacheFileFor(url)
+        return isHttpsUrl(url) && file.isFile && file.length() > 0L
+    }
+
+    private fun cacheFileFor(url: String): File {
+        val digest = MessageDigest.getInstance("SHA-256")
+            .digest(url.trim().toByteArray(Charsets.UTF_8))
+            .joinToString("") { byte -> "%02x".format(byte) }
+        return File(audioCacheDirectory, "$digest.mp3")
+    }
+
+    private fun isHttpsUrl(url: String): Boolean =
+        url.trim().startsWith("https://", ignoreCase = true)
+
+    suspend fun playAndWait(text: String, rate: Float = speechRate): Boolean =
+        suspendCancellableCoroutine { continuation ->
+            stop()
+            if (!isInitialized) {
+                continuation.resume(false) { _, _, _ -> }
+                return@suspendCancellableCoroutine
+            }
+
+            val clean = cleanForSpeech(text)
+            if (clean.isBlank()) {
+                continuation.resume(false) { _, _, _ -> }
+                return@suspendCancellableCoroutine
+            }
+
+            setSpeechRate(rate)
+            val id = UUID.randomUUID().toString()
+            continuations[id] = continuation
+            ttsRemaining.set(1)
+
+            val result = tts?.speak(clean, TextToSpeech.QUEUE_FLUSH, null, id)
+            if (result != TextToSpeech.SUCCESS) {
+                continuations.remove(id)
+                ttsRemaining.set(0)
+                continuation.resume(false) { _, _, _ -> }
+                _isPlaying.value = false
+            }
+            continuation.invokeOnCancellation {
+                tts?.stop()
+                continuations.remove(id)
+                ttsRemaining.set(0)
+                _isPlaying.value = false
+            }
+        }
+
+    fun playLoop(
+        text: String,
+        times: Int,
+        rate: Float = speechRate,
+        onCompletion: (() -> Unit)? = null
+    ) {
+        if (!isInitialized || times < 1) return
+        val clean = cleanForSpeech(text)
+        if (clean.isBlank()) return
+
+        stop()
+        setSpeechRate(rate)
+        val count = times.coerceIn(1, MAX_REPETITIONS)
+        ttsRemaining.set(count)
+        ttsSequenceCompletion = onCompletion
+
+        repeat(count) { index ->
+            val id = UUID.randomUUID().toString()
+            val queueMode = if (index == 0) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
+            val result = tts?.speak(clean, queueMode, null, id)
+            if (result != TextToSpeech.SUCCESS) {
+                Log.w(TAG, "TTS rejected an utterance")
+                ttsRemaining.set(0)
+                ttsSequenceCompletion = null
+                _isPlaying.value = false
+            }
+        }
+    }
+
+    private fun finishTtsUtterance() {
+        val remaining = ttsRemaining.updateAndGet { current -> if (current > 0) current - 1 else 0 }
+        if (remaining == 0) {
+            _isPlaying.value = false
+            val callback = ttsSequenceCompletion
+            ttsSequenceCompletion = null
+            callback?.invoke()
+        }
+    }
+
+    fun setSpeechRate(rate: Float) {
+        speechRate = rate.coerceIn(MIN_TTS_RATE, MAX_TTS_RATE)
+        if (isInitialized) tts?.setSpeechRate(speechRate)
+    }
+
+    fun stop() {
+        mediaGeneration++
+        val player = mediaPlayer
+        mediaPlayer = null
+        if (player != null) {
+            runCatching { player.setOnCompletionListener(null) }
+            runCatching { player.setOnErrorListener(null) }
+            runCatching { player.stop() }
+            runCatching { player.release() }
+        }
+        recordingRepeatsRemaining = 0
+        recordingCompletion = null
+
+        if (isInitialized) runCatching { tts?.stop() }
+        continuations.values.forEach { continuation ->
+            if (continuation.isActive) continuation.resume(false) { _, _, _ -> }
+        }
+        continuations.clear()
+        ttsRemaining.set(0)
+        ttsSequenceCompletion = null
+        _isPlaying.value = false
+    }
+
+    fun shutdown() {
+        stop()
+        runCatching { tts?.shutdown() }
+        tts = null
+        isInitialized = false
+    }
+
+    private fun cleanForSpeech(text: String): String =
+        text
+            .replace("ﷺ", "صلى الله عليه وسلم")
+            .replace("۝", ". ")
+            .replace(Regex("[\\u06D6-\\u06ED]"), "")
+            .replace("ـ", "")
+            .replace(Regex("[\\u200B-\\u200F\\u202A-\\u202E]"), "")
+            .replace("…", "... ")
+            .replace(Regex("[،؛]"), "$0 ")
+            .replace(Regex("\\s+"), " ")
+            .trim()
+
+    private companion object {
+        const val TAG = "AudioPlayer"
+        const val DEFAULT_TTS_RATE = 0.75f
+        const val MIN_TTS_RATE = 0.5f
+        const val MAX_TTS_RATE = 1.5f
+        const val MIN_RECORDING_RATE = 0.75f
+        const val MAX_RECORDING_RATE = 1.25f
+        const val MAX_REPETITIONS = 100
+        const val MAX_RECORDING_BYTES = 50L * 1024L * 1024L
+        const val CONNECT_TIMEOUT_MS = 15_000
+        const val READ_TIMEOUT_MS = 30_000
+    }
+}
+END SOURCE FILE: app/src/main/java/com/example/ui/AudioPlayer.kt
+
+========================================================================================
+SOURCE FILE: app/src/main/java/com/example/ui/CategoryIcons.kt
+========================================================================================
+package com.example.ui
+
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBalance
+import androidx.compose.material.icons.filled.AirlineSeatFlat
+import androidx.compose.material.icons.filled.Book
+import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.NightsStay
+import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Umbrella
+import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.ui.graphics.vector.ImageVector
+
+/** مفاتيح الأيقونات المسموحة في قواعد Firestore ولوحة الإدارة. المجهول يرجع نجمة. */
+fun categoryIcon(key: String): ImageVector = when (key) {
+    "sun" -> Icons.Default.WbSunny
+    "moon" -> Icons.Default.NightsStay
+    "bed" -> Icons.Default.AirlineSeatFlat
+    "car" -> Icons.Default.DirectionsCar
+    "heart" -> Icons.Default.Favorite
+    "book" -> Icons.Default.Book
+    "home" -> Icons.Default.Home
+    "food" -> Icons.Default.Restaurant
+    "rain" -> Icons.Default.Umbrella
+    "shield" -> Icons.Default.Shield
+    "mosque" -> Icons.Default.AccountBalance
+    else -> Icons.Default.Star
+}
+END SOURCE FILE: app/src/main/java/com/example/ui/CategoryIcons.kt
+
+========================================================================================
+SOURCE FILE: app/src/main/java/com/example/ui/ChatMessage.kt
+========================================================================================
+package com.example.ui
+
+data class ChatMessage(
+    val text: String,
+    val isUser: Boolean,
+    val isLoading: Boolean = false,
+    val actionsEnabled: Boolean = false
+)
+END SOURCE FILE: app/src/main/java/com/example/ui/ChatMessage.kt
+
+========================================================================================
+SOURCE FILE: app/src/main/java/com/example/ui/Haptics.kt
+========================================================================================
+package com.example.ui
+
+import android.content.Context
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
+
+/** أنماط اهتزاز موحدة: نقرة خفيفة، علامة كل 33، وإتمام مزدوج. */
+object Haptics {
+    private fun vibrator(context: Context): Vibrator? =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager)?.defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+        }
+
+    fun tick(context: Context) = oneShot(context, 12)
+
+    fun mark(context: Context) = oneShot(context, 45)
+
+    fun complete(context: Context) = pattern(context, longArrayOf(0, 60, 70, 120))
+
+    private fun oneShot(context: Context, ms: Long) {
+        val v = vibrator(context) ?: return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            v.vibrate(VibrationEffect.createOneShot(ms, VibrationEffect.DEFAULT_AMPLITUDE))
+        } else {
+            @Suppress("DEPRECATION") v.vibrate(ms)
+        }
+    }
+
+    private fun pattern(context: Context, timings: LongArray) {
+        val v = vibrator(context) ?: return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            v.vibrate(VibrationEffect.createWaveform(timings, -1))
+        } else {
+            @Suppress("DEPRECATION") v.vibrate(timings, -1)
+        }
+    }
+}
+END SOURCE FILE: app/src/main/java/com/example/ui/Haptics.kt
+
+========================================================================================
+SOURCE FILE: app/src/main/java/com/example/ui/Journey.kt
+========================================================================================
+package com.example.ui
+
+import com.example.data.UserProgress
+import com.example.ui.theme.AccentTheme
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
+
+/*
+ * منطق «رحلتي»: سلسلة الالتزام مع أيام العفو، الشارات، الخريطة الحرارية، الملخص الأسبوعي.
+ * كله دوال نقية بلا اعتماد على أندرويد كي تُختبر على الجهاز المضيف.
+ */
+
+private val DATE_RE = Regex("^\\d{4}-\\d{2}-\\d{2}$")
+private fun fmt() = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+
+fun todayKey(): String = fmt().format(java.util.Date())
+
+fun shiftKey(key: String, days: Int): String {
+    val cal = Calendar.getInstance()
+    cal.time = fmt().parse(key)!!
+    cal.set(Calendar.HOUR_OF_DAY, 12) // يتجنب مشاكل منتصف الليل عند تغيير التوقيت الصيفي
+    cal.add(Calendar.DAY_OF_YEAR, days)
+    return fmt().format(cal.time)
+}
+
+fun UserProgress.wirdCount(): Int = listOf(completedSabah, completedMasaa, completedSleep).count { it }
+fun UserProgress.isActive(): Boolean = wirdCount() > 0 || totalTasbeeh > 0
+
+// ───────────── السلسلة وأيام العفو ─────────────
+
+/** كل 7 أيام التزام تكسب يوم عفو (حتى يومين) يحمي السلسلة من يوم فائت. */
+const val GRACE_EVERY = 7
+const val MAX_GRACE = 2
+
+data class StreakInfo(val current: Int, val longest: Int, val graceTokens: Int, val graceUsed: Int)
+
+/**
+ * يحاكي الأيام من أقدم صف إلى اليوم:
+ * يوم نشط ← تزيد السلسلة، وعند مضاعفات 7 يُكسب يوم عفو.
+ * يوم فائت ← يُستهلك يوم عفو إن وُجد (السلسلة تبقى ولا تزيد)، وإلا تنقطع.
+ * اليوم الحالي لا يُحاسَب إن لم يُنجَز بعد.
+ */
+fun computeStreak(progress: List<UserProgress>, today: String = todayKey()): StreakInfo {
+    val rows = progress.filter { DATE_RE.matches(it.date) }
+    val first = rows.minOfOrNull { it.date } ?: return StreakInfo(0, 0, 0, 0)
+    if (first > today) return StreakInfo(0, 0, 0, 0)
+    val byDate = rows.associateBy { it.date }
+    var day = first
+    var streak = 0
+    var longest = 0
+    var tokens = 0
+    var used = 0
+    while (true) {
+        if (byDate[day]?.isActive() == true) {
+            streak++
+            if (streak % GRACE_EVERY == 0) tokens = minOf(tokens + 1, MAX_GRACE)
+            longest = maxOf(longest, streak)
+        } else if (day != today) {
+            if (streak > 0 && tokens > 0) {
+                tokens--
+                used++
+            } else {
+                streak = 0
+                used = 0
+            }
+        }
+        if (day == today) break
+        day = shiftKey(day, 1)
+    }
+    return StreakInfo(streak, longest, tokens, used)
+}
+
+// ───────────── الشارات ─────────────
+
+data class Badge(
+    val id: String,
+    val title: String,
+    val description: String,
+    val unlocked: Boolean,
+    val progress: Float
+)
+
+fun computeBadges(all: List<UserProgress>, info: StreakInfo): List<Badge> {
+    val tasbeeh = all.sumOf { it.totalTasbeeh }
+    val perfect = all.count { it.completedSabah && it.completedMasaa && it.completedSleep }
+    fun badge(id: String, title: String, desc: String, value: Int, target: Int) =
+        Badge(id, title, desc, value >= target, (value / target.toFloat()).coerceIn(0f, 1f))
+    return listOf(
+        badge("first", "الخطوة الأولى", "أول يوم التزام", all.count { it.isActive() }, 1),
+        badge("week", "أسبوع ثابت", "سلسلة 7 أيام", info.longest, 7),
+        badge("month", "شهر من النور", "سلسلة 30 يوماً", info.longest, 30),
+        badge("sabah10", "صباح ثابت", "10 أيام أذكار صباح", all.count { it.completedSabah }, 10),
+        badge("masaa10", "مساء ثابت", "10 أيام أذكار مساء", all.count { it.completedMasaa }, 10),
+        badge("sleep10", "نوم بسكينة", "10 أيام أذكار نوم", all.count { it.completedSleep }, 10),
+        badge("perfect7", "ورد كامل", "7 أيام أكملت فيها الصباح والمساء والنوم", perfect, 7),
+        badge("tasbih1k", "ألف تسبيحة", "إجمالي 1000 تسبيحة", tasbeeh, 1000),
+        badge("tasbih10k", "سيد الذكر", "إجمالي 10000 تسبيحة", tasbeeh, 10000)
+    )
+}
+
+fun unlockedAccents(badges: List<Badge>): Set<AccentTheme> {
+    val open = badges.filter { it.unlocked }.map { it.id }.toSet()
+    return AccentTheme.entries.filter { it.unlockBadge == null || it.unlockBadge in open }.toSet()
+}
+
+// ───────────── الخريطة الحرارية ─────────────
+
+/** 0 = لا شيء، 1 = تسبيح فقط أو ورد واحد، 2 = وردان، 3 = ثلاثة أوراد. */
+fun heatLevel(p: UserProgress?): Int {
+    if (p == null) return 0
+    val w = p.wirdCount()
+    return if (w == 0 && p.totalTasbeeh > 0) 1 else w.coerceAtMost(3)
+}
+
+/**
+ * شبكة أسابيع بترتيب الأعمدة: الفهرس = عمود*7 + صف، والصف 0 = السبت.
+ * آخر خلية غير فارغة هي اليوم؛ ما بعدها null.
+ */
+fun heatmapDates(today: String, weeks: Int = 12): List<String?> {
+    val cal = Calendar.getInstance().apply { time = fmt().parse(today)!! }
+    val dowFromSaturday = (cal.get(Calendar.DAY_OF_WEEK) - Calendar.SATURDAY + 7) % 7
+    val total = (weeks - 1) * 7 + dowFromSaturday + 1
+    return List(weeks * 7) { i -> if (i < total) shiftKey(today, i - (total - 1)) else null }
+}
+
+fun dayDetails(key: String, p: UserProgress?): String {
+    fun mark(b: Boolean?) = if (b == true) "✓" else "✗"
+    return "$key — الصباح ${mark(p?.completedSabah)}  المساء ${mark(p?.completedMasaa)}  النوم ${mark(p?.completedSleep)}  ·  ${p?.totalTasbeeh ?: 0} تسبيحة"
+}
+
+// ───────────── الملخص الأسبوعي ─────────────
+
+data class WeeklySummary(
+    val activeDays: Int,
+    val tasbeeh: Int,
+    val wirds: Int,
+    val perfectDays: Int,
+    /** أيام أُنجز فيها الصباح والمساء معاً (هدف الأسبوع). */
+    val fullDays: Int
+)
+
+fun weeklySummary(all: List<UserProgress>, today: String = todayKey()): WeeklySummary {
+    val keys = (0..6).map { shiftKey(today, -it) }.toSet()
+    val rows = all.filter { it.date in keys }
+    return WeeklySummary(
+        activeDays = rows.count { it.isActive() },
+        tasbeeh = rows.sumOf { it.totalTasbeeh },
+        wirds = rows.sumOf { it.wirdCount() },
+        perfectDays = rows.count { it.wirdCount() == 3 },
+        fullDays = rows.count { it.completedSabah && it.completedMasaa }
+    )
+}
+
+fun summaryText(s: WeeklySummary, streak: Int): String = buildString {
+    append("هذا الأسبوع في الباقيات\n\n")
+    append("${s.activeDays} أيام التزام من 7\n")
+    append("${s.wirds} ورداً مكتملاً\n")
+    append("${s.tasbeeh} تسبيحة")
+    if (streak > 0) append("\nسلسلة $streak يوماً")
+}
+END SOURCE FILE: app/src/main/java/com/example/ui/Journey.kt
+
+========================================================================================
+SOURCE FILE: app/src/main/java/com/example/ui/NotificationWorker.kt
+========================================================================================
+package com.example.ui
+
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
+import android.os.Build
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.work.CoroutineWorker
+import androidx.work.WorkerParameters
+import com.example.MainActivity
+import com.example.R
+import com.example.data.SettingsRepository
+import com.example.data.dataStore
+import kotlinx.coroutines.flow.first
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
+
+/** Local reminders driven by per-category settings and deduplicated for each date. */
+class NotificationWorker(
+    appContext: Context,
+    params: WorkerParameters
+) : CoroutineWorker(appContext, params) {
+
+    override suspend fun doWork(): Result {
+        val settings = SettingsRepository(applicationContext.dataStore)
+        if (!settings.notificationsEnabledFlow.first()) return Result.success()
+        // Don't claim a reminder day until Android notifications are enabled.
+        if (!NotificationManagerCompat.from(applicationContext).areNotificationsEnabled()) {
+            return Result.success()
+        }
+
+        val now = Calendar.getInstance()
+        val currentMinutes = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
+        val today = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+        val isFriday = now.get(Calendar.DAY_OF_WEEK) == Calendar.FRIDAY
+
+        val reminders = listOf(
+            Reminder(
+                category = "sabah",
+                enabled = settings.remindSabahFlow.first(),
+                time = settings.reminderSabahTimeFlow.first(),
+                title = "🌤️ أذكار الصباح",
+                body = "حان وقت أذكار الصباح. ابدأ يومك بذكر الله.",
+                notificationId = 1001
+            ),
+            Reminder(
+                category = "masaa",
+                enabled = settings.remindMasaaFlow.first(),
+                time = settings.reminderMasaaTimeFlow.first(),
+                title = "🌙 أذكار المساء",
+                body = "حان وقت أذكار المساء. اختم يومك بذكر الله.",
+                notificationId = 1002
+            ),
+            Reminder(
+                category = "sleep",
+                enabled = settings.remindSleepFlow.first(),
+                time = settings.reminderSleepTimeFlow.first(),
+                title = "🌙 أذكار ما قبل النوم",
+                body = "اختم يومك بذكر الله قبل النوم.",
+                notificationId = 1003
+            ),
+            Reminder(
+                category = "friday",
+                enabled = isFriday && settings.remindFridayFlow.first(),
+                time = settings.reminderFridayTimeFlow.first(),
+                title = "🕌 تذكير الجمعة",
+                body = "تذكّر الإكثار من الصلاة على النبي ﷺ يوم الجمعة.",
+                notificationId = 1004
+            )
+        )
+
+        for (reminder in reminders) {
+            if (!reminder.enabled || !isWithinDeliveryWindow(currentMinutes, reminder.time)) continue
+            if (settings.claimReminderForDate(reminder.category, today)) {
+                showNotification(reminder.title, reminder.body, reminder.notificationId)
+            }
+        }
+        return Result.success()
+    }
+
+    private fun isWithinDeliveryWindow(currentMinutes: Int, time: String): Boolean {
+        val pieces = time.split(":")
+        if (pieces.size != 2) return false
+        val hour = pieces[0].toIntOrNull() ?: return false
+        val minute = pieces[1].toIntOrNull() ?: return false
+        if (hour !in 0..23 || minute !in 0..59) return false
+        val targetMinutes = hour * 60 + minute
+
+        // WorkManager runs inexactly; accept the first run within 60 minutes after the chosen time.
+        val elapsedMinutes = currentMinutes - targetMinutes
+        return elapsedMinutes in 0 until DELIVERY_WINDOW_MINUTES
+    }
+
+    private fun showNotification(title: String, body: String, notificationId: Int) {
+        ensureChannel()
+        val intent = PendingIntent.getActivity(
+            applicationContext,
+            notificationId,
+            Intent(applicationContext, MainActivity::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val notification = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_stat_azkar)
+            .setContentTitle(title)
+            .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setContentIntent(intent)
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .build()
+
+        try {
+            NotificationManagerCompat.from(applicationContext).notify(notificationId, notification)
+        } catch (_: SecurityException) {
+            // Android 13+ notifications are optional until POST_NOTIFICATIONS is granted.
+        }
+    }
+
+    private fun ensureChannel() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            "تذكيرات الأذكار",
+            NotificationManager.IMPORTANCE_DEFAULT
+        ).apply {
+            description = "تذكيرات قابلة للتخصيص للصباح والمساء والنوم والجمعة"
+        }
+        applicationContext.getSystemService(NotificationManager::class.java)
+            .createNotificationChannel(channel)
+    }
+
+    private data class Reminder(
+        val category: String,
+        val enabled: Boolean,
+        val time: String,
+        val title: String,
+        val body: String,
+        val notificationId: Int
+    )
+
+    private companion object {
+        const val CHANNEL_ID = "azkar_reminders"
+        const val DELIVERY_WINDOW_MINUTES = 60
+    }
+}
+END SOURCE FILE: app/src/main/java/com/example/ui/NotificationWorker.kt
+
+========================================================================================
+SOURCE FILE: app/src/main/java/com/example/ui/ShareHelper.kt
+========================================================================================
+package com.example.ui
+
+import android.content.Context
+import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.RectF
+import android.graphics.Typeface
+import android.text.Layout
+import android.text.StaticLayout
+import android.text.TextPaint
+import androidx.core.content.FileProvider
+import java.io.File
+import java.io.FileOutputStream
+
+/**
+ * Builds a simple branded share card (green/gold) and opens the system share sheet.
+ */
+object ShareHelper {
+
+    fun shareZekrAsImage(context: Context, text: String, source: String = "") {
+        val bitmap = createCardBitmap(text, source)
+        val cache = File(context.cacheDir, "share").apply { mkdirs() }
+        val file = File(cache, "zekr_${System.currentTimeMillis()}.png")
+        FileOutputStream(file).use { out ->
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+        }
+        val uri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            file
+        )
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "image/png"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            putExtra(Intent.EXTRA_TEXT, text)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        context.startActivity(Intent.createChooser(intent, "مشاركة الذكر"))
+    }
+
+    private fun createCardBitmap(text: String, source: String): Bitmap {
+        val width = 1080
+        val padding = 72f
+        val brandColor = Color.parseColor("#294b38")
+        val gold = Color.parseColor("#d9a85c")
+        val paper = Color.parseColor("#f7faf7")
+
+        val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = brandColor
+            textSize = 48f
+            textAlign = Paint.Align.CENTER
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+        }
+        val layoutWidth = (width - padding * 2).toInt()
+        val layout = StaticLayout.Builder
+            .obtain(text, 0, text.length, textPaint, layoutWidth)
+            .setAlignment(Layout.Alignment.ALIGN_CENTER)
+            .setLineSpacing(8f, 1.15f)
+            .setIncludePad(true)
+            .build()
+
+        val height = (padding * 2 + layout.height + 160).toInt().coerceAtLeast(800)
+        val bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bmp)
+        canvas.drawColor(paper)
+
+        // Top gold accent bar
+        val barPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = gold }
+        canvas.drawRect(0f, 0f, width.toFloat(), 12f, barPaint)
+
+        // Card border
+        val border = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 4f
+            color = Color.parseColor("#e1e9e2")
+        }
+        canvas.drawRoundRect(
+            RectF(24f, 24f, width - 24f, height - 24f),
+            32f, 32f, border
+        )
+
+        // Brand title
+        val titlePaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = brandColor
+            textSize = 36f
+            textAlign = Paint.Align.CENTER
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        }
+        canvas.drawText("الباقيات", width / 2f, padding, titlePaint)
+
+        canvas.save()
+        canvas.translate(padding, padding + 40f)
+        layout.draw(canvas)
+        canvas.restore()
+
+        if (source.isNotBlank()) {
+            val srcPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.parseColor("#718077")
+                textSize = 28f
+                textAlign = Paint.Align.CENTER
+            }
+            canvas.drawText(source, width / 2f, height - padding / 2, srcPaint)
+        }
+
+        return bmp
+    }
+}
+END SOURCE FILE: app/src/main/java/com/example/ui/ShareHelper.kt
+
+========================================================================================
+SOURCE FILE: app/src/main/java/com/example/ui/SyncWorker.kt
+========================================================================================
+package com.example.ui
+
+import android.content.Context
+import androidx.work.CoroutineWorker
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
+import androidx.work.WorkerParameters
+import com.example.data.FirestoreRepository
+import com.example.data.ProgressRepository
+import com.google.firebase.auth.FirebaseAuth
+import java.util.concurrent.TimeUnit
+
+/** Offline-first background backup: merge remote then upload local. */
+class SyncWorker(
+    appContext: Context,
+    params: WorkerParameters
+) : CoroutineWorker(appContext, params) {
+
+    override suspend fun doWork(): Result {
+        if (FirebaseAuth.getInstance().currentUser == null) {
+            return Result.success()
+        }
+        return try {
+            val progress = ProgressRepository.getInstance(applicationContext)
+            val cloud = FirestoreRepository()
+            val remote = cloud.fetchProgress()
+            if (remote == null) {
+                // فشل الشبكة/القواعد — أعد المحاولة بدل اعتبارها نجاحاً
+                return if (runAttemptCount < 3) Result.retry() else Result.failure()
+            }
+            progress.syncProgress(remote)
+            val local = progress.getAllProgress()
+            val ok = cloud.backupProgress(local)
+            if (ok) Result.success()
+            else if (runAttemptCount < 3) Result.retry()
+            else Result.failure()
+        } catch (_: Exception) {
+            if (runAttemptCount < 3) Result.retry() else Result.failure()
+        }
+    }
+
+    companion object {
+        fun enqueue(context: Context) {
+            val req = PeriodicWorkRequestBuilder<SyncWorker>(6, TimeUnit.HOURS).build()
+            WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+                "BaqiyatAutoSync",
+                ExistingPeriodicWorkPolicy.KEEP,
+                req
+            )
+        }
+    }
+}
+END SOURCE FILE: app/src/main/java/com/example/ui/SyncWorker.kt
+
+========================================================================================
+SOURCE FILE: app/src/main/java/com/example/ui/WirdSuggestion.kt
+========================================================================================
+package com.example.ui
+
+enum class WirdSlot { SABAH, MASAA, SLEEP, FREE }
+
+/** اقتراح «وردك الآن». category = null يعني: افتح المسبحة. */
+data class WirdSuggestion(
+    val slot: WirdSlot,
+    val category: String?,
+    val done: Boolean,
+    val title: String,
+    val subtitle: String
+)
+
+/**
+ * يقترح الورد المناسب للساعة.
+ * (الساعات ثابتة مؤقتاً، وتُستبدل بمواقيت الصلاة في المرحلة 7)
+ */
+fun suggestWird(hour: Int, sabahDone: Boolean, masaaDone: Boolean, sleepDone: Boolean = false): WirdSuggestion = when {
+    hour in 3..11 -> sabah(sabahDone)
+    hour in 12..14 -> if (!sabahDone) {
+        WirdSuggestion(WirdSlot.SABAH, "sabah", false, "أذكار الصباح", "ما زال بإمكانك إتمامها، والله يقبل منك.")
+    } else {
+        WirdSuggestion(WirdSlot.FREE, null, false, "وقت للتسبيح", "سبّح بما تيسّر، وتابع عدّك في المسبحة.")
+    }
+    hour in 15..20 -> if (masaaDone) {
+        WirdSuggestion(WirdSlot.MASAA, "masaa", true, "أذكار المساء", "أتممت ورد المساء اليوم، تقبّل الله.")
+    } else {
+        WirdSuggestion(WirdSlot.MASAA, "masaa", false, "أذكار المساء", "اختم يومك بسكينة، دقائق قليلة تكفي.")
+    }
+    sleepDone -> WirdSuggestion(WirdSlot.SLEEP, "sleep", true, "أذكار النوم", "أتممت أذكار النوم، نم قرير العين.")
+    else -> WirdSuggestion(WirdSlot.SLEEP, "sleep", false, "أذكار النوم", "طمأنينة قبل النوم.")
+}
+
+private fun sabah(done: Boolean) = if (done) {
+    WirdSuggestion(WirdSlot.SABAH, "sabah", true, "أذكار الصباح", "أتممت ورد الصباح اليوم، تقبّل الله.")
+} else {
+    WirdSuggestion(WirdSlot.SABAH, "sabah", false, "أذكار الصباح", "ابدأ يومك بنور، دقائق قليلة تكفي.")
+}
+END SOURCE FILE: app/src/main/java/com/example/ui/WirdSuggestion.kt
