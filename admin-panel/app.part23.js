@@ -8,7 +8,7 @@
     $("#send-notify")?.addEventListener("click", () => sendNotify().catch((e) => toast(e.message)));
   }
 
-  document.addEventListener("DOMContentLoaded", async () => {
+  const initializeAdminPanel = async () => {
     if (window.firebaseHostingConfigPromise) {
       await window.firebaseHostingConfigPromise.catch(() => null);
     }
