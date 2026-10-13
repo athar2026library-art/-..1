@@ -9,9 +9,16 @@
 
   async function assertAdmin(user) {
     const token = await user.getIdTokenResult(true);
-    if (token.claims.admin === true) {
+
+    // Keep the displayed role aligned with Firestore security rules:
+    // the generic admin claim is not, by itself, a super-admin claim.
+    if (token.claims.super_admin === true) {
       return { ok: true, role: "super_admin" };
     }
+    if (token.claims.admin === true) {
+      return { ok: true, role: "admin" };
+    }
+
     const snap = await db.collection("admins").doc(user.uid).get();
     if (!snap.exists) return { ok: false, role: "" };
     const role = snap.data()?.role || "admin";
