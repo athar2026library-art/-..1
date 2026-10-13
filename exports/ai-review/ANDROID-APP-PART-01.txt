@@ -1,0 +1,1848 @@
+BAQIYAT — SOURCE EXPORT FOR AI REVIEW
+Component: ANDROID-APP
+Part: 01
+Source branch: main (export generated on a separate branch)
+Encoding: UTF-8. Original relative paths are marked per file.
+This is a review/export format, not a compilable project folder.
+
+========================================================================================
+SOURCE FILE: app/build.gradle.kts
+========================================================================================
+import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
+import java.util.Properties
+import java.io.FileInputStream
+
+plugins {
+  alias(libs.plugins.android.application)
+  alias(libs.plugins.kotlin.compose)
+  alias(libs.plugins.google.devtools.ksp)
+  alias(libs.plugins.roborazzi)
+  alias(libs.plugins.google.services)
+}
+
+android {
+  namespace = "com.example"
+  compileSdk { version = release(36) { minorApiLevel = 1 } }
+
+  defaultConfig {
+    applicationId = "com.baqiyat.azkar"
+    minSdk = 24
+    targetSdk = 36
+
+    // قراءة مفتاح Gemini من local.properties أو من متغيرات البيئة (CI / GitHub Actions) كاحتياط تام
+    val localProps = Properties().apply {
+      val localPropsFile = rootProject.file("local.properties")
+      if (localPropsFile.exists()) {
+        FileInputStream(localPropsFile).use { load(it) }
+      }
+    }
+    val rawGeminiKey = localProps.getProperty("geminiApiKey") ?: System.getenv("GEMINI_API_KEY") ?: ""
+    val geminiKey = rawGeminiKey.replace("\\", "\\\\").replace("\"", "\\\"")
+
+    buildConfigField("String", "GEMINI_API_KEY", "\"$geminiKey\"")
+    versionCode = 1
+    versionName = "1.0"
+
+    testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+  }
+
+  val debugKeystore = file("${rootDir}/debug.keystore")
+
+  signingConfigs {
+    create("release") {
+      val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks"
+      storeFile = file(keystorePath)
+      storePassword = System.getenv("STORE_PASSWORD")
+      keyAlias = "upload"
+      keyPassword = System.getenv("KEY_PASSWORD")
+    }
+    if (debugKeystore.exists()) {
+      create("debugConfig") {
+        storeFile = debugKeystore
+        storePassword = "android"
+        keyAlias = "androiddebugkey"
+        keyPassword = "android"
+      }
+    }
+  }
+
+  buildTypes {
+    release {
+      isCrunchPngs = false
+      isMinifyEnabled = true
+      isShrinkResources = true
+      proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+      signingConfig = signingConfigs.getByName("release")
+    }
+    debug {
+      if (debugKeystore.exists()) {
+        signingConfig = signingConfigs.getByName("debugConfig")
+      }
+    }
+  }
+  compileOptions {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+  }
+  buildFeatures {
+    compose = true
+    buildConfig = true
+  }
+  testOptions { unitTests { isIncludeAndroidResources = true } }
+  dependenciesInfo {
+    includeInApk = false
+    includeInBundle = true
+  }
+}
+
+googleServices { missingGoogleServicesStrategy = MissingGoogleServicesStrategy.WARN }
+
+dependencies {
+  implementation(platform(libs.androidx.compose.bom))
+  implementation(platform(libs.firebase.bom))
+  implementation(libs.accompanist.permissions)
+  implementation(libs.androidx.activity.compose)
+  implementation(libs.androidx.compose.material.icons.core)
+  implementation(libs.androidx.compose.material.icons.extended)
+  implementation(libs.androidx.compose.material3)
+  implementation(libs.androidx.compose.ui)
+  implementation(libs.androidx.compose.ui.graphics)
+  implementation(libs.androidx.compose.ui.tooling.preview)
+  implementation("androidx.compose.ui:ui-text-google-fonts")
+  implementation(libs.androidx.core.ktx)
+  implementation(libs.androidx.datastore.preferences)
+  implementation(libs.androidx.lifecycle.runtime.compose)
+  implementation(libs.androidx.lifecycle.runtime.ktx)
+  implementation(libs.androidx.lifecycle.viewmodel.compose)
+  implementation(libs.androidx.navigation.compose)
+  implementation(libs.androidx.room.ktx)
+  implementation(libs.androidx.room.runtime)
+  implementation(libs.firebase.firestore)
+  implementation(libs.firebase.auth)
+  implementation(libs.firebase.messaging)
+  implementation(libs.okhttp)
+  implementation("com.google.firebase:firebase-functions")
+  implementation("com.google.firebase:firebase-storage")
+  implementation(libs.androidx.credentials)
+  implementation(libs.androidx.credentials.play.services)
+  implementation(libs.googleid)
+  debugImplementation(libs.firebase.appcheck.debug)
+  releaseImplementation(libs.firebase.appcheck.playintegrity)
+  implementation(libs.kotlinx.coroutines.android)
+  implementation(libs.kotlinx.coroutines.play.services)
+  implementation(libs.kotlinx.coroutines.core)
+  implementation("androidx.work:work-runtime-ktx:2.9.0")
+  implementation("androidx.glance:glance-appwidget:1.1.1")
+  implementation("androidx.glance:glance-material3:1.1.1")
+  testImplementation(libs.androidx.compose.ui.test.junit4)
+  testImplementation(libs.androidx.core)
+  testImplementation(libs.androidx.junit)
+  testImplementation(libs.junit)
+  testImplementation(libs.kotlinx.coroutines.test)
+  testImplementation(libs.robolectric)
+  testImplementation(libs.roborazzi)
+  testImplementation(libs.roborazzi.compose)
+  testImplementation(libs.roborazzi.junit.rule)
+  androidTestImplementation(platform(libs.androidx.compose.bom))
+  androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+  androidTestImplementation(libs.androidx.espresso.core)
+  androidTestImplementation(libs.androidx.junit)
+  androidTestImplementation(libs.androidx.runner)
+  debugImplementation(libs.androidx.compose.ui.test.manifest)
+  debugImplementation(libs.androidx.compose.ui.tooling)
+  "ksp"(libs.androidx.room.compiler)
+}
+END SOURCE FILE: app/build.gradle.kts
+
+========================================================================================
+SOURCE FILE: app/proguard-rules.pro
+========================================================================================
+# سطور الأخطاء مقروءة في تقارير الانهيار
+-keepattributes SourceFile,LineNumberTable,Signature,*Annotation*,InnerClasses,EnclosingMethod
+-renamesourcefileattribute SourceFile
+
+# Firestore يقرأ ويكتب الحقول بأسمائها؛ بدون keep تفشل hasOnly في القواعد بعد R8
+-keep class com.example.data.UserProgress { *; }
+-keep class com.example.data.Zekr { *; }
+-keep class com.example.data.FeedbackItem { *; }
+-keep class com.example.data.FeedbackDraft { *; }
+
+# Firebase / Play Services
+-keep class com.google.firebase.** { *; }
+-dontwarn com.google.firebase.**
+-keep class com.google.android.gms.** { *; }
+-dontwarn com.google.android.gms.**
+
+# Credential Manager / Google ID
+-keep class com.google.android.libraries.identity.googleid.** { *; }
+-dontwarn com.google.android.libraries.identity.googleid.**
+-keep class androidx.credentials.** { *; }
+
+-dontwarn kotlinx.coroutines.**
+-keepclassmembers enum * { public static **[] values(); public static ** valueOf(java.lang.String); }
+END SOURCE FILE: app/proguard-rules.pro
+
+========================================================================================
+SOURCE FILE: app/src/androidTest/java/com/example/AudioPlayerInstrumentedTest.kt
+========================================================================================
+package com.example
+
+import androidx.test.core.app.ApplicationProvider
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.example.ui.AudioPlayer
+import org.junit.Assert.assertFalse
+import org.junit.Test
+import org.junit.runner.RunWith
+
+@RunWith(AndroidJUnit4::class)
+class AudioPlayerInstrumentedTest {
+    @Test
+    fun audioPlayer_initializesAndShutsDownSafely() {
+        val player = AudioPlayer(ApplicationProvider.getApplicationContext())
+        try {
+            assertFalse(player.isPlaying.value)
+        } finally {
+            player.shutdown()
+        }
+    }
+}
+END SOURCE FILE: app/src/androidTest/java/com/example/AudioPlayerInstrumentedTest.kt
+
+========================================================================================
+SOURCE FILE: app/src/androidTest/java/com/example/BaqiyatUiTest.kt
+========================================================================================
+package com.example
+
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+
+@RunWith(AndroidJUnit4::class)
+class BaqiyatUiTest {
+    @get:Rule
+    val composeRule = createAndroidComposeRule<MainActivity>()
+
+    @Test
+    fun googleSignInButton_isVisibleAndEnabled() {
+        finishOnboardingIfNeeded()
+        composeRule.onNodeWithText("المزيد").performClick()
+        composeRule.onNodeWithText("الإعدادات").performClick()
+        composeRule.onNodeWithTag("google-sign-in-button")
+            .assertIsDisplayed()
+            .assertIsEnabled()
+    }
+
+    @Test
+    fun morningDhikrCard_isVisibleAndRespondsToTap() {
+        finishOnboardingIfNeeded()
+        composeRule.onNodeWithText("الصباح").performClick()
+        composeRule.onNodeWithTag("dhikr-card").assertIsDisplayed().performClick()
+        composeRule.onNodeWithTag("dhikr-counter").assertIsDisplayed()
+    }
+
+    private fun finishOnboardingIfNeeded() {
+        try {
+            composeRule.onNodeWithText("التالي").performClick()
+            composeRule.onNodeWithText("التالي").performClick()
+            composeRule.onNodeWithText("ابدأ الآن").performClick()
+        } catch (_: AssertionError) {
+            // The app may already have completed onboarding in a reused test installation.
+        }
+        composeRule.onNodeWithText("وردك اليومي").assertIsDisplayed()
+    }
+}
+END SOURCE FILE: app/src/androidTest/java/com/example/BaqiyatUiTest.kt
+
+========================================================================================
+SOURCE FILE: app/src/androidTest/java/com/example/ExampleInstrumentedTest.kt
+========================================================================================
+package com.example
+
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import org.junit.Assert.*
+import org.junit.Test
+import org.junit.runner.RunWith
+
+/**
+ * Instrumented test, which will execute on an Android device.
+ *
+ * See [testing documentation](http://d.android.com/tools/testing).
+ */
+@RunWith(AndroidJUnit4::class)
+class ExampleInstrumentedTest {
+  @Test
+  fun useAppContext() {
+    // Context of the app under test.
+    val appContext = InstrumentationRegistry.getInstrumentation().targetContext
+    assertEquals(BuildConfig.APPLICATION_ID, appContext.packageName)
+  }
+}
+END SOURCE FILE: app/src/androidTest/java/com/example/ExampleInstrumentedTest.kt
+
+========================================================================================
+SOURCE FILE: app/src/debug/java/com/example/AppCheckInstaller.kt
+========================================================================================
+package com.example
+
+import com.google.firebase.appcheck.FirebaseAppCheck
+import com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory
+
+/** نسخة debug فقط: مزوّد التصحيح لا يدخل أبداً في نسخة الإصدار. */
+object AppCheckInstaller {
+    fun install() {
+        FirebaseAppCheck.getInstance()
+            .installAppCheckProviderFactory(DebugAppCheckProviderFactory.getInstance())
+    }
+}
+END SOURCE FILE: app/src/debug/java/com/example/AppCheckInstaller.kt
+
+========================================================================================
+SOURCE FILE: app/src/debug/java/com/example/AppCheckProviderInstaller.kt
+========================================================================================
+package com.example
+
+import android.content.Context
+import com.google.firebase.Firebase
+import com.google.firebase.appcheck.appCheck
+import com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory
+
+internal object AppCheckProviderInstaller {
+    fun install(context: Context) {
+        Firebase.appCheck.installAppCheckProviderFactory(
+            DebugAppCheckProviderFactory.getInstance()
+        )
+    }
+}
+END SOURCE FILE: app/src/debug/java/com/example/AppCheckProviderInstaller.kt
+
+========================================================================================
+SOURCE FILE: app/src/main/AndroidManifest.xml
+========================================================================================
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <application
+        android:name=".AzkarApplication"
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.MyApplication">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:theme="@style/Theme.MyApplication">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <service
+            android:name=".notifications.AzkarMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
+        <receiver
+            android:name=".widget.BaqiyatGlanceWidgetReceiver"
+            android:exported="true"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/baqiyat_widget_info" />
+        </receiver>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+    </application>
+
+</manifest>
+END SOURCE FILE: app/src/main/AndroidManifest.xml
+
+========================================================================================
+SOURCE FILE: app/src/main/java/com/example/AzkarApplication.kt
+========================================================================================
+package com.example
+
+import android.app.Application
+import android.util.Log
+import com.google.firebase.FirebaseApp
+
+class AzkarApplication : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        try {
+            FirebaseApp.initializeApp(this)
+            AppCheckInstaller.install()
+        } catch (e: Exception) {
+            Log.e("AzkarApplication", "Firebase / App Check init failed", e)
+        }
+    }
+}
+END SOURCE FILE: app/src/main/java/com/example/AzkarApplication.kt
+
+========================================================================================
+SOURCE FILE: app/src/main/java/com/example/MainActivity.kt
+========================================================================================
+package com.example
+
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.runtime.Composable
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.work.ExistingPeriodicWorkPolicy
+import com.example.data.AiRepository
+import com.example.data.AppDatabase
+import com.example.data.AuthRepository
+import com.example.data.FirestoreRepository
+import com.example.data.ProgressRepository
+import com.example.data.SettingsRepository
+import com.example.data.dataStore
+import com.example.ui.AppNavGraph
+import com.example.ui.AppViewModel
+import com.example.ui.AppViewModelFactory
+import com.example.ui.components.BaqiyatBackground
+import com.example.ui.components.BaqiyatButton
+import com.example.ui.theme.BaqiyatTheme
+import com.example.ui.theme.rememberTimeMode
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.messaging.FirebaseMessaging
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
+import com.example.ui.NotificationWorker
+import com.example.ui.SyncWorker
+import java.util.concurrent.TimeUnit
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+
+class MainActivity : ComponentActivity() {
+    @androidx.compose.material3.ExperimentalMaterial3Api
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
+            }
+        }
+
+        // Check every 15 minutes so user-selected reminder times are not sampled only every 2 hours.
+        val workRequest = PeriodicWorkRequestBuilder<NotificationWorker>(15, TimeUnit.MINUTES).build()
+        WorkManager.getInstance(applicationContext).enqueueUniquePeriodicWork(
+            "AzkarNotifications",
+            ExistingPeriodicWorkPolicy.REPLACE,
+            workRequest
+        )
+        SyncWorker.enqueue(applicationContext)
+
+        val progressRepository = ProgressRepository.getInstance(applicationContext)
+        val settingsRepository = SettingsRepository(applicationContext.dataStore)
+        val aiRepository = AiRepository()
+        val authRepository = AuthRepository(this)
+        val firestoreRepository = FirestoreRepository()
+
+        FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
+            val user = FirebaseAuth.getInstance().currentUser ?: return@addOnSuccessListener
+            FirebaseFirestore.getInstance().collection("users").document(user.uid).set(
+                mapOf(
+                    "fcmTokens" to FieldValue.arrayUnion(token),
+                    "updatedAt" to FieldValue.serverTimestamp()
+                ),
+                com.google.firebase.firestore.SetOptions.merge()
+            )
+        }
+
+        setContent {
+            var showSplash by remember { mutableStateOf(true) }
+            LaunchedEffect(Unit) { kotlinx.coroutines.delay(1400); showSplash = false }
+            if (showSplash) {
+                BaqiyatSplash()
+            } else {
+                val viewModel: AppViewModel = viewModel(
+                    factory = AppViewModelFactory(
+                        progressRepository,
+                        settingsRepository,
+                        aiRepository,
+                        authRepository,
+                        firestoreRepository
+                    )
+                )
+
+                val isDarkMode by viewModel.isDarkMode.collectAsState()
+                val onboardingComplete by settingsRepository.onboardingCompleteFlow.collectAsState(initial = false)
+
+                val timeMode = rememberTimeMode(isDarkMode)
+                BaqiyatTheme(mode = timeMode) {
+                    BaqiyatBackground {
+                        if (onboardingComplete) {
+                            AppNavGraph(viewModel = viewModel)
+                        } else {
+                            BaqiyatOnboarding(onDone = { lifecycleScope.launch { settingsRepository.setOnboardingComplete() } })
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BaqiyatSplash() {
+    var revealed by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { revealed = true }
+    val scale = animateFloatAsState(if (revealed) 1f else .82f, animationSpec = tween(800), label = "splashScale")
+    Box(Modifier.fillMaxSize().background(Color(0xFFFBFAF3)), contentAlignment = Alignment.Center) {
+        Image(painterResource(com.example.R.drawable.logo_baqiyat), contentDescription = "شعار الباقيات", modifier = Modifier.size(148.dp).scale(scale.value))
+    }
+}
+
+@Composable
+private fun BaqiyatOnboarding(onDone: () -> Unit) {
+    var page by remember { mutableStateOf(0) }
+    val pages = listOf(
+        Triple("وردك اليومي بين يديك", "ابدأ بأذكار الصباح والمساء بواجهة هادئة تساعدك على الاستمرار.", com.example.R.drawable.logo_baqiyat),
+        Triple("اقرأ بتركيز وراحة", "خصّص حجم الخط، فعّل الوضع الليلي، وتابع آخر موضع وصلت إليه.", com.example.R.drawable.logo_baqiyat),
+        Triple("ابقَ على تواصل", "أرسل اقتراحاتك وشكاواك، وتابع ردود فريق الباقيات وإشعارات التحديثات.", com.example.R.drawable.logo_baqiyat)
+    )
+    val current = pages[page]
+    Column(Modifier.fillMaxSize().padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Spacer(Modifier.height(48.dp))
+        Image(painterResource(current.third), contentDescription = "شعار الباقيات", modifier = Modifier.size(154.dp))
+        Spacer(Modifier.height(30.dp))
+        androidx.compose.material3.Text("مرحباً بك في الباقيات", color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        Spacer(Modifier.height(12.dp))
+        androidx.compose.material3.Text(current.first, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.height(12.dp))
+        androidx.compose.material3.Text(current.second, style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 26.sp)
+        Spacer(Modifier.weight(1f))
+        Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+            pages.indices.forEach { index ->
+                Box(Modifier.size(if (index == page) 26.dp else 8.dp, 8.dp).background(if (index == page) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.outline.copy(alpha = .35f), RoundedCornerShape(8.dp)))
+            }
+        }
+        Spacer(Modifier.height(24.dp))
+        BaqiyatButton(
+            text = if (page == pages.lastIndex) "ابدأ الآن" else "التالي",
+            onClick = { if (page == pages.lastIndex) onDone() else page++ },
+            modifier = Modifier.fillMaxWidth()
+        )
+        if (page < pages.lastIndex) { TextButton(onClick = onDone) { androidx.compose.material3.Text("تخطي") } } else { Spacer(Modifier.height(48.dp)) }
+    }
+}
+END SOURCE FILE: app/src/main/java/com/example/MainActivity.kt
+
+========================================================================================
+SOURCE FILE: app/src/main/java/com/example/data/AiRepository.kt
+========================================================================================
+package com.example.data
+
+import com.example.BuildConfig
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONArray
+import org.json.JSONObject
+import java.io.IOException
+import java.util.concurrent.TimeUnit
+
+/**
+ * Direct Gemini REST client for local experiments.
+ *
+ * Set geminiApiKey in local.properties (which is git-ignored). The key is still
+ * extractable from a built APK; use this only for private testing and rotate keys
+ * that may have been shared publicly.
+ */
+class AiRepository {
+    suspend fun ask(message: String): String = callGemini("suggest", message)
+
+    suspend fun explainZekr(zekr: String): String = callGemini("explain", zekr)
+
+    suspend fun suggestZekrForFeeling(feeling: String): String = callGemini("suggest", feeling)
+
+    private suspend fun callGemini(mode: String, text: String): String {
+        val clean = text.trim().take(MAX_INPUT_CHARS)
+        if (clean.length < 2) return "اكتب سؤالك أو شعورك أولاً."
+
+        val apiKey = BuildConfig.GEMINI_API_KEY.trim()
+        if (apiKey.isEmpty()) {
+            return "مفتاح Gemini غير مضبوط. أضف geminiApiKey إلى ملف local.properties ثم أعد بناء التطبيق."
+        }
+
+        val prompt = when (mode) {
+            "explain" -> "اشرح هذا الذكر باللغة العربية شرحاً موجزاً ومتزناً، ولا تنسب فضائل أو أحاديث بلا مصدر موثوق:\n$clean"
+            else -> "أجب باللغة العربية عن طلب المستخدم بما يناسب تطبيق أذكار إسلامي. كن واضحاً ومختصراً، ولا تختلق آيات أو أحاديث أو تنسب نصوصاً إلى مصادر دون تحقق. إن كان السؤال طبياً أو شرعياً تخصصياً فاذكر حدود الإجابة وشجع على الرجوع إلى مختص.\n$clean"
+        }
+
+        return try {
+            withContext(Dispatchers.IO) {
+                val body = JSONObject()
+                    .put("contents", JSONArray().put(
+                        JSONObject().put("parts", JSONArray().put(JSONObject().put("text", prompt)))
+                    ))
+                    .put("generationConfig", JSONObject().put("temperature", 0.4))
+                    .toString()
+                    .toRequestBody(JSON_MEDIA_TYPE)
+
+                val request = Request.Builder()
+                    .url(API_URL)
+                    .post(body)
+                    .header("Content-Type", "application/json")
+                    .header("x-goog-api-key", apiKey)
+                    .build()
+
+                client.newCall(request).execute().use { response ->
+                    val responseText = response.body?.string().orEmpty()
+                    if (!response.isSuccessful) {
+                        val message = runCatching {
+                            JSONObject(responseText).optJSONObject("error")?.optString("message")
+                        }.getOrNull().orEmpty()
+                        when (response.code) {
+                            400, 401, 403 -> "رفض Gemini الطلب. تحقق من المفتاح وإتاحته للخدمة."
+                            429 -> "تم بلوغ حد استخدام Gemini المجاني. حاول لاحقاً."
+                            else -> "تعذر الاتصال بـ Gemini (HTTP ${response.code}). ${message.take(120)}"
+                        }
+                    } else {
+                        val json = JSONObject(responseText)
+                        val candidates = json.optJSONArray("candidates")
+                        val parts = candidates?.optJSONObject(0)?.optJSONObject("content")?.optJSONArray("parts")
+                        val answer = parts?.let { array ->
+                            (0 until array.length()).mapNotNull { array.optJSONObject(it)?.optString("text") }
+                                .filter { it.isNotBlank() }.joinToString("\n")
+                        }.orEmpty()
+                        answer.ifBlank { "لم يُرجع Gemini إجابة نصية. حاول بصياغة أخرى." }
+                    }
+                }
+            }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: IOException) {
+            "تعذر الاتصال بالإنترنت. تحقق من الاتصال وحاول مرة أخرى."
+        } catch (error: Exception) {
+            "حدث خطأ أثناء معالجة رد Gemini. حاول مرة أخرى."
+        }
+    }
+
+    private companion object {
+        const val MAX_INPUT_CHARS = 500
+        const val API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
+        val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
+        val client = OkHttpClient.Builder()
+            .callTimeout(45, TimeUnit.SECONDS)
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(45, TimeUnit.SECONDS)
+            .build()
+    }
+}
+END SOURCE FILE: app/src/main/java/com/example/data/AiRepository.kt
+
+========================================================================================
+SOURCE FILE: app/src/main/java/com/example/data/AppDatabase.kt
+========================================================================================
+package com.example.data
+
+import android.content.Context
+import android.util.Log
+import androidx.room.Database
+import androidx.room.Room
+import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
+import java.io.File
+
+@Database(entities = [UserProgress::class], version = 3, exportSchema = false)
+abstract class AppDatabase : RoomDatabase() {
+    abstract fun progressDao(): ProgressDao
+
+    companion object {
+        const val DB_NAME = "azkar_db"
+        private const val LEGACY_DB_NAME = "azkar_database"
+
+        /**
+         * هجرة فارغة: date هو PrimaryKey فلا حاجة لفهرس إضافي.
+         * إنشاء فهرس غير مُعرَّف في الـ Entity كان يرمي IllegalStateException بعد الترقية.
+         */
+        private val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // no-op — يرفع رقم الإصدار دون تغيير المخطط
+            }
+        }
+
+        /** المرحلة 4: تتبع إتمام أذكار النوم. الصفوف القديمة تأخذ القيمة false. */
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE user_progress ADD COLUMN completedSleep INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        @Volatile
+        private var INSTANCE: AppDatabase? = null
+
+        fun getDatabase(context: Context): AppDatabase {
+            return INSTANCE ?: synchronized(this) {
+                INSTANCE ?: run {
+                    val app = context.applicationContext
+                    migrateLegacyDatabaseIfNeeded(app)
+                    Room.databaseBuilder(app, AppDatabase::class.java, DB_NAME)
+                        .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                        .build()
+                        .also { INSTANCE = it }
+                }
+            }
+        }
+
+        private fun migrateLegacyDatabaseIfNeeded(context: Context) {
+            try {
+                val legacy = context.getDatabasePath(LEGACY_DB_NAME)
+                val current = context.getDatabasePath(DB_NAME)
+                if (legacy.exists() && !current.exists()) {
+                    legacy.copyTo(current, overwrite = false)
+                    File(legacy.path + "-wal").takeIf { it.exists() }?.copyTo(File(current.path + "-wal"), false)
+                    File(legacy.path + "-shm").takeIf { it.exists() }?.copyTo(File(current.path + "-shm"), false)
+                    context.deleteDatabase(LEGACY_DB_NAME)
+                    Log.i("AppDatabase", "Migrated legacy $LEGACY_DB_NAME → $DB_NAME")
+                } else if (legacy.exists() && current.exists()) {
+                    context.deleteDatabase(LEGACY_DB_NAME)
+                    Log.i("AppDatabase", "Removed leftover legacy $LEGACY_DB_NAME")
+                }
+            } catch (e: Exception) {
+                Log.w("AppDatabase", "Legacy DB migration skipped", e)
+            }
+        }
+    }
+}
+END SOURCE FILE: app/src/main/java/com/example/data/AppDatabase.kt
+
+========================================================================================
+SOURCE FILE: app/src/main/java/com/example/data/ArabicText.kt
+========================================================================================
+package com.example.data
+
+/**
+ * أدوات بحث عربي: تتجاهل التشكيل والتطويل، وتوحّد صور الألف والياء والهاء.
+ * هكذا يجد «الله» نصاً مكتوباً «اللَّهِ»، ويجد «اللهم» نصاً مكتوباً «اللَّهُمَّ».
+ */
+object ArabicText {
+    private fun isMark(c: Char) =
+        c in '\u064B'..'\u065F' || c == '\u0670' || c == '\u0640' || c in '\u06D6'..'\u06ED'
+
+    private fun foldChar(c: Char): Char = when (c) {
+        '\u0623', '\u0625', '\u0622', '\u0671' -> '\u0627' // أ إ آ ٱ → ا
+        '\u0649' -> '\u064A'                                   // ى → ي
+        '\u0629' -> '\u0647'                                   // ة → ه
+        '\u0624' -> '\u0648'                                   // ؤ → و
+        '\u0626' -> '\u064A'                                   // ئ → ي
+        else -> c.lowercaseChar()
+    }
+
+    /** النص الموحّد مع خريطة من موضع كل حرف فيه إلى موضعه في النص الأصلي. */
+    class Folded(val text: String, val map: IntArray)
+
+    fun fold(s: String): Folded {
+        val sb = StringBuilder(s.length)
+        val map = IntArray(s.length)
+        var n = 0
+        for (i in s.indices) {
+            val c = s[i]
+            if (isMark(c)) continue
+            sb.append(foldChar(c))
+            map[n++] = i
+        }
+        return Folded(sb.toString(), map.copyOf(n))
+    }
+
+    fun normalize(s: String): String = fold(s.trim()).text
+
+    /** مواضع تطابق الاستعلام في النص الأصلي (نهاية كل مدى تشمل حركات الحرف الأخير). */
+    fun matches(text: String, query: String): List<IntRange> {
+        val q = normalize(query)
+        if (q.isEmpty()) return emptyList()
+        val folded = fold(text)
+        val out = ArrayList<IntRange>()
+        var from = 0
+        while (true) {
+            val idx = folded.text.indexOf(q, from)
+            if (idx < 0) break
+            val start = folded.map[idx]
+            var end = folded.map[idx + q.length - 1] + 1
+            while (end < text.length && isMark(text[end])) end++
+            out.add(start until end)
+            from = idx + q.length
+        }
+        return out
+    }
+}
+END SOURCE FILE: app/src/main/java/com/example/data/ArabicText.kt
+
+========================================================================================
+SOURCE FILE: app/src/main/java/com/example/data/AuthRepository.kt
+========================================================================================
+package com.example.data
+
+import android.content.Context
+import android.util.Log
+import androidx.credentials.ClearCredentialStateRequest
+import androidx.credentials.CredentialManager
+import androidx.credentials.CustomCredential
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.exceptions.GetCredentialCancellationException
+import com.example.R
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.GoogleAuthProvider
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.tasks.await
+
+/**
+ * يحمل applicationContext فقط (لا Activity) حتى لا يسرّب الـ Activity داخل الـ ViewModel.
+ * شاشة الدخول تحتاج Activity context، لذلك يُمرَّر عند الاستدعاء.
+ */
+class AuthRepository(context: Context) {
+    private val appContext = context.applicationContext
+    private val auth by lazy { runCatching { FirebaseAuth.getInstance() }.getOrNull() }
+    private val credentialManager = CredentialManager.create(appContext)
+
+    fun getCurrentUser() = auth?.currentUser
+
+    suspend fun signInWithGoogle(activityContext: Context): Boolean {
+        val firebaseAuth = auth ?: return false
+        return try {
+            val webClientId = appContext.getString(R.string.default_web_client_id)
+
+            val googleIdOption = GetGoogleIdOption.Builder()
+                .setFilterByAuthorizedAccounts(false)
+                .setServerClientId(webClientId)
+                .build()
+
+            val request = GetCredentialRequest.Builder()
+                .addCredentialOption(googleIdOption)
+                .build()
+
+            val credential = credentialManager.getCredential(activityContext, request).credential
+
+            if (credential is CustomCredential &&
+                credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
+            ) {
+                val googleCredential = GoogleIdTokenCredential.createFrom(credential.data)
+                val firebaseCredential = GoogleAuthProvider.getCredential(googleCredential.idToken, null)
+                firebaseAuth.signInWithCredential(firebaseCredential).await()
+                true
+            } else {
+                Log.w("AuthRepository", "Unexpected credential type: ${credential.type}")
+                false
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: GetCredentialCancellationException) {
+            false
+        } catch (e: GoogleIdTokenParsingException) {
+            Log.e("AuthRepository", "Invalid Google ID token", e)
+            false
+        } catch (e: Exception) {
+            Log.e("AuthRepository", "Sign in failed", e)
+            false
+        }
+    }
+
+    suspend fun signOut() {
+        auth?.signOut()
+        runCatching { credentialManager.clearCredentialState(ClearCredentialStateRequest()) }
+    }
+}
+END SOURCE FILE: app/src/main/java/com/example/data/AuthRepository.kt
+
+========================================================================================
+SOURCE FILE: app/src/main/java/com/example/data/AzkarData.kt
+========================================================================================
+package com.example.data
+
+data class Zekr(
+    val id: Int,
+    val text: String,
+    val source: String,
+    val fadl: String,
+    val repeatCount: Int,
+    val category: String, // sabah, masaa, sleep, travel, or a topic category
+    val audioUrl: String? = null,
+    val audioUrlsByReciter: Map<String, String> = emptyMap()
+)
+
+object AzkarData {
+    val morningAzkar = listOf(
+        Zekr(1, "اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ ۚ لَا تَأْخُذُهُ سِنَةٌ وَلَا نَوْمٌ ۚ لَّهُ مَا فِي السَّمَاوَاتِ وَمَا فِي الْأَرْضِ ۗ مَن ذَا الَّذِي يَشْفَعُ عِندَهُ إِلَّا بِإِذْنِهِ ۚ يَعْلَمُ مَا بَيْنَ أَيْدِيهِمْ وَمَا خَلْفَهُمْ ۖ وَلَا يُحِيطُونَ بِشَيْءٍ مِّنْ عِلْمِهِ إِلَّا بِمَا شَاءَ ۚ وَسِعَ كُرْسِيُّهُ السَّمَاوَاتِ وَالْأَرْضَ ۖ وَلَا يَئُودُهُ حِفْظُهُمَا ۚ وَهُوَ الْعَلِيُّ الْعَظِيمُ.", "القرآن الكريم: البقرة 255", "من قالها حين يصبح أُجير من الجن حتى يمسي.", 1, "sabah"),
+        Zekr(2, "أَصْبَحْنَا وَأَصْبَحَ الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ، لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ، رَبِّ أَسْأَلُكَ خَيْرَ مَا فِي هَذَا الْيَوْمِ وَخَيْرَ مَا بَعْدَهُ، وَأَعُوذُ بِكَ مِنْ شَرِّ مَا فِي هَذَا الْيَوْمِ وَشَرِّ مَا بَعْدَهُ، رَبِّ أَعُوذُ بِكَ مِنَ الْكَسَلِ وَسُوءِ الْكِبَرِ، رَبِّ أَعُوذُ بِكَ مِنْ عَذَابٍ فِي النَّارِ وَعَذَابٍ فِي الْقَبْرِ.", "رواه مسلم", "من أذكار الصباح الثابتة.", 1, "sabah"),
+        Zekr(3, "اللَّهُمَّ أَنْتَ رَبِّي لَا إِلَهَ إِلَّا أَنْتَ، خَلَقْتَنِي وَأَنَا عَبْدُكَ، وَأَنَا عَلَى عَهْدِكَ وَوَعْدِكَ مَا اسْتَطَعْتُ، أَعُوذُ بِكَ مِنْ شَرِّ مَا صَنَعْتُ، أَبُوءُ لَكَ بِنِعْمَتِكَ عَلَيَّ، وَأَبُوءُ لَكَ بِذَنْبِي فَاغْفِرْ لِي فَإِنَّهُ لَا يَغْفِرُ الذُّنُوبَ إِلَّا أَنْتَ.", "رواه البخاري", "سيد الاستغفار.", 1, "sabah"),
+        Zekr(4, "اللَّهُمَّ بِكَ أَصْبَحْنَا، وَبِكَ أَمْسَيْنَا، وَبِكَ نَحْيَا، وَبِكَ نَمُوتُ، وَإِلَيْكَ النُّشُورُ.", "رواه الترمذي", "من أذكار الصباح.", 1, "sabah"),
+        Zekr(5, "اللَّهُمَّ إِنِّي أَسْأَلُكَ الْعَافِيَةَ فِي الدُّنْيَا وَالْآخِرَةِ، اللَّهُمَّ إِنِّي أَسْأَلُكَ الْعَفْوَ وَالْعَافِيَةَ فِي دِينِي وَدُنْيَايَ وَأَهْلِي وَمَالِي، اللَّهُمَّ اسْتُرْ عَوْرَاتِي وَآمِنْ رَوْعَاتِي، اللَّهُمَّ احْفَظْنِي مِنْ بَيْنِ يَدَيَّ، وَمِنْ خَلْفِي، وَعَنْ يَمِينِي، وَعَنْ شِمَالِي، وَمِنْ فَوْقِي، وَأَعُوذُ بِعَظَمَتِكَ أَنْ أُغْتَالَ مِنْ تَحْتِي.", "رواه أبو داود", "دعاء العافية.", 1, "sabah"),
+        Zekr(6, "بِسْمِ اللَّهِ الَّذِي لَا يَضُرُّ مَعَ اسْمِهِ شَيْءٌ فِي الْأَرْضِ وَلَا فِي السَّمَاءِ وَهُوَ السَّمِيعُ الْعَلِيمُ.", "رواه أبو داود والترمذي", "من قالها ثلاثاً لم يصبه فجأة بلاء.", 3, "sabah"),
+        Zekr(7, "رَضِيتُ بِاللَّهِ رَبًّا، وَبِالْإِسْلَامِ دِينًا، وَبِمُحَمَّدٍ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ نَبِيًّا.", "رواه أبو داود والترمذي", "من قالها كان حقاً على الله أن يرضيه.", 3, "sabah"),
+        Zekr(17, "قُلْ هُوَ اللَّهُ أَحَدٌ ۝ اللَّهُ الصَّمَدُ ۝ لَمْ يَلِدْ وَلَمْ يُولَدْ ۝ وَلَمْ يَكُنْ لَهُ كُفُوًا أَحَدٌ، قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ، قُلْ أَعُوذُ بِرَبِّ النَّاسِ.", "القرآن + أبو داود", "المعوذات ثلاث مرات.", 3, "sabah"),
+        Zekr(8, "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ.", "رواه مسلم", "مائة مرة حطت خطاياه.", 100, "sabah")
+    )
+
+    val eveningAzkar = listOf(
+        Zekr(9, "اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ ۚ لَا تَأْخُذُهُ سِنَةٌ وَلَا نَوْمٌ ۚ لَّهُ مَا فِي السَّمَاوَاتِ وَمَا فِي الْأَرْضِ ۗ مَن ذَا الَّذِي يَشْفَعُ عِندَهُ إِلَّا بِإِذْنِهِ ۚ يَعْلَمُ مَا بَيْنَ أَيْدِيهِمْ وَمَا خَلْفَهُمْ ۖ وَلَا يُحِيطُونَ بِشَيْءٍ مِّنْ عِلْمِهِ إِلَّا بِمَا شَاءَ ۚ وَسِعَ كُرْسِيُّهُ السَّمَاوَاتِ وَالْأَرْضَ ۖ وَلَا يَئُودُهُ حِفْظُهُمَا ۚ وَهُوَ الْعَلِيُّ الْعَظِيمُ.", "القرآن: البقرة 255", "من قالها حين يمسي أُجير من الجن حتى يصبح.", 1, "masaa"),
+        Zekr(10, "أَمْسَيْنَا وَأَمْسَى الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ، لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ، رَبِّ أَسْأَلُكَ خَيْرَ مَا فِي هَذِهِ اللَّيْلَةِ وَخَيْرَ مَا بَعْدَهَا، وَأَعُوذُ بِكَ مِنْ شَرِّ مَا فِي هَذِهِ اللَّيْلَةِ وَشَرِّ مَا بَعْدَهَا، رَبِّ أَعُوذُ بِكَ مِنَ الْكَسَلِ وَسُوءِ الْكِبَرِ، رَبِّ أَعُوذُ بِكَ مِنْ عَذَابٍ فِي النَّارِ وَعَذَابٍ فِي الْقَبْرِ.", "رواه مسلم", "من أذكار المساء.", 1, "masaa"),
+        Zekr(11, "اللَّهُمَّ أَنْتَ رَبِّي لَا إِلَهَ إِلَّا أَنْتَ، خَلَقْتَنِي وَأَنَا عَبْدُكَ، وَأَنَا عَلَى عَهْدِكَ وَوَعْدِكَ مَا اسْتَطَعْتُ، أَعُوذُ بِكَ مِنْ شَرِّ مَا صَنَعْتُ، أَبُوءُ لَكَ بِنِعْمَتِكَ عَلَيَّ، وَأَبُوءُ لَكَ بِذَنْبِي فَاغْفِرْ لِي فَإِنَّهُ لَا يَغْفِرُ الذُّنُوبَ إِلَّا أَنْتَ.", "رواه البخاري", "سيد الاستغفار.", 1, "masaa"),
+        Zekr(12, "اللَّهُمَّ بِكَ أَمْسَيْنَا، وَبِكَ أَصْبَحْنَا، وَبِكَ نَحْيَا، وَبِكَ نَمُوتُ، وَإِلَيْكَ الْمَصِيرُ.", "رواه الترمذي", "من أذكار المساء.", 1, "masaa"),
+        Zekr(13, "اللَّهُمَّ إِنِّي أَسْأَلُكَ الْعَافِيَةَ فِي الدُّنْيَا وَالْآخِرَةِ، اللَّهُمَّ إِنِّي أَسْأَلُكَ الْعَفْوَ وَالْعَافِيَةَ فِي دِينِي وَدُنْيَايَ وَأَهْلِي وَمَالِي، اللَّهُمَّ اسْتُرْ عَوْرَاتِي وَآمِنْ رَوْعَاتِي، اللَّهُمَّ احْفَظْنِي مِنْ بَيْنِ يَدَيَّ، وَمِنْ خَلْفِي، وَعَنْ يَمِينِي، وَعَنْ شِمَالِي، وَمِنْ فَوْقِي، وَأَعُوذُ بِعَظَمَتِكَ أَنْ أُغْتَالَ مِنْ تَحْتِي.", "رواه أبو داود", "دعاء العافية.", 1, "masaa"),
+        Zekr(14, "بِسْمِ اللَّهِ الَّذِي لَا يَضُرُّ مَعَ اسْمِهِ شَيْءٌ فِي الْأَرْضِ وَلَا فِي السَّمَاءِ وَهُوَ السَّمِيعُ الْعَلِيمُ.", "رواه أبو داود والترمذي", "ثلاث مرات.", 3, "masaa"),
+        Zekr(15, "رَضِيتُ بِاللَّهِ رَبًّا، وَبِالْإِسْلَامِ دِينًا، وَبِمُحَمَّدٍ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ نَبِيًّا.", "رواه أبو داود والترمذي", "ثلاث مرات.", 3, "masaa"),
+        Zekr(20, "قُلْ هُوَ اللَّهُ أَحَدٌ ۝ اللَّهُ الصَّمَدُ ۝ لَمْ يَلِدْ وَلَمْ يُولَدْ ۝ وَلَمْ يَكُنْ لَهُ كُفُوًا أَحَدٌ، قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ، قُلْ أَعُوذُ بِرَبِّ النَّاسِ.", "القرآن + أبو داود", "المعوذات.", 3, "masaa"),
+        Zekr(16, "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ.", "رواه مسلم", "مائة مرة.", 100, "masaa")
+    )
+
+    val sleepAzkar = listOf(
+        Zekr(30, "بِاسْمِكَ اللَّهُمَّ أَمُوتُ وَأَحْيَا.", "رواه البخاري", "كان النبي ﷺ يقولها إذا أوى إلى فراشه.", 1, "sleep"),
+        Zekr(31, "اللَّهُمَّ قِنِي عَذَابَكَ يَوْمَ تَبْعَثُ عِبَادَكَ.", "رواه أبو داود والترمذي", "ثلاث مرات عند النوم.", 3, "sleep"),
+        Zekr(32, "اللَّهُمَّ بِاسْمِكَ أَحْيَا وَبِاسْمِكَ أَمُوتُ.", "رواه البخاري ومسلم", "من أذكار النوم.", 1, "sleep"),
+        Zekr(33, "سُبْحَانَ اللَّهِ (33) الْحَمْدُ لِلَّهِ (33) اللَّهُ أَكْبَرُ (34).", "رواه البخاري ومسلم", "تسبيح فاطمة رضي الله عنها قبل النوم.", 1, "sleep"),
+        Zekr(34, "آمَنَ الرَّسُولُ بِمَا أُنزِلَ إِلَيْهِ مِن رَّبِّهِ وَالْمُؤْمِنُونَ... (آية الكرسي + خواتيم البقرة).", "رواه البخاري", "من قرأ آية الكرسي لا يزال عليه من الله حافظ.", 1, "sleep")
+    )
+
+    val travelAzkar = listOf(
+        Zekr(40, "اللَّهُ أَكْبَرُ، اللَّهُ أَكْبَرُ، اللَّهُ أَكْبَرُ، سُبْحَانَ الَّذِي سَخَّرَ لَنَا هَذَا وَمَا كُنَّا لَهُ مُقْرِنِينَ وَإِنَّا إِلَى رَبِّنَا لَمُنقَلِبُونَ.", "رواه مسلم", "دعاء ركوب الدابة / المركوب.", 1, "travel"),
+        Zekr(41, "اللَّهُمَّ إِنَّا نَسْأَلُكَ فِي سَفَرِنَا هَذَا الْبِرَّ وَالتَّقْوَى، وَمِنَ الْعَمَلِ مَا تَرْضَى، اللَّهُمَّ هَوِّنْ عَلَيْنَا سَفَرَنَا هَذَا وَاطْوِ عَنَّا بُعْدَهُ، اللَّهُمَّ أَنْتَ الصَّاحِبُ فِي السَّفَرِ وَالْخَلِيفَةُ فِي الْأَهْلِ.", "رواه مسلم", "دعاء السفر.", 1, "travel"),
+        Zekr(42, "أَعُوذُ بِكَلِمَاتِ اللَّهِ التَّامَّاتِ مِنْ شَرِّ مَا خَلَقَ.", "رواه مسلم", "ثلاث مرات عند نزول منزل.", 3, "travel"),
+        Zekr(43, "آئِبُونَ تَائِبُونَ عَابِدُونَ لِرَبِّنَا حَامِدُونَ.", "رواه البخاري ومسلم", "عند الرجوع من السفر.", 1, "travel")
+    )
+
+    fun all(): List<Zekr> =
+        morningAzkar + eveningAzkar + sleepAzkar + travelAzkar + TopicAzkarData.items
+
+    fun byIds(ids: Set<Int>): List<Zekr> = all().filter { it.id in ids }
+
+    fun forCategory(category: String): List<Zekr> = when (category) {
+        "sabah" -> morningAzkar
+        "masaa" -> eveningAzkar
+        "sleep" -> sleepAzkar
+        "travel" -> travelAzkar
+        else -> TopicAzkarData.items.filter { it.category == category }
+    }
+
+    /** الأذكار المضمّنة لتصنيف، أو فارغة لتصنيف ديناميكي (يأتي من الشبكة). */
+    fun builtInOrEmpty(category: String): List<Zekr> =
+        if (CategoryDefaults.isBuiltIn(category)) forCategory(category) else emptyList()
+
+    fun titleFor(category: String): String = when (category) {
+        "sabah" -> "أذكار الصباح"
+        "masaa" -> "أذكار المساء"
+        "sleep" -> "أذكار النوم"
+        "travel" -> "أذكار السفر"
+        "worry" -> "الهم والقلق"
+        "rizq" -> "أذكار الرزق"
+        "illness" -> "أذكار المرض والشفاء"
+        "waking" -> "أذكار الاستيقاظ"
+        "favorites" -> "المفضلة"
+        else -> "الأذكار"
+    }
+
+    private fun hasAnyTopic(query: String, vararg aliases: String): Boolean {
+        val queryTokens = query.split(Regex("\\s+")).filter(String::isNotBlank).toSet()
+        return aliases.any { alias ->
+            val normalized = ArabicText.normalize(alias)
+            if (normalized.length <= 2) normalized in queryTokens
+            else query.contains(normalized)
+        }
+    }
+
+    /**
+     * Offline topic matching complements literal text search. The result still
+     * includes the original text, repetition count, and source stored on each Zekr.
+     */
+    fun search(query: String): List<Zekr> {
+        val q = ArabicText.normalize(query)
+        if (q.isEmpty()) return emptyList()
+
+        val topics = buildSet {
+            if (hasAnyTopic(q, "الصباح", "صبح", "نهار", "morning")) add("sabah")
+            if (hasAnyTopic(q, "المساء", "مساء", "مغرب", "evening")) add("masaa")
+            if (hasAnyTopic(q, "النوم", "نوم", "الفراش", "sleep", "bed")) add("sleep")
+            if (hasAnyTopic(q, "السفر", "سفر", "مسافر", "رحلة", "طريق", "سيارة", "travel", "trip")) add("travel")
+            if (hasAnyTopic(q, "هم", "الهم", "قلق", "خوف", "فزع", "ضيق", "كرب", "حزن", "fear", "worry", "anxiety")) add("worry")
+            if (hasAnyTopic(q, "رزق", "الرزق", "معيشة", "عمل", "مال", "بركة", "rizq", "provision")) add("rizq")
+            if (hasAnyTopic(q, "مرض", "مريض", "شفاء", "وجع", "صحة", "illness", "sick", "healing")) add("illness")
+            if (hasAnyTopic(q, "استيقاظ", "استيقظ", "يقظة", "صحوت", "waking", "wake up")) add("waking")
+        }
+
+        return all().filter { zekr ->
+            zekr.category in topics ||
+                ArabicText.normalize(zekr.text).contains(q) ||
+                ArabicText.normalize(zekr.source).contains(q) ||
+                ArabicText.normalize(zekr.fadl).contains(q) ||
+                ArabicText.normalize(titleFor(zekr.category)).contains(q)
+        }
+    }
+}
+END SOURCE FILE: app/src/main/java/com/example/data/AzkarData.kt
+
+========================================================================================
+SOURCE FILE: app/src/main/java/com/example/data/Categories.kt
+========================================================================================
+package com.example.data
+
+/** تصنيف أذكار. الأربعة الأساسية مضمّنة، والباقي يأتي من Firestore (content/categories/items). */
+data class AzkarCategory(
+    val id: String,
+    val title: String,
+    val subtitle: String,
+    val iconKey: String,
+    val order: Int = 0,
+    val builtIn: Boolean = false
+)
+
+object CategoryDefaults {
+    val builtIn = listOf(
+        AzkarCategory("sabah", "الصباح", "ابدأ يومك بنور", "sun", order = 0, builtIn = true),
+        AzkarCategory("masaa", "المساء", "اختم يومك بسكينة", "moon", order = 1, builtIn = true),
+        AzkarCategory("sleep", "النوم", "طمأنينة قبل النوم", "bed", order = 2, builtIn = true),
+        AzkarCategory("travel", "السفر", "حفظ وأمان", "car", order = 3, builtIn = true),
+        AzkarCategory("worry", "الهم والقلق", "أذكار عند الضيق والخوف", "heart", order = 4, builtIn = true),
+        AzkarCategory("rizq", "الرزق", "دعاء بسعة الخير", "food", order = 5, builtIn = true),
+        AzkarCategory("illness", "المرض والشفاء", "دعاء للمريض", "heart", order = 6, builtIn = true),
+        AzkarCategory("waking", "الاستيقاظ", "ذكر بداية اليوم", "sun", order = 7, builtIn = true)
+    )
+
+    private val builtInIds = builtIn.map { it.id }.toSet()
+    private val reserved = builtInIds + "favorites"
+
+    fun isBuiltIn(id: String) = id in builtInIds
+
+    /** تصنيف ديناميكي يمكن فتحه من «أقسام الأذكار» (لا المحجوزة ولا المخفية). */
+    fun isDynamicId(id: String) = id !in reserved && !id.startsWith("wird_") && id.isNotBlank()
+
+    /** الأساسية أولاً ثم الديناميكية مرتبة. تُتجاهل أي وثيقة تتعارض معرّفاتها مع المحجوزة. */
+    fun merge(remote: List<AzkarCategory>): List<AzkarCategory> =
+        builtIn + remote.filter { isDynamicId(it.id) && it.title.isNotBlank() }
+            .distinctBy { it.id }
+            .sortedBy { it.order }
+}
+END SOURCE FILE: app/src/main/java/com/example/data/Categories.kt
+
+========================================================================================
+SOURCE FILE: app/src/main/java/com/example/data/CustomWirds.kt
+========================================================================================
+package com.example.data
+
+/** ورد مخصص: اسم وقائمة معرّفات أذكار بترتيب اختيار المستخدم. */
+data class CustomWird(val id: String, val name: String, val ids: List<Int>)
+
+/** ترميز بسيط بالسطور والتبويب (بلا مكتبات): id \t name \t 1,2,3 */
+object CustomWirds {
+    const val MAX_NAME = 40
+
+    fun cleanName(raw: String): String =
+        raw.replace('\t', ' ').replace('\n', ' ').replace('\r', ' ').trim().take(MAX_NAME)
+
+    fun encode(list: List<CustomWird>): String =
+        list.joinToString("\n") { "${it.id}\t${cleanName(it.name)}\t${it.ids.joinToString(",")}" }
+
+    fun decode(raw: String?): List<CustomWird> {
+        if (raw.isNullOrBlank()) return emptyList()
+        return raw.split('\n').mapNotNull { line ->
+            val parts = line.split('\t')
+            if (parts.size != 3 || parts[0].isBlank() || parts[1].isBlank()) return@mapNotNull null
+            CustomWird(
+                id = parts[0],
+                name = parts[1],
+                ids = parts[2].split(',').mapNotNull { it.trim().toIntOrNull() }
+            )
+        }
+    }
+
+    fun newId(): String = "w" + System.currentTimeMillis().toString(36)
+
+    fun upsert(list: List<CustomWird>, wird: CustomWird): List<CustomWird> =
+        if (list.any { it.id == wird.id }) list.map { if (it.id == wird.id) wird else it } else list + wird
+
+    /** يحوّل المعرّفات إلى أذكار بالترتيب المحفوظ، ويتجاوز المعرّفات التي لم تعد موجودة. */
+    fun resolve(wird: CustomWird, all: List<Zekr>): List<Zekr> {
+        val byId = all.associateBy { it.id }
+        return wird.ids.mapNotNull { byId[it] }
+    }
+}
+END SOURCE FILE: app/src/main/java/com/example/data/CustomWirds.kt
+
+========================================================================================
+SOURCE FILE: app/src/main/java/com/example/data/FeedbackModels.kt
+========================================================================================
+package com.example.data
+
+data class FeedbackDraft(
+    val type: String = "suggestion",
+    val title: String = "",
+    val message: String = "",
+    val aiSummary: String = "",
+    val aiCategory: String = "",
+    val priority: String = "normal",
+    val attachmentUri: android.net.Uri? = null
+)
+
+data class FeedbackItem(
+    val id: String = "",
+    val type: String = "suggestion",
+    val title: String = "",
+    val message: String = "",
+    val aiSummary: String = "",
+    val status: String = "new",
+    val adminReply: String = "",
+    val replyUnread: Boolean = false,
+    val createdAt: Long = 0L
+)
+END SOURCE FILE: app/src/main/java/com/example/data/FeedbackModels.kt
+
+========================================================================================
+SOURCE FILE: app/src/main/java/com/example/data/FirestoreRepository.kt
+========================================================================================
+package com.example.data
+
+import android.net.Uri
+import android.util.Log
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
+import com.google.firebase.messaging.FirebaseMessaging
+import com.google.firebase.storage.FirebaseStorage
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.tasks.await
+
+class FirestoreRepository {
+    private val firestore by lazy { runCatching { FirebaseFirestore.getInstance() }.getOrNull() }
+    private val auth by lazy { runCatching { FirebaseAuth.getInstance() }.getOrNull() }
+
+    suspend fun backupProgress(progressList: List<UserProgress>): Boolean {
+        val user = auth?.currentUser ?: return false
+        val db = firestore ?: return false
+        if (progressList.isEmpty()) return true
+        return try {
+            val col = db.collection("users").document(user.uid).collection("progress")
+            progressList.chunked(400).forEach { chunk ->
+                val batch = db.batch()
+                chunk.forEach { p ->
+                    if (p.date.isBlank()) return@forEach
+                    batch.set(
+                        col.document(p.date),
+                        mapOf(
+                            "date" to p.date,
+                            "completedSabah" to p.completedSabah,
+                            "completedMasaa" to p.completedMasaa,
+                            "completedSleep" to p.completedSleep,
+                            "totalTasbeeh" to p.totalTasbeeh
+                        )
+                    )
+                }
+                batch.commit().await()
+            }
+            true
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.e("FirestoreRepository", "Backup failed", e)
+            false
+        }
+    }
+
+    suspend fun fetchProgress(): List<UserProgress>? {
+        val user = auth?.currentUser ?: return null
+        val db = firestore ?: return null
+        return try {
+            db.collection("users").document(user.uid)
+                .collection("progress").get().await()
+                .toObjects(UserProgress::class.java)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.e("FirestoreRepository", "Fetch failed", e)
+            null
+        }
+    }
+
+    /**
+     * يحفظ توكن FCM + تفضيلات الإشعارات حتى تصل بثوث لوحة الإدارة
+     * (getBroadcastTokens يفلتر notificationsEnabled == true).
+     */
+    suspend fun saveFcmToken(
+        notificationsEnabled: Boolean = true,
+        notificationAudience: String = "all"
+    ) {
+        val user = auth?.currentUser ?: return
+        val db = firestore ?: return
+        try {
+            val token = FirebaseMessaging.getInstance().token.await()
+            db.collection("users").document(user.uid).set(
+                mapOf(
+                    "fcmTokens" to FieldValue.arrayUnion(token),
+                    "notificationsEnabled" to notificationsEnabled,
+                    "notificationAudience" to notificationAudience,
+                    "updatedAt" to FieldValue.serverTimestamp()
+                ),
+                SetOptions.merge()
+            ).await()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.e("FirestoreRepository", "Saving FCM token failed", e)
+        }
+    }
+
+    /** يحدّث تفضيل الإشعارات فقط (عند تبديل المفتاح في الإعدادات). */
+    suspend fun updateNotificationPrefs(
+        notificationsEnabled: Boolean,
+        notificationAudience: String = "all"
+    ) {
+        val user = auth?.currentUser ?: return
+        val db = firestore ?: return
+        try {
+            db.collection("users").document(user.uid).set(
+                mapOf(
+                    "notificationsEnabled" to notificationsEnabled,
+                    "notificationAudience" to notificationAudience,
+                    "updatedAt" to FieldValue.serverTimestamp()
+                ),
+                SetOptions.merge()
+            ).await()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.e("FirestoreRepository", "updateNotificationPrefs failed", e)
+        }
+    }
+
+    suspend fun fetchPublishedAzkar(category: String): List<Zekr> {
+        val db = firestore ?: return emptyList()
+        return try {
+            db.collection("content").document("azkar").collection("items")
+                .whereEqualTo("category", category)
+                .whereEqualTo("published", true)
+                .get().await()
+                .documents
+                .sortedBy { it.getLong("order") ?: Long.MAX_VALUE }
+                .mapIndexed { index, doc ->
+                    Zekr(
+                        id = (doc.getLong("id") ?: index.toLong()).toInt(),
+                        text = doc.getString("text").orEmpty(),
+                        source = doc.getString("source").orEmpty(),
+                        fadl = doc.getString("fadl").orEmpty(),
+                        repeatCount = (doc.getLong("repeat") ?: 1L).toInt().coerceAtLeast(1),
+                        category = category,
+                        audioUrl = doc.getString("audioUrl"),
+                        audioUrlsByReciter = readAudioUrlsByReciter(doc.get("audioUrlsByReciter"))
+                    )
+                }
+                .filter { it.text.isNotBlank() }
+        } catch (e: Exception) {
+            Log.e("FirestoreRepository", "Content fetch failed", e)
+            emptyList()
+        }
+    }
+
+    private fun readAudioUrlsByReciter(raw: Any?): Map<String, String> =
+        (raw as? Map<*, *>)
+            ?.mapNotNull { (key, value) ->
+                if (key is String && value is String && value.startsWith("https://")) key to value
+                else null
+            }
+            ?.toMap()
+            .orEmpty()
+
+    /** التصنيفات الديناميكية المنشورة. تصل فوراً دون إصدار جديد للتطبيق. */
+    fun observeCategories(): Flow<List<AzkarCategory>> = callbackFlow {
+        val db = firestore
+        if (db == null) {
+            trySend(emptyList())
+            close()
+            return@callbackFlow
+        }
+        var lastGood: List<AzkarCategory> = emptyList()
+        val registration = db.collection("content").document("categories").collection("items")
+            .whereEqualTo("published", true)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Log.e("FirestoreRepository", "Categories listener failed", error)
+                    trySend(lastGood)
+                    return@addSnapshotListener
+                }
+                val items = snapshot?.documents.orEmpty().map { doc ->
+                    AzkarCategory(
+                        id = doc.id,
+                        title = doc.getString("title").orEmpty(),
+                        subtitle = doc.getString("subtitle").orEmpty(),
+                        iconKey = doc.getString("icon") ?: "star",
+                        order = (doc.getLong("order") ?: 0L).toInt()
+                    )
+                }
+                lastGood = items
+                trySend(items)
+            }
+        awaitClose { registration.remove() }
+    }.distinctUntilChanged()
+
+    fun observePublishedAzkar(category: String): Flow<List<Zekr>> = callbackFlow {
+        val db = firestore
+        if (db == null) {
+            trySend(emptyList())
+            close()
+            return@callbackFlow
+        }
+        var lastGood: List<Zekr> = emptyList()
+        val registration = db.collection("content").document("azkar").collection("items")
+            .whereEqualTo("category", category)
+            .whereEqualTo("published", true)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Log.e("FirestoreRepository", "Realtime content listener failed", error)
+                    trySend(lastGood) // لا تمسح المحتوى الحي عند خطأ عابر
+                    return@addSnapshotListener
+                }
+                val items = snapshot?.documents.orEmpty()
+                    .sortedBy { it.getLong("order") ?: Long.MAX_VALUE }
+                    .mapIndexed { index, doc ->
+                        Zekr(
+                            id = (doc.getLong("id") ?: index.toLong()).toInt(),
+                            text = doc.getString("text").orEmpty(),
+                            source = doc.getString("source").orEmpty(),
+                            fadl = doc.getString("fadl").orEmpty(),
+                            repeatCount = (doc.getLong("repeat") ?: 1L).toInt().coerceAtLeast(1),
+                            category = category,
+                            audioUrl = doc.getString("audioUrl"),
+                            audioUrlsByReciter = readAudioUrlsByReciter(doc.get("audioUrlsByReciter"))
+                        )
+                    }
+                    .filter { it.text.isNotBlank() }
+                lastGood = items
+                trySend(items)
+            }
+        awaitClose { registration.remove() }
+    }.distinctUntilChanged()
+
+    /** مسار واحد: feedback/{id} فقط — لا نسخة users/{uid}/feedback. */
+    suspend fun submitFeedback(draft: FeedbackDraft, attachmentUri: Uri? = null): Result<String> {
+        val user = auth?.currentUser ?: return Result.failure(IllegalStateException("AUTH_REQUIRED"))
+        val db = firestore ?: return Result.failure(IllegalStateException("FIRESTORE_UNAVAILABLE"))
+        return try {
+            val ref = db.collection("feedback").document()
+            val attachmentUrl = if (attachmentUri != null) {
+                val storageRef = FirebaseStorage.getInstance().reference
+                    .child("feedback/${user.uid}/${ref.id}/attachment.jpg")
+                storageRef.putFile(attachmentUri).await()
+                storageRef.downloadUrl.await().toString()
+            } else ""
+            val data = hashMapOf<String, Any>(
+                "userId" to user.uid,
+                "type" to draft.type,
+                "title" to draft.title,
+                "message" to draft.message,
+                "status" to "new",
+                "adminReply" to "",
+                "replyUnread" to false,
+                "createdAt" to FieldValue.serverTimestamp(),
+                "updatedAt" to FieldValue.serverTimestamp()
+            )
+            if (attachmentUrl.isNotEmpty()) data["attachmentUrl"] = attachmentUrl
+            ref.set(data).await()
+            Result.success(ref.id)
+        } catch (e: Exception) {
+            Log.e("FirestoreRepository", "Feedback submission failed", e)
+            Result.failure(e)
+        }
+    }
+
+    fun observeMyFeedback(): Flow<List<FeedbackItem>> = callbackFlow {
+        val user = auth?.currentUser
+        val db = firestore
+        if (user == null || db == null) {
+            close()
+            return@callbackFlow
+        }
+        val registration = db.collection("feedback").whereEqualTo("userId", user.uid)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+                val items = snapshot?.documents.orEmpty().map { doc ->
+                    FeedbackItem(
+                        id = doc.id,
+                        type = doc.getString("type").orEmpty(),
+                        title = doc.getString("title").orEmpty(),
+                        message = doc.getString("message").orEmpty(),
+                        aiSummary = doc.getString("aiSummary").orEmpty(),
+                        status = doc.getString("status") ?: "new",
+                        adminReply = doc.getString("adminReply").orEmpty(),
+                        replyUnread = doc.getBoolean("replyUnread") ?: false,
+                        createdAt = doc.getTimestamp("createdAt")?.toDate()?.time ?: 0L
+                    )
+                }.sortedByDescending { it.createdAt }
+                trySend(items)
+            }
+        awaitClose { registration.remove() }
+    }.distinctUntilChanged()
+
+    suspend fun markFeedbackReplyRead(feedbackId: String) {
+        val db = firestore ?: return
+        try {
+            db.collection("feedback").document(feedbackId).update("replyUnread", false).await()
+        } catch (e: Exception) {
+            Log.e("FirestoreRepository", "Mark reply read failed", e)
+        }
+    }
+}
+END SOURCE FILE: app/src/main/java/com/example/data/FirestoreRepository.kt
+
+========================================================================================
+SOURCE FILE: app/src/main/java/com/example/data/ProgressDao.kt
+========================================================================================
+package com.example.data
+
+import androidx.room.Dao
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
+import kotlinx.coroutines.flow.Flow
+
+@Dao
+interface ProgressDao {
+    @Query("SELECT * FROM user_progress WHERE date = :date LIMIT 1")
+    fun getProgressByDate(date: String): Flow<UserProgress?>
+
+    @Query("SELECT * FROM user_progress WHERE date = :date LIMIT 1")
+    suspend fun getProgressByDateSync(date: String): UserProgress?
+
+    @Query("SELECT * FROM user_progress ORDER BY date DESC LIMIT 30")
+    fun getRecentProgress(): Flow<List<UserProgress>>
+
+    @Query("SELECT * FROM user_progress ORDER BY date DESC")
+    fun getAllProgressFlow(): Flow<List<UserProgress>>
+
+    @Query("SELECT * FROM user_progress ORDER BY date ASC")
+    suspend fun getAllProgressSync(): List<UserProgress>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertProgress(progress: UserProgress)
+
+    /** Insert only if the day row does not exist — prevents wiping today's progress. */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertProgressIfNotExists(progress: UserProgress)
+
+    @Query("UPDATE user_progress SET completedSabah = :completed WHERE date = :date")
+    suspend fun updateSabah(date: String, completed: Boolean)
+
+    @Query("UPDATE user_progress SET completedMasaa = :completed WHERE date = :date")
+    suspend fun updateMasaa(date: String, completed: Boolean)
+
+    @Query("UPDATE user_progress SET completedSleep = :completed WHERE date = :date")
+    suspend fun updateSleep(date: String, completed: Boolean)
+
+    @Query("UPDATE user_progress SET totalTasbeeh = totalTasbeeh + :count WHERE date = :date")
+    suspend fun addTasbeeh(date: String, count: Int)
+
+    @Query("DELETE FROM user_progress")
+    suspend fun clearAll()
+}
+END SOURCE FILE: app/src/main/java/com/example/data/ProgressDao.kt
+
+========================================================================================
+SOURCE FILE: app/src/main/java/com/example/data/ProgressRepository.kt
+========================================================================================
+package com.example.data
+
+import android.content.Context
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+class ProgressRepository(private val progressDao: ProgressDao) {
+    fun getTodayDateStr(): String {
+        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+        return sdf.format(Date())
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun getTodayProgress(): Flow<UserProgress?> =
+        currentDateFlow().flatMapLatest { progressDao.getProgressByDate(it) }
+
+    private fun currentDateFlow(): Flow<String> = flow {
+        while (true) {
+            emit(getTodayDateStr())
+            delay(60_000L)
+        }
+    }.distinctUntilChanged()
+
+    fun getRecentProgress(): Flow<List<UserProgress>> = progressDao.getRecentProgress()
+
+    suspend fun getTodayProgressSync(date: String = getTodayDateStr()): UserProgress? =
+        progressDao.getProgressByDateSync(date)
+
+    fun getAllProgressFlow(): Flow<List<UserProgress>> = progressDao.getAllProgressFlow()
+
+    suspend fun getAllProgress(): List<UserProgress> = progressDao.getAllProgressSync()
+
+    /** يضمن وجود صف اليوم قبل أي تحديث (مهم بعد منتصف الليل والتطبيق مفتوح). */
+    private suspend fun ensureToday(): String {
+        val date = getTodayDateStr()
+        progressDao.insertProgressIfNotExists(UserProgress(date = date))
+        return date
+    }
+
+    suspend fun initTodayProgress() {
+        progressDao.insertProgressIfNotExists(UserProgress(date = getTodayDateStr()))
+    }
+
+    suspend fun completeSabah() {
+        progressDao.updateSabah(ensureToday(), true)
+    }
+
+    suspend fun completeMasaa() {
+        progressDao.updateMasaa(ensureToday(), true)
+    }
+
+    suspend fun completeSleep() {
+        progressDao.updateSleep(ensureToday(), true)
+    }
+
+    suspend fun addTasbeeh(count: Int) {
+        progressDao.addTasbeeh(ensureToday(), count)
+    }
+
+    suspend fun clearLocalProgress() {
+        progressDao.clearAll()
+    }
+
+    suspend fun syncProgress(remoteList: List<UserProgress>) {
+        for (remote in remoteList) {
+            if (remote.date.isBlank()) continue
+            val local = progressDao.getProgressByDateSync(remote.date)
+            if (local == null) {
+                progressDao.insertProgress(remote)
+            } else {
+                val merged = local.copy(
+                    completedSabah = local.completedSabah || remote.completedSabah,
+                    completedMasaa = local.completedMasaa || remote.completedMasaa,
+                    completedSleep = local.completedSleep || remote.completedSleep,
+                    totalTasbeeh = maxOf(local.totalTasbeeh, remote.totalTasbeeh)
+                )
+                progressDao.insertProgress(merged)
+            }
+        }
+    }
+
+    companion object {
+        @Volatile
+        private var instance: ProgressRepository? = null
+
+        fun getInstance(context: Context): ProgressRepository {
+            return instance ?: synchronized(this) {
+                instance ?: ProgressRepository(
+                    AppDatabase.getDatabase(context).progressDao()
+                ).also { instance = it }
+            }
+        }
+    }
+}
+END SOURCE FILE: app/src/main/java/com/example/data/ProgressRepository.kt
+
+========================================================================================
+SOURCE FILE: app/src/main/java/com/example/data/SettingsRepository.kt
+========================================================================================
+package com.example.data
+
+import android.content.Context
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
+import androidx.datastore.preferences.preferencesDataStore
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+
+val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
+
+class SettingsRepository(private val dataStore: DataStore<Preferences>) {
+    private companion object { const val MAX_SAVED_AI_AZKAR = 100 }
+
+
+    private val FONT_SIZE = floatPreferencesKey("font_size")
+    private val DARK_MODE = booleanPreferencesKey("dark_mode")
+    private val VIBRATION = booleanPreferencesKey("vibration")
+    private val KEEP_SCREEN_ON = booleanPreferencesKey("keep_screen_on")
+    private val HIDE_VIRTUES = booleanPreferencesKey("hide_virtues")
+    private val HIDE_SOURCES = booleanPreferencesKey("hide_sources")
+    private val LAST_READ_CATEGORY = stringPreferencesKey("last_read_category")
+    private val LAST_READ_INDEX = intPreferencesKey("last_read_index")
+    private val LAST_READ_REMAINING = intPreferencesKey("last_read_remaining")
+    private val AUTO_DND = booleanPreferencesKey("auto_dnd")
+    private val ONBOARDING_COMPLETE = booleanPreferencesKey("onboarding_complete")
+    private val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
+    private val REMIND_SABAH = booleanPreferencesKey("remind_sabah")
+    private val REMIND_MASAA = booleanPreferencesKey("remind_masaa")
+    private val REMIND_SLEEP = booleanPreferencesKey("remind_sleep")
+    private val REMIND_FRIDAY = booleanPreferencesKey("remind_friday")
+    private val REMINDER_SABAH_TIME = stringPreferencesKey("reminder_sabah_time")
+    private val REMINDER_MASAA_TIME = stringPreferencesKey("reminder_masaa_time")
+    private val REMINDER_SLEEP_TIME = stringPreferencesKey("reminder_sleep_time")
+    private val REMINDER_FRIDAY_TIME = stringPreferencesKey("reminder_friday_time")
+    private val AUTO_PLAY = booleanPreferencesKey("auto_play")
+    private val AUDIO_SPEED = floatPreferencesKey("audio_speed")
+    private val RECITER_ID = stringPreferencesKey("reciter_id")
+    private val CUSTOM_WIRDS = stringPreferencesKey("custom_wirds")
+    private val WEEKLY_GOAL = intPreferencesKey("weekly_days_goal")
+    private val ACCENT = stringPreferencesKey("accent_theme")
+    private val READER_FONT = stringPreferencesKey("reader_font")
+    private val DAILY_GOAL = intPreferencesKey("daily_tasbeeh_goal")
+    private val TASBIH_TARGET = intPreferencesKey("tasbih_target")
+    private val FAVORITES = stringSetPreferencesKey("favorite_zekr_ids")
+    private val MY_AZKAR = stringSetPreferencesKey("my_azkar")
+
+    val fontSizeFlow: Flow<Float> = dataStore.data.map { it[FONT_SIZE] ?: 24f }
+    val darkModeFlow: Flow<Boolean> = dataStore.data.map { it[DARK_MODE] ?: true }
+    val vibrationFlow: Flow<Boolean> = dataStore.data.map { it[VIBRATION] ?: true }
+    val keepScreenOnFlow: Flow<Boolean> = dataStore.data.map { it[KEEP_SCREEN_ON] ?: true }
+    val autoDndFlow: Flow<Boolean> = dataStore.data.map { it[AUTO_DND] ?: false }
+    val hideVirtuesFlow: Flow<Boolean> = dataStore.data.map { it[HIDE_VIRTUES] ?: false }
+    val hideSourcesFlow: Flow<Boolean> = dataStore.data.map { it[HIDE_SOURCES] ?: false }
+    val onboardingCompleteFlow: Flow<Boolean> = dataStore.data.map { it[ONBOARDING_COMPLETE] ?: false }
+    val notificationsEnabledFlow: Flow<Boolean> = dataStore.data.map { it[NOTIFICATIONS_ENABLED] ?: true }
+    val remindSabahFlow: Flow<Boolean> = dataStore.data.map { it[REMIND_SABAH] ?: true }
+    val remindMasaaFlow: Flow<Boolean> = dataStore.data.map { it[REMIND_MASAA] ?: true }
+    val remindSleepFlow: Flow<Boolean> = dataStore.data.map { it[REMIND_SLEEP] ?: true }
+    val remindFridayFlow: Flow<Boolean> = dataStore.data.map { it[REMIND_FRIDAY] ?: false }
+    val reminderSabahTimeFlow: Flow<String> = dataStore.data.map { it[REMINDER_SABAH_TIME] ?: "07:00" }
+    val reminderMasaaTimeFlow: Flow<String> = dataStore.data.map { it[REMINDER_MASAA_TIME] ?: "18:00" }
+    val reminderSleepTimeFlow: Flow<String> = dataStore.data.map { it[REMINDER_SLEEP_TIME] ?: "22:00" }
+    val reminderFridayTimeFlow: Flow<String> = dataStore.data.map { it[REMINDER_FRIDAY_TIME] ?: "09:00" }
+    val autoPlayFlow: Flow<Boolean> = dataStore.data.map { it[AUTO_PLAY] ?: false }
+    val audioSpeedFlow: Flow<Float> = dataStore.data.map { it[AUDIO_SPEED] ?: 1.0f }
+    val reciterIdFlow: Flow<String> = dataStore.data.map { it[RECITER_ID] ?: "mishary" }
+    val customWirdsFlow: Flow<List<CustomWird>> = dataStore.data.map { CustomWirds.decode(it[CUSTOM_WIRDS]) }
+    val weeklyGoalFlow: Flow<Int> = dataStore.data.map { it[WEEKLY_GOAL] ?: 5 }
+    val accentFlow: Flow<String> = dataStore.data.map { it[ACCENT] ?: "gold" }
+    val readerFontFlow: Flow<String> = dataStore.data.map { it[READER_FONT] ?: "amiri" }
+    val dailyGoalFlow: Flow<Int> = dataStore.data.map { it[DAILY_GOAL] ?: 100 }
+    val tasbihTargetFlow: Flow<Int> = dataStore.data.map { it[TASBIH_TARGET] ?: 33 }
+    val favoritesFlow: Flow<Set<Int>> = dataStore.data.map { prefs ->
+        prefs[FAVORITES]?.mapNotNull { it.toIntOrNull() }?.toSet() ?: emptySet()
+    }
+    val savedAiAzkarFlow: Flow<List<String>> = dataStore.data.map { prefs ->
+        prefs[MY_AZKAR].orEmpty().toList().sorted()
+    }
+
+    val lastReadCategoryFlow: Flow<String> = dataStore.data.map { it[LAST_READ_CATEGORY] ?: "" }
+    val lastReadIndexFlow: Flow<Int> = dataStore.data.map { it[LAST_READ_INDEX] ?: 0 }
+    val lastReadRemainingFlow: Flow<Int> = dataStore.data.map { it[LAST_READ_REMAINING] ?: 0 }
+
+    suspend fun saveLastReadState(category: String, index: Int, remaining: Int) {
+        dataStore.edit {
+            it[LAST_READ_CATEGORY] = category
+            it[LAST_READ_INDEX] = index
+            it[LAST_READ_REMAINING] = remaining
+        }
+    }
+
+    suspend fun clearLastReadState() {
+        dataStore.edit {
+            it.remove(LAST_READ_CATEGORY)
+            it.remove(LAST_READ_INDEX)
+            it.remove(LAST_READ_REMAINING)
+        }
+    }
+
+    suspend fun setFontSize(size: Float) { dataStore.edit { it[FONT_SIZE] = size } }
+    suspend fun setDarkMode(isDark: Boolean) { dataStore.edit { it[DARK_MODE] = isDark } }
+    suspend fun setVibration(enabled: Boolean) { dataStore.edit { it[VIBRATION] = enabled } }
+    suspend fun setKeepScreenOn(enabled: Boolean) { dataStore.edit { it[KEEP_SCREEN_ON] = enabled } }
+    suspend fun setAutoDnd(enabled: Boolean) { dataStore.edit { it[AUTO_DND] = enabled } }
+    suspend fun setHideVirtues(hide: Boolean) { dataStore.edit { it[HIDE_VIRTUES] = hide } }
+    suspend fun setOnboardingComplete() { dataStore.edit { it[ONBOARDING_COMPLETE] = true } }
+    suspend fun setHideSources(hide: Boolean) { dataStore.edit { it[HIDE_SOURCES] = hide } }
+    suspend fun setNotificationsEnabled(enabled: Boolean) {
+        dataStore.edit { it[NOTIFICATIONS_ENABLED] = enabled }
+    }
+    suspend fun setReminderEnabled(category: String, enabled: Boolean) {
+        val key = when (category) {
+            "sabah" -> REMIND_SABAH
+            "masaa" -> REMIND_MASAA
+            "sleep" -> REMIND_SLEEP
+            "friday" -> REMIND_FRIDAY
+            else -> return
+        }
+        dataStore.edit { it[key] = enabled }
+    }
+
+    suspend fun setReminderTime(category: String, time: String) {
+        if (!time.matches(Regex("^([01]?[0-9]|2[0-3]):[0-5][0-9]$"))) return
+        val parts = time.split(":")
+        val normalized = "${parts[0].padStart(2, '0')}:${parts[1]}"
+        val key = when (category) {
+            "sabah" -> REMINDER_SABAH_TIME
+            "masaa" -> REMINDER_MASAA_TIME
+            "sleep" -> REMINDER_SLEEP_TIME
+            "friday" -> REMINDER_FRIDAY_TIME
+            else -> return
+        }
+        dataStore.edit { it[key] = normalized }
+    }
+
+    /** Claims one reminder category for a date, preventing repeat notifications from periodic work. */
+    suspend fun claimReminderForDate(category: String, date: String): Boolean {
+        if (category !in setOf("sabah", "masaa", "sleep", "friday")) return false
+        var claimed = false
+        val key = stringPreferencesKey("last_reminder_$category")
+        dataStore.edit { prefs ->
+            if (prefs[key] != date) {
+                prefs[key] = date
+                claimed = true
+            }
+        }
+        return claimed
+    }
+    suspend fun setAutoPlay(enabled: Boolean) { dataStore.edit { it[AUTO_PLAY] = enabled } }
+    suspend fun setAudioSpeed(speed: Float) {
+        val allowed = listOf(0.75f, 1.0f, 1.25f)
+        val selected = allowed.minByOrNull { kotlin.math.abs(it - speed) } ?: 1.0f
+        dataStore.edit { it[AUDIO_SPEED] = selected }
+    }
+
+    suspend fun setReciterId(id: String) {
+        val allowed = setOf("mishary", "abdulbasit", "maher", "yasser")
+        if (id !in allowed) return
+        dataStore.edit { it[RECITER_ID] = id }
+    }
+    suspend fun saveCustomWird(wird: CustomWird) {
+        dataStore.edit { prefs ->
+            val current = CustomWirds.decode(prefs[CUSTOM_WIRDS])
+            prefs[CUSTOM_WIRDS] = CustomWirds.encode(CustomWirds.upsert(current, wird))
+        }
+    }
+
+    suspend fun deleteCustomWird(id: String) {
+        dataStore.edit { prefs ->
+            val current = CustomWirds.decode(prefs[CUSTOM_WIRDS])
+            prefs[CUSTOM_WIRDS] = CustomWirds.encode(current.filterNot { it.id == id })
+        }
+    }
+
+    suspend fun setWeeklyGoal(days: Int) { dataStore.edit { it[WEEKLY_GOAL] = days.coerceIn(1, 7) } }
+    suspend fun setAccent(key: String) { dataStore.edit { it[ACCENT] = key } }
+    suspend fun setReaderFont(key: String) { dataStore.edit { it[READER_FONT] = key } }
+    suspend fun setDailyGoal(goal: Int) { dataStore.edit { it[DAILY_GOAL] = goal.coerceIn(10, 100_000) } }
+    suspend fun setTasbihTarget(target: Int) { dataStore.edit { it[TASBIH_TARGET] = target.coerceIn(0, 100_000) } }
+    suspend fun toggleFavorite(id: Int) {
+        dataStore.edit { prefs ->
+            val current = prefs[FAVORITES] ?: emptySet()
+            val key = id.toString()
+            prefs[FAVORITES] = if (key in current) current - key else current + key
+        }
+    }
+    suspend fun saveAiZekr(text: String) {
+        val clean = text.trim().take(4000)
+        if (clean.isBlank()) return
+        dataStore.edit { prefs ->
+            val current = prefs[MY_AZKAR] ?: emptySet()
+            if (clean !in current) {
+                val updated = (current + clean).toList().sorted().takeLast(MAX_SAVED_AI_AZKAR).toSet()
+                prefs[MY_AZKAR] = updated
+            }
+        }
+    }
+
+    suspend fun removeAiZekr(text: String) {
+        dataStore.edit { prefs ->
+            prefs[MY_AZKAR] = (prefs[MY_AZKAR] ?: emptySet()) - text
+        }
+    }
+}
+END SOURCE FILE: app/src/main/java/com/example/data/SettingsRepository.kt

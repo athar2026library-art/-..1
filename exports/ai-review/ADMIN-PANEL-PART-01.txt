@@ -1,0 +1,1562 @@
+BAQIYAT — SOURCE EXPORT FOR AI REVIEW
+Component: ADMIN-PANEL
+Part: 01
+Source branch: main (export generated on a separate branch)
+Encoding: UTF-8. Original relative paths are marked per file.
+This is a review/export format, not a compilable project folder.
+
+========================================================================================
+SOURCE FILE: admin-panel/README.md
+========================================================================================
+# لوحة إدارة الباقيات
+
+لوحة ويب عربية RTL لإدارة محتوى تطبيق Android عبر **Google Auth + Firestore RBAC**.
+
+## الأمان
+
+- لا توجد كلمة مرور ثابتة في الكود.
+- الدخول عبر حساب Google فقط.
+- يُسمح بالمتابعة إذا وُجد مستند `admins/{uid}` أو مطالبة مخصصة `admin: true`.
+- أنشئ أول مشرف يدوياً من Firebase Console:
+  1. Authentication → انسخ UID لحسابك.
+  2. Firestore → مجموعة `admins` → مستند بالمعرّف = UID.
+  3. الحقول: `role: super_admin` و `email: ...`.
+- انشر `firestore.rules` من جذر المستودع قبل فتح اللوحة على الإنتاج.
+
+## التشغيل المحلي
+
+من جذر المستودع:
+
+```bash
+python3 -m http.server 4173 --directory admin-panel
+```
+
+ثم افتح الصفحة محلياً. أضف نطاق `localhost` في Firebase Authentication → Authorized domains.
+
+## الإشعارات
+
+`functions-fcm.example.js` مثال لـ Cloud Function تقرأ `admin_jobs` وترسل إلى موضوع FCM `all`. انسخه إلى `functions/index.js` وانشره يدوياً — لا يُنشر تلقائياً.
+
+## الخصوصية
+
+`robots.txt` و`noindex` يمنعان الفهرسة. هذا **لا يغني** عن RBAC أعلاه.
+END SOURCE FILE: admin-panel/README.md
+
+========================================================================================
+SOURCE FILE: admin-panel/app.js
+========================================================================================
+/* loader 24 parts - full admin UI + hosting auth */
+(async function () {
+  try {
+    const parts = await Promise.all([
+      fetch("./app.part01.js", { cache: "no-store" }).then(r => { if (!r.ok) throw new Error("p01 "+r.status); return r.text(); }),
+      fetch("./app.part02.js", { cache: "no-store" }).then(r => { if (!r.ok) throw new Error("p02 "+r.status); return r.text(); }),
+      fetch("./app.part03.js", { cache: "no-store" }).then(r => { if (!r.ok) throw new Error("p03 "+r.status); return r.text(); }),
+      fetch("./app.part04.js", { cache: "no-store" }).then(r => { if (!r.ok) throw new Error("p04 "+r.status); return r.text(); }),
+      fetch("./app.part05.js", { cache: "no-store" }).then(r => { if (!r.ok) throw new Error("p05 "+r.status); return r.text(); }),
+      fetch("./app.part06.js", { cache: "no-store" }).then(r => { if (!r.ok) throw new Error("p06 "+r.status); return r.text(); }),
+      fetch("./app.part07.js", { cache: "no-store" }).then(r => { if (!r.ok) throw new Error("p07 "+r.status); return r.text(); }),
+      fetch("./app.part08.js", { cache: "no-store" }).then(r => { if (!r.ok) throw new Error("p08 "+r.status); return r.text(); }),
+      fetch("./app.part09.js", { cache: "no-store" }).then(r => { if (!r.ok) throw new Error("p09 "+r.status); return r.text(); }),
+      fetch("./app.part10.js", { cache: "no-store" }).then(r => { if (!r.ok) throw new Error("p10 "+r.status); return r.text(); }),
+      fetch("./app.part11.js", { cache: "no-store" }).then(r => { if (!r.ok) throw new Error("p11 "+r.status); return r.text(); }),
+      fetch("./app.part12.js", { cache: "no-store" }).then(r => { if (!r.ok) throw new Error("p12 "+r.status); return r.text(); }),
+      fetch("./app.part13.js", { cache: "no-store" }).then(r => { if (!r.ok) throw new Error("p13 "+r.status); return r.text(); }),
+      fetch("./app.part14.js", { cache: "no-store" }).then(r => { if (!r.ok) throw new Error("p14 "+r.status); return r.text(); }),
+      fetch("./app.part15.js", { cache: "no-store" }).then(r => { if (!r.ok) throw new Error("p15 "+r.status); return r.text(); }),
+      fetch("./app.part16.js", { cache: "no-store" }).then(r => { if (!r.ok) throw new Error("p16 "+r.status); return r.text(); }),
+      fetch("./app.part17.js", { cache: "no-store" }).then(r => { if (!r.ok) throw new Error("p17 "+r.status); return r.text(); }),
+      fetch("./app.part18.js", { cache: "no-store" }).then(r => { if (!r.ok) throw new Error("p18 "+r.status); return r.text(); }),
+      fetch("./app.part19.js", { cache: "no-store" }).then(r => { if (!r.ok) throw new Error("p19 "+r.status); return r.text(); }),
+      fetch("./app.part20.js", { cache: "no-store" }).then(r => { if (!r.ok) throw new Error("p20 "+r.status); return r.text(); }),
+      fetch("./app.part21.js", { cache: "no-store" }).then(r => { if (!r.ok) throw new Error("p21 "+r.status); return r.text(); }),
+      fetch("./app.part22.js", { cache: "no-store" }).then(r => { if (!r.ok) throw new Error("p22 "+r.status); return r.text(); }),
+      fetch("./app.part23.js", { cache: "no-store" }).then(r => { if (!r.ok) throw new Error("p23 "+r.status); return r.text(); }),
+      fetch("./app.part24.js", { cache: "no-store" }).then(r => { if (!r.ok) throw new Error("p24 "+r.status); return r.text(); })
+    ]);
+    const s = document.createElement("script");
+    s.textContent = parts.join("");
+    document.head.appendChild(s);
+  } catch (e) {
+    console.error(e);
+    const msg = document.querySelector("#auth-message");
+    if (msg) msg.textContent = "تعذر تحميل سكربت اللوحة: " + (e && e.message ? e.message : e);
+  }
+})();
+END SOURCE FILE: admin-panel/app.js
+
+========================================================================================
+SOURCE FILE: admin-panel/app.part01.js
+========================================================================================
+/* لوحة الباقيات — Google Auth + Firestore RBAC. لا كلمة مرور ثابتة. */
+(function () {
+  const $ = (s) => document.querySelector(s);
+  const $$ = (s) => document.querySelectorAll(s);
+
+  const CATEGORY_LABEL = {
+    sabah: "الصباح",
+    masaa: "المساء",
+    sleep: "النوم",
+    travel: "السفر",
+    worry: "الهم والقلق",
+    rizq: "الرزق",
+    illness: "المرض والشفاء",
+    waking: "الاستيقاظ",
+  };
+
+  const BUILTIN_CATEGORIES = [
+    { id: "sabah", icon: "☀", name: "أذكار الصباح", desc: "ورد الصباح", builtin: true },
+    { id: "masaa", icon: "☾", name: "أذكار المساء", desc: "ورد المساء", builtin: true },
+    { id: "sleep", icon: "☾", name: "أذكار النوم", desc: "طمأنينة قبل النوم", builtin: true },
+    { id: "travel", icon: "✈", name: "أذكار السفر", desc: "حفظ وأمان", builtin: true },
+  ];
+
+  let db = null;
+  let auth = null;
+  let currentUser = null;
+  let adminRole = "";
+  let azkar = [];
+  let categories = [...BUILTIN_CATEGORIES];
+  let feedbackItems = [];
+  let selectedFeedbackId = null;
+  let editingId = null;
+  let editingCategoryId = null;
+  let lastNotifyAt = 0;
+  let unsubAzkar = null;
+  let unsubFeedback = null;
+  let unsubCategories = null;
+
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+END SOURCE FILE: admin-panel/app.part01.js
+
+========================================================================================
+SOURCE FILE: admin-panel/app.part02.js
+========================================================================================
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  function toast(msg) {
+    const el = $("#toast");
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.add("show");
+    setTimeout(() => el.classList.remove("show"), 2400);
+  }
+
+  function go(view) {
+    $$(".view").forEach((x) => x.classList.remove("active-view"));
+    $("#" + view)?.classList.add("active-view");
+    $$(".nav-item").forEach((x) => x.classList.toggle("active", x.dataset.view === view));
+    const titles = {
+      overview: "نظرة عامة",
+      azkar: "مكتبة الأذكار",
+      feedback: "صندوق الرسائل",
+      notify: "إشعار عام",
+      categories: "التصنيفات",
+      settings: "إعدادات وأمان",
+    };
+    if ($("#page-title")) $("#page-title").textContent = titles[view] || "لوحة التحكم";
+  }
+
+  function itemsCol() {
+    return db.collection("content").doc("azkar").collection("items");
+  }
+
+  function categoriesCol() {
+    return db.collection("content").doc("categories").collection("items");
+  }
+
+  function setSessionUi(loggedIn) {
+    const gate = $("#auth-gate");
+    const shell = $("#shell");
+    if (loggedIn) {
+      gate?.classList.add("hidden");
+END SOURCE FILE: admin-panel/app.part02.js
+
+========================================================================================
+SOURCE FILE: admin-panel/app.part03.js
+========================================================================================
+      if (gate) gate.style.display = "none";
+      shell?.classList.add("ready");
+    } else {
+      gate?.classList.remove("hidden");
+      if (gate) gate.style.display = "grid";
+      shell?.classList.remove("ready");
+    }
+  }
+
+  async function assertAdmin(user) {
+    const token = await user.getIdTokenResult(true);
+
+    // Keep the displayed role aligned with Firestore security rules:
+    // the generic admin claim is not, by itself, a super-admin claim.
+    if (token.claims.super_admin === true) {
+      return { ok: true, role: "super_admin" };
+    }
+    if (token.claims.admin === true) {
+      return { ok: true, role: "admin" };
+    }
+
+    const snap = await db.collection("admins").doc(user.uid).get();
+    if (!snap.exists) return { ok: false, role: "" };
+    const role = snap.data()?.role || "admin";
+    return { ok: true, role };
+  }
+
+  function renderStats() {
+    const published = azkar.filter((z) => z.published).length;
+    if ($("#stat-total")) $("#stat-total").textContent = String(azkar.length);
+    if ($("#stat-published")) $("#stat-published").textContent = String(published);
+    if ($("#stat-draft")) $("#stat-draft").textContent = String(azkar.length - published);
+    const unread = feedbackItems.filter((f) => f.status === "new" || !f.adminReply).length;
+    if ($("#stat-feedback")) $("#stat-feedback").textContent = String(unread);
+    const badge = $("#feedback-badge");
+    if (badge) {
+END SOURCE FILE: admin-panel/app.part03.js
+
+========================================================================================
+SOURCE FILE: admin-panel/app.part04.js
+========================================================================================
+      badge.textContent = String(unread);
+      badge.classList.toggle("hidden", unread === 0);
+    }
+  }
+
+  function mergeCategories(remote) {
+    const map = new Map();
+    BUILTIN_CATEGORIES.forEach((c) => map.set(c.id, { ...c }));
+    (remote || []).forEach((c) => {
+      if (!c || !c.id) return;
+      map.set(c.id, {
+        id: c.id,
+        icon: c.icon || "📖",
+        name: c.name || c.id,
+        desc: c.desc || "",
+        order: c.order ?? 100,
+        published: c.published !== false,
+        builtin: !!c.builtin || BUILTIN_CATEGORIES.some((b) => b.id === c.id),
+      });
+    });
+    categories = Array.from(map.values()).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    // refresh label map for table
+    categories.forEach((c) => {
+      CATEGORY_LABEL[c.id] = c.name;
+    });
+  }
+
+  function renderCategories() {
+    const grid = $("#category-grid");
+    if (!grid) return;
+    grid.innerHTML = categories
+      .map((c) => {
+        const count = azkar.filter((z) => z.category === c.id).length;
+        const badge = c.builtin ? '<span class="pill">مدمج</span>' : '<span class="pill status-published">ديناميكي</span>';
+END SOURCE FILE: admin-panel/app.part04.js
+
+========================================================================================
+SOURCE FILE: admin-panel/app.part05.js
+========================================================================================
+        return `<article class="category-card" data-cat-id="${escapeHtml(c.id)}">
+        <div class="symbol">${escapeHtml(c.icon || "📖")}</div>
+        <h3>${escapeHtml(c.name)}</h3>
+        <p>${escapeHtml(c.desc || "")}</p>
+        <p style="margin-top:12px;color:var(--green)">${count} أذكار · ${badge}</p>
+        <div class="modal-actions" style="margin-top:12px">
+          <button class="icon-btn" data-edit-cat="${escapeHtml(c.id)}">تعديل</button>
+          ${c.builtin ? "" : `<button class="icon-btn" data-del-cat="${escapeHtml(c.id)}">حذف</button>`}
+        </div>
+      </article>`;
+      })
+      .join("");
+
+    $$("[data-edit-cat]").forEach((btn) =>
+      btn.addEventListener("click", () => openCategoryEditor(btn.dataset.editCat))
+    );
+    $$("[data-del-cat]").forEach((btn) =>
+      btn.addEventListener("click", () => deleteCategory(btn.dataset.delCat))
+    );
+
+    // update select options in azkar editor
+    const sel = $("#field-category");
+    if (sel) {
+      const current = sel.value;
+      sel.innerHTML = categories
+        .map((c) => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`)
+        .join("");
+END SOURCE FILE: admin-panel/app.part05.js
+
+========================================================================================
+SOURCE FILE: admin-panel/app.part06.js
+========================================================================================
+      if (categories.some((c) => c.id === current)) sel.value = current;
+    }
+    const filter = $("#filter");
+    if (filter) {
+      const cur = filter.value;
+      filter.innerHTML =
+        '<option value="all">الكل</option>' +
+        categories.map((c) => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`).join("");
+      if (cur === "all" || categories.some((c) => c.id === cur)) filter.value = cur;
+    }
+  }
+
+  function openCategoryEditor(id) {
+    editingCategoryId = id || null;
+    const c = id ? categories.find((x) => x.id === id) : null;
+    $("#cat-modal-title").textContent = c ? "تعديل التصنيف" : "إضافة تصنيف";
+    $("#cat-field-id").value = c?.id || "";
+    $("#cat-field-id").disabled = !!c;
+    $("#cat-field-name").value = c?.name || "";
+    $("#cat-field-icon").value = c?.icon || "📖";
+    $("#cat-field-desc").value = c?.desc || "";
+    $("#cat-field-order").value = c?.order ?? 100;
+    $("#cat-field-published").checked = c ? c.published !== false : true;
+    const modal = $("#category-modal");
+    modal?.classList.add("open");
+    modal?.setAttribute("aria-hidden", "false");
+  }
+
+  function closeCategoryEditor() {
+END SOURCE FILE: admin-panel/app.part06.js
+
+========================================================================================
+SOURCE FILE: admin-panel/app.part07.js
+========================================================================================
+    const modal = $("#category-modal");
+    modal?.classList.remove("open");
+    modal?.setAttribute("aria-hidden", "true");
+    editingCategoryId = null;
+  }
+
+  async function saveCategory() {
+    const idRaw = $("#cat-field-id")?.value.trim();
+    const name = $("#cat-field-name")?.value.trim();
+    if (!idRaw || !name) {
+      toast("أدخل المعرّف والاسم");
+      return;
+    }
+    const id = idRaw.replace(/[^a-zA-Z0-9_\u0600-\u06FF-]/g, "_").slice(0, 40);
+    if (!id) {
+      toast("معرّف غير صالح");
+      return;
+    }
+    const payload = {
+      id,
+      name,
+      icon: $("#cat-field-icon")?.value.trim() || "📖",
+      desc: $("#cat-field-desc")?.value.trim() || "",
+      order: Number($("#cat-field-order")?.value) || 100,
+      published: !!$("#cat-field-published")?.checked,
+      builtin: BUILTIN_CATEGORIES.some((b) => b.id === id),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    };
+    if (editingCategoryId) {
+      await categoriesCol().doc(editingCategoryId).set(payload, { merge: true });
+      toast("تم حفظ التصنيف");
+    } else {
+      const exists = categories.some((c) => c.id === id);
+      if (exists) {
+        toast("المعرّف موجود مسبقاً");
+END SOURCE FILE: admin-panel/app.part07.js
+
+========================================================================================
+SOURCE FILE: admin-panel/app.part08.js
+========================================================================================
+        return;
+      }
+      await categoriesCol().doc(id).set({
+        ...payload,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+      toast("تمت إضافة التصنيف");
+    }
+    closeCategoryEditor();
+  }
+
+  async function deleteCategory(id) {
+    if (!id || BUILTIN_CATEGORIES.some((b) => b.id === id)) {
+      toast("لا يمكن حذف التصنيفات المدمجة");
+      return;
+    }
+    const count = azkar.filter((z) => z.category === id).length;
+    if (count > 0) {
+      toast(`لا يمكن الحذف: يوجد ${count} ذكر مرتبط`);
+      return;
+    }
+    if (!confirm("حذف هذا التصنيف؟")) return;
+    await categoriesCol().doc(id).delete();
+    toast("تم حذف التصنيف");
+  }
+
+  function listenCategories() {
+    if (unsubCategories) unsubCategories();
+    unsubCategories = categoriesCol().onSnapshot(
+      (snap) => {
+        const remote = snap.docs.map((doc) => {
+          const d = doc.data() || {};
+          return { id: doc.id, ...d };
+        });
+        mergeCategories(remote);
+        renderCategories();
+        renderTable();
+      },
+      (err) => {
+        console.warn("categories listen", err);
+        mergeCategories([]);
+        renderCategories();
+      }
+    );
+END SOURCE FILE: admin-panel/app.part08.js
+
+========================================================================================
+SOURCE FILE: admin-panel/app.part09.js
+========================================================================================
+  }
+
+  function renderTable() {
+    const q = ($("#search")?.value || "").trim();
+    const filter = $("#filter")?.value || "all";
+    const status = $("#status-filter")?.value || "all";
+    const rows = azkar
+      .slice()
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+      .filter(
+        (z) =>
+          (filter === "all" || z.category === filter) &&
+          (status === "all" || (status === "published" ? z.published : !z.published)) &&
+          ((z.text || "") + (z.source || "")).includes(q)
+      );
+
+    const tbody = $("#azkar-table");
+    if (!tbody) return;
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px">لا توجد أذكار مطابقة.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = rows
+      .map(
+        (z) => `<tr class="draggable-row" draggable="true" data-id="${escapeHtml(z.id)}">
+      <td class="order-cell"><span class="drag-handle" title="اسحب لإعادة الترتيب">⋮⋮</span><span class="order-num">${z.order ?? 0}</span></td>
+      <td>${escapeHtml((z.text || "").slice(0, 90))}${(z.text || "").length > 90 ? "…" : ""}</td>
+END SOURCE FILE: admin-panel/app.part09.js
+
+========================================================================================
+SOURCE FILE: admin-panel/app.part10.js
+========================================================================================
+      <td><span class="pill">${escapeHtml(CATEGORY_LABEL[z.category] || z.category)}</span></td>
+      <td>${Number(z.repeat) || 1}×</td>
+      <td><span class="pill ${z.published ? "status-published" : "status-draft"}">${z.published ? "منشور" : "مسودة"}</span></td>
+      <td>${escapeHtml(z.source || "—")}</td>
+      <td>
+        <button class="icon-btn" data-preview="${escapeHtml(z.id)}">معاينة</button> ·
+        <button class="icon-btn" data-edit="${escapeHtml(z.id)}">تعديل</button> ·
+        <button class="icon-btn" data-dup="${escapeHtml(z.id)}">نسخ</button> ·
+        <button class="icon-btn" data-archive="${escapeHtml(z.id)}">${z.published ? "إخفاء" : "نشر"}</button>
+      </td>
+    </tr>`
+      )
+      .join("");
+
+    bindTableActions();
+    bindDrag();
+  }
+
+  function bindTableActions() {
+    $$("[data-preview]").forEach((btn) =>
+      btn.addEventListener("click", () => openPreview(btn.dataset.preview))
+    );
+    $$("[data-edit]").forEach((btn) =>
+      btn.addEventListener("click", () => openEditor(btn.dataset.edit))
+    );
+    $$("[data-dup]").forEach((btn) =>
+      btn.addEventListener("click", () => duplicateZekr(btn.dataset.dup))
+    );
+END SOURCE FILE: admin-panel/app.part10.js
+
+========================================================================================
+SOURCE FILE: admin-panel/app.part11.js
+========================================================================================
+    $$("[data-archive]").forEach((btn) =>
+      btn.addEventListener("click", () => togglePublished(btn.dataset.archive))
+    );
+  }
+
+  function bindDrag() {
+    const rows = $$("#azkar-table tr.draggable-row");
+    let dragId = null;
+    rows.forEach((row) => {
+      row.addEventListener("dragstart", () => {
+        dragId = row.dataset.id;
+        row.classList.add("dragging");
+      });
+      row.addEventListener("dragend", () => row.classList.remove("dragging"));
+      row.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        row.classList.add("drag-over");
+      });
+      row.addEventListener("dragleave", () => row.classList.remove("drag-over"));
+      row.addEventListener("drop", async (e) => {
+        e.preventDefault();
+        row.classList.remove("drag-over");
+        const targetId = row.dataset.id;
+        if (!dragId || dragId === targetId) return;
+        await reorder(dragId, targetId);
+      });
+    });
+  }
+
+  async function reorder(fromId, toId) {
+    const sorted = azkar.slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    const fromIdx = sorted.findIndex((z) => z.id === fromId);
+END SOURCE FILE: admin-panel/app.part11.js
+
+========================================================================================
+SOURCE FILE: admin-panel/app.part12.js
+========================================================================================
+    const toIdx = sorted.findIndex((z) => z.id === toId);
+    if (fromIdx < 0 || toIdx < 0) return;
+    const [moved] = sorted.splice(fromIdx, 1);
+    sorted.splice(toIdx, 0, moved);
+    const batch = db.batch();
+    sorted.forEach((z, i) => {
+      batch.update(itemsCol().doc(z.id), { order: i + 1 });
+    });
+    await batch.commit();
+    toast("تم حفظ الترتيب");
+  }
+
+  function listenAzkar() {
+    if (unsubAzkar) unsubAzkar();
+    unsubAzkar = itemsCol().onSnapshot(
+      (snap) => {
+        azkar = snap.docs.map((doc) => {
+          const d = doc.data() || {};
+          return {
+            id: doc.id,
+            text: d.text || "",
+            category: d.category || "sabah",
+            repeat: d.repeat || 1,
+            fadl: d.fadl || "",
+            source: d.source || "",
+            published: d.published !== false,
+            order: d.order ?? 0,
+            numericId: d.id ?? 0,
+          };
+        });
+        renderTable();
+        renderStats();
+        renderCategories();
+      },
+      (err) => toast("تعذر تحميل الأذكار: " + err.message)
+    );
+  }
+
+  function listenFeedback() {
+    if (unsubFeedback) unsubFeedback();
+    unsubFeedback = db
+END SOURCE FILE: admin-panel/app.part12.js
+
+========================================================================================
+SOURCE FILE: admin-panel/app.part13.js
+========================================================================================
+      .collection("feedback")
+      .orderBy("createdAt", "desc")
+      .limit(100)
+      .onSnapshot(
+        (snap) => {
+          feedbackItems = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+          renderFeedbackList();
+          renderStats();
+        },
+        () => {
+          db.collection("feedback")
+            .limit(100)
+            .get()
+            .then((snap) => {
+              feedbackItems = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+              renderFeedbackList();
+              renderStats();
+            })
+            .catch((err) => toast("تعذر تحميل الرسائل: " + err.message));
+        }
+      );
+  }
+
+  function renderFeedbackList() {
+    const list = $("#feedback-list");
+    if (!list) return;
+    if (!feedbackItems.length) {
+      list.innerHTML = '<p class="empty-hint">لا رسائل بعد.</p>';
+      return;
+    }
+    list.innerHTML = feedbackItems
+      .map((f) => {
+        const active = f.id === selectedFeedbackId ? " active" : "";
+        const title = f.title || f.type || "رسالة";
+        const preview = (f.message || "").slice(0, 80);
+        return `<button class="feedback-item${active}" data-fid="${escapeHtml(f.id)}">
+END SOURCE FILE: admin-panel/app.part13.js
+
+========================================================================================
+SOURCE FILE: admin-panel/app.part14.js
+========================================================================================
+          <strong>${escapeHtml(title)}</strong>
+          <small>${escapeHtml(f.userEmail || f.userId || "")} · ${escapeHtml(f.status || "new")}</small>
+          <span>${escapeHtml(preview)}</span>
+        </button>`;
+      })
+      .join("");
+    $$("[data-fid]").forEach((btn) =>
+      btn.addEventListener("click", () => {
+        selectedFeedbackId = btn.dataset.fid;
+        renderFeedbackList();
+        renderFeedbackDetail();
+      })
+    );
+    if (selectedFeedbackId) renderFeedbackDetail();
+  }
+
+  function renderFeedbackDetail() {
+    const box = $("#feedback-detail");
+    if (!box) return;
+    const f = feedbackItems.find((x) => x.id === selectedFeedbackId);
+    if (!f) {
+      box.innerHTML = '<p class="empty-hint">اختر رسالة من القائمة.</p>';
+      return;
+    }
+    box.innerHTML = `
+      <p class="eyebrow">${escapeHtml(f.type || "رسالة")}</p>
+      <h3>${escapeHtml(f.title || "بدون عنوان")}</h3>
+      <small>${escapeHtml(f.userEmail || f.userId || "")}</small>
+      <div class="feedback-body">${escapeHtml(f.message || "")}</div>
+      ${f.adminReply ? `<div class="admin-reply"><strong>الرد السابق</strong><p>${escapeHtml(f.adminReply)}</p></div>` : ""}
+      <label>الرد
+END SOURCE FILE: admin-panel/app.part14.js
+
+========================================================================================
+SOURCE FILE: admin-panel/app.part15.js
+========================================================================================
+        <textarea id="reply-text" rows="4" placeholder="اكتب الرد للمستخدم">${escapeHtml(f.adminReply || "")}</textarea>
+      </label>
+      <label>الحالة
+        <select id="reply-status">
+          <option value="new"${f.status === "new" ? " selected" : ""}>جديدة</option>
+          <option value="in_progress"${f.status === "in_progress" ? " selected" : ""}>قيد المعالجة</option>
+          <option value="replied"${f.status === "replied" ? " selected" : ""}>تم الرد</option>
+          <option value="closed"${f.status === "closed" ? " selected" : ""}>مغلقة</option>
+        </select>
+      </label>
+      <div class="modal-actions">
+        <button class="primary" id="save-reply">حفظ الرد</button>
+      </div>`;
+    $("#save-reply")?.addEventListener("click", saveReply);
+  }
+
+  async function saveReply() {
+    if (!selectedFeedbackId) return;
+    const reply = $("#reply-text")?.value.trim() || "";
+    const status = $("#reply-status")?.value || "replied";
+    const f = feedbackItems.find((x) => x.id === selectedFeedbackId);
+    await db.collection("feedback").doc(selectedFeedbackId).update({
+      adminReply: reply,
+      status,
+      replyUnread: true,
+END SOURCE FILE: admin-panel/app.part15.js
+
+========================================================================================
+SOURCE FILE: admin-panel/app.part16.js
+========================================================================================
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    if (f?.userId) {
+      try {
+        await db
+          .collection("users")
+          .doc(f.userId)
+          .collection("feedback")
+          .doc(selectedFeedbackId)
+          .set(
+            {
+              adminReply: reply,
+              status,
+              replyUnread: true,
+              updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            },
+            { merge: true }
+          );
+      } catch (_e) {
+        /* user copy is best-effort */
+      }
+    }
+    toast("تم حفظ الرد");
+  }
+
+  function openEditor(id) {
+    editingId = id || null;
+    const z = id ? azkar.find((x) => x.id === id) : null;
+    $("#modal-title").textContent = z ? "تعديل الذكر" : "إضافة ذكر";
+    $("#field-text").value = z?.text || "";
+    $("#field-category").value = z?.category || "sabah";
+    $("#field-repeat").value = z?.repeat || 1;
+    $("#field-fadl").value = z?.fadl || "";
+    $("#field-source").value = z?.source || "";
+    $("#field-audio-url").value = z?.audioUrl || "";
+    $("#field-audio-mishary").value = z?.audioUrlsByReciter?.mishary || "";
+    $("#field-audio-abdulbasit").value = z?.audioUrlsByReciter?.abdulbasit || "";
+    $("#field-audio-maher").value = z?.audioUrlsByReciter?.maher || "";
+    $("#field-audio-yasser").value = z?.audioUrlsByReciter?.yasser || "";
+    $("#field-published").checked = z ? !!z.published : true;
+    const modal = $("#editor-modal");
+    modal.classList.add("open");
+END SOURCE FILE: admin-panel/app.part16.js
+
+========================================================================================
+SOURCE FILE: admin-panel/app.part17.js
+========================================================================================
+    modal.setAttribute("aria-hidden", "false");
+  }
+
+  function closeEditor() {
+    const modal = $("#editor-modal");
+    modal.classList.remove("open");
+    modal.setAttribute("aria-hidden", "true");
+    editingId = null;
+  }
+
+  async function saveEditor() {
+    const text = $("#field-text")?.value.trim();
+    if (!text) {
+      toast("يرجى كتابة نص الذكر");
+      return;
+    }
+    const audioUrl = $("#field-audio-url")?.value.trim() || "";
+    const audioUrlsByReciter = Object.fromEntries(
+      [
+        ["mishary", $("#field-audio-mishary")?.value.trim() || ""],
+        ["abdulbasit", $("#field-audio-abdulbasit")?.value.trim() || ""],
+        ["maher", $("#field-audio-maher")?.value.trim() || ""],
+        ["yasser", $("#field-audio-yasser")?.value.trim() || ""],
+      ].filter(([, url]) => url)
+    );
+    const suppliedAudioUrls = [audioUrl, ...Object.values(audioUrlsByReciter)];
+    if (suppliedAudioUrls.filter(Boolean).some((url) => !/^https:\/\/\S+$/i.test(url))) {
+      toast("روابط الصوت يجب أن تبدأ بـ HTTPS وألا تحتوي مسافات.");
+      return;
+    }
+    const payload = {
+      text,
+      category: $("#field-category")?.value || "sabah",
+      repeat: Number($("#field-repeat")?.value) || 1,
+      fadl: $("#field-fadl")?.value.trim() || "",
+      source: $("#field-source")?.value.trim() || "",
+      audioUrl,
+      audioUrlsByReciter,
+      published: !!$("#field-published")?.checked,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    };
+    if (editingId) {
+      await itemsCol().doc(editingId).set(payload, { merge: true });
+      toast("تم حفظ التعديل");
+    } else {
+      const maxOrder = azkar.reduce((m, z) => Math.max(m, Number(z.order) || 0), 0);
+      const maxId = azkar.reduce((m, z) => Math.max(m, Number(z.numericId) || 0), 0);
+      await itemsCol().add({
+        ...payload,
+        id: maxId + 1,
+        order: maxOrder + 1,
+END SOURCE FILE: admin-panel/app.part17.js
+
+========================================================================================
+SOURCE FILE: admin-panel/app.part18.js
+========================================================================================
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+      toast("تمت إضافة الذكر");
+    }
+    closeEditor();
+  }
+
+  async function duplicateZekr(id) {
+    const z = azkar.find((x) => x.id === id);
+    if (!z) return;
+    const maxOrder = azkar.reduce((m, item) => Math.max(m, Number(item.order) || 0), 0);
+    const maxId = azkar.reduce((m, item) => Math.max(m, Number(item.numericId) || 0), 0);
+    await itemsCol().add({
+      text: z.text,
+      category: z.category,
+      repeat: z.repeat,
+      fadl: z.fadl,
+      source: z.source,
+      published: false,
+      id: maxId + 1,
+      order: maxOrder + 1,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    toast("تم نسخ الذكر كمسودة");
+  }
+
+  async function togglePublished(id) {
+    const z = azkar.find((x) => x.id === id);
+    if (!z) return;
+    await itemsCol().doc(id).update({
+      published: !z.published,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    toast(z.published ? "أُخفي الذكر" : "نُشر الذكر");
+  }
+
+  function openPreview(id) {
+    const z = (id && azkar.find((x) => x.id === id)) || azkar[0];
+    if (!z) {
+END SOURCE FILE: admin-panel/app.part18.js
+
+========================================================================================
+SOURCE FILE: admin-panel/app.part19.js
+========================================================================================
+      toast("لا يوجد ذكر للمعاينة");
+      return;
+    }
+    $("#preview-meta").textContent = `${CATEGORY_LABEL[z.category] || z.category} · ${z.repeat || 1}×`;
+    $("#preview-zekr").textContent = z.text || "";
+    $("#preview-fadl").textContent = z.fadl || "—";
+    $("#preview-source").textContent = z.source || "—";
+    const modal = $("#preview-modal");
+    modal.classList.add("open");
+    modal.setAttribute("aria-hidden", "false");
+  }
+
+  function closePreview() {
+    const modal = $("#preview-modal");
+    modal.classList.remove("open");
+    modal.setAttribute("aria-hidden", "true");
+  }
+
+  function exportJson() {
+    const blob = new Blob([JSON.stringify(azkar, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "baqiyat-azkar.json";
+    a.click();
+    URL.revokeObjectURL(url);
+    toast("تم تصدير المكتبة");
+  }
+
+  async function sendNotify() {
+    const now = Date.now();
+    if (now - lastNotifyAt < 60000) {
+      toast("انتظر دقيقة قبل إرسال إشعار آخر");
+      return;
+    }
+    const title = $("#notify-title")?.value.trim();
+END SOURCE FILE: admin-panel/app.part19.js
+
+========================================================================================
+SOURCE FILE: admin-panel/app.part20.js
+========================================================================================
+    const body = $("#notify-body")?.value.trim();
+    if (!title || !body) {
+      toast("أدخل العنوان والنص");
+      return;
+    }
+    await db.collection("notifications").add({
+      title,
+      body,
+      status: "queued",
+      audience: "all",
+      createdBy: currentUser?.uid || "",
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    lastNotifyAt = now;
+    $("#notify-title").value = "";
+    $("#notify-body").value = "";
+    toast("أُضيفت مهمة الإشعار");
+  }
+
+  async function startSession(user) {
+    const check = await assertAdmin(user);
+    if (!check.ok) {
+      await auth.signOut();
+      $("#auth-message").textContent = "هذا الحساب غير مدرج في مجموعة المشرفين.";
+      setSessionUi(false);
+      return;
+    }
+    currentUser = user;
+    adminRole = check.role;
+    if ($("#admin-email")) $("#admin-email").textContent = user.email || user.uid;
+    if ($("#admin-role-badge")) $("#admin-role-badge").textContent = "دور: " + adminRole;
+    setSessionUi(true);
+    listenAzkar();
+    listenFeedback();
+    listenCategories();
+    renderCategories();
+  }
+
+  function stopSession() {
+    currentUser = null;
+    if (unsubAzkar) unsubAzkar();
+END SOURCE FILE: admin-panel/app.part20.js
+
+========================================================================================
+SOURCE FILE: admin-panel/app.part21.js
+========================================================================================
+    if (unsubFeedback) unsubFeedback();
+    if (unsubCategories) unsubCategories();
+    unsubAzkar = unsubFeedback = unsubCategories = null;
+    setSessionUi(false);
+  }
+
+  function friendlyAuthError(error) {
+    const code = error?.code || "";
+    if (code.includes("auth/api-key-not-valid")) {
+      return "إعداد Firebase للويب غير صالح. تأكد أنك فتحت اللوحة من نطاق المشروع الصحيح.";
+    }
+    if (code.includes("auth/unauthorized-domain")) {
+      return "هذا النطاق غير مصرّح به في Firebase Auth. أضفه من إعدادات Authentication → Settings.";
+    }
+    if (code.includes("auth/popup-closed-by-user") || code.includes("auth/cancelled-popup-request")) {
+      return "أُغلق نافذة تسجيل الدخول قبل الإكمال.";
+    }
+    if (code.includes("auth/popup-blocked")) {
+      return "المتصفح منع النافذة المنبثقة. سيتم المحاولة عبر إعادة التوجيه.";
+    }
+    if (code.includes("auth/network-request-failed")) {
+      return "تعذر الاتصال بالشبكة. تحقق من الاتصال ثم أعد المحاولة.";
+    }
+    return error?.message || "تعذر تسجيل الدخول.";
+  }
+
+  async function signInWithGoogle() {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    const message = $("#auth-message");
+    try {
+END SOURCE FILE: admin-panel/app.part21.js
+
+========================================================================================
+SOURCE FILE: admin-panel/app.part22.js
+========================================================================================
+      await auth.signInWithPopup(provider);
+    } catch (e) {
+      const code = e?.code || "";
+      if (code.includes("auth/popup-blocked") || code.includes("auth/popup-closed-by-user")) {
+        try {
+          await auth.signInWithRedirect(provider);
+          return;
+        } catch (re) {
+          if (message) message.textContent = friendlyAuthError(re);
+          return;
+        }
+      }
+      if (message) message.textContent = friendlyAuthError(e);
+    }
+  }
+
+  function bindUi() {
+    $$(".nav-item").forEach((btn) =>
+      btn.addEventListener("click", () => go(btn.dataset.view))
+    );
+    $("#btn-logout")?.addEventListener("click", () => auth.signOut());
+    $("#logout-btn")?.addEventListener("click", () => auth.signOut());
+    $("#btn-google")?.addEventListener("click", () => signInWithGoogle());
+    $("#google-login-btn")?.addEventListener("click", () => signInWithGoogle());
+    $("#search")?.addEventListener("input", renderTable);
+    $("#filter")?.addEventListener("change", renderTable);
+    $("#status-filter")?.addEventListener("change", renderTable);
+    $("#btn-add")?.addEventListener("click", () => openEditor(null));
+END SOURCE FILE: admin-panel/app.part22.js
+
+========================================================================================
+SOURCE FILE: admin-panel/app.part23.js
+========================================================================================
+    $("#btn-add-category")?.addEventListener("click", () => openCategoryEditor(null));
+    $("#save-editor")?.addEventListener("click", () => saveEditor().catch((e) => toast(e.message)));
+    $("#close-editor")?.addEventListener("click", closeEditor);
+    $("#save-category")?.addEventListener("click", () => saveCategory().catch((e) => toast(e.message)));
+    $("#close-category")?.addEventListener("click", closeCategoryEditor);
+    $("#close-preview")?.addEventListener("click", closePreview);
+    $("#export-json")?.addEventListener("click", exportJson);
+    $("#send-notify")?.addEventListener("click", () => sendNotify().catch((e) => toast(e.message)));
+  }
+
+  const initializeAdminPanel = async () => {
+    if (window.firebaseHostingConfigPromise) {
+      await window.firebaseHostingConfigPromise.catch(() => null);
+    }
+    const cfg = window.firebaseConfig || window.AZKAR_FIREBASE_CONFIG;
+    if (!window.firebase || !cfg) {
+      console.error("Firebase not loaded");
+      const msg = document.querySelector("#auth-message");
+      if (msg) {
+        msg.textContent =
+END SOURCE FILE: admin-panel/app.part23.js
+
+========================================================================================
+SOURCE FILE: admin-panel/app.part24.js
+========================================================================================
+          "تعذر تحميل إعداد Firebase. افتح اللوحة من Firebase Hosting أو عرّف window.firebaseConfig.";
+      }
+      return;
+    }
+    if (!firebase.apps.length) {
+      firebase.initializeApp(cfg);
+    }
+    db = firebase.firestore();
+    auth = firebase.auth();
+    bindUi();
+    auth.onAuthStateChanged((user) => {
+      if (user) startSession(user).catch((e) => toast(e.message));
+      else stopSession();
+    });
+  };
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initializeAdminPanel, { once: true });
+  } else {
+    initializeAdminPanel();
+  }
+})();
+END SOURCE FILE: admin-panel/app.part24.js
+
+========================================================================================
+SOURCE FILE: admin-panel/firebase-config.js
+========================================================================================
+// Static fallback for the Manus-hosted admin panel.
+// Firebase Hosting auto-config below can override this when available.
+window.AZKAR_FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBQPLa_e9xWL3-MABjtUPR5xGk75Ig_sF0",
+  authDomain: "svrpmtt.firebaseapp.com",
+  projectId: "svrpmtt",
+  storageBucket: "svrpmtt.firebasestorage.app",
+  messagingSenderId: "372887186106",
+  appId: "1:372887186106:web:4506ec501ee157feed7083",
+  measurementId: "G-BT2MNTMKQW"
+};
+
+(function () {
+  function apply(cfg) {
+    if (cfg && cfg.apiKey && cfg.projectId) {
+      window.firebaseConfig = cfg;
+      window.AZKAR_FIREBASE_CONFIG = cfg;
+    }
+  }
+
+  apply(window.AZKAR_FIREBASE_CONFIG);
+  apply(window.firebaseConfig);
+
+  // Firebase Hosting provides /__/firebase/init.json on its project domain.
+  // The static config remains available when this Manus-hosted panel is used.
+  window.firebaseHostingConfigPromise = fetch("/__/firebase/init.json", {
+    cache: "no-store",
+  })
+    .then(function (r) {
+      return r.ok ? r.json() : null;
+    })
+    .then(function (cfg) {
+      apply(cfg);
+      return cfg;
+    })
+    .catch(function () {
+      return null;
+    });
+})();
+END SOURCE FILE: admin-panel/firebase-config.js
+
+========================================================================================
+SOURCE FILE: admin-panel/functions-fcm.example.js
+========================================================================================
+/**
+ * Example Cloud Function (Node 18+) — deploy separately with Firebase Functions.
+ * Listens to admin_jobs and sends FCM (topic "all").
+ *
+ * NOT deployed automatically — copy into functions/index.js and configure.
+ *
+ * Rate limit: at most 20 broadcasts per rolling minute via system/fcm_rate.
+ */
+
+const functions = require('firebase-functions');
+const admin = require('firebase-admin');
+admin.initializeApp();
+
+const MAX_PER_MINUTE = 20;
+
+exports.processAdminJobs = functions.firestore
+  .document('admin_jobs/{jobId}')
+  .onCreate(async (snap, context) => {
+    const job = snap.data();
+    if (!job || job.status !== 'pending') return null;
+
+    const rateRef = admin.firestore().collection('system').doc('fcm_rate');
+    const allowed = await admin.firestore().runTransaction(async (tx) => {
+      const rateSnap = await tx.get(rateRef);
+      const now = Date.now();
+      const data = rateSnap.exists ? rateSnap.data() : { windowStart: now, count: 0 };
+      const windowStart = data.windowStart || now;
+      let count = data.count || 0;
+      if (now - windowStart > 60000) {
+        count = 0;
+        tx.set(rateRef, { windowStart: now, count: 1 }, { merge: true });
+        return true;
+      }
+      if (count >= MAX_PER_MINUTE) return false;
+      tx.set(rateRef, { windowStart, count: count + 1 }, { merge: true });
+      return true;
+    });
+
+    if (!allowed) {
+      await snap.ref.update({
+        status: 'rate_limited',
+        processedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      return null;
+    }
+
+    const title = job.payload?.title || 'الباقيات';
+    const body = job.payload?.body || '';
+
+    try {
+      await admin.messaging().send({
+        topic: 'all',
+        notification: { title, body },
+        data: {
+          type: String(job.type || ''),
+          feedbackId: String(job.payload?.feedbackId || ''),
+          zekrId: String(job.payload?.zekrId || ''),
+        },
+      });
+
+      await snap.ref.update({
+        status: 'done',
+        processedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      console.error(e);
+      await snap.ref.update({
+        status: 'error',
+        error: String(e.message || e),
+        processedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    }
+    return null;
+  });
+END SOURCE FILE: admin-panel/functions-fcm.example.js
+
+========================================================================================
+SOURCE FILE: admin-panel/index.html
+========================================================================================
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>لوحة تحكم الباقيات — المشرف</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <section class="auth-gate" id="auth-gate">
+    <div class="auth-card">
+      <span class="brand-mark">ب</span>
+      <p class="eyebrow">منطقة الإدارة</p>
+      <h1>دخول المشرف</h1>
+      <p>سجّل الدخول بحساب Google المرتبط بمستند <code>admins/{uid}</code> في Firestore. لا توجد كلمة مرور ثابتة.</p>
+      <button class="primary" id="google-login-btn" type="button">دخول عبر Google</button>
+      <small id="auth-message"></small>
+    </div>
+  </section>
+
+  <div class="shell" id="shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark">ب</span>
+        <div><strong>الباقيات</strong><small>لوحة المالك</small></div>
+      </div>
+      <div class="private-badge" id="admin-role-badge">RBAC · Firestore</div>
+      <nav aria-label="التنقل الرئيسي">
+        <button class="nav-item active" data-view="overview">نظرة عامة <span>⌂</span></button>
+        <button class="nav-item" data-view="azkar">مكتبة الأذكار <span>☷</span></button>
+        <button class="nav-item" data-view="feedback">صندوق الرسائل <span class="nav-badge hidden" id="feedback-badge">0</span></button>
+        <button class="nav-item" data-view="notify">إشعار عام <span>◎</span></button>
+        <button class="nav-item" data-view="categories">التصنيفات <span>◈</span></button>
+        <button class="nav-item" data-view="settings">إعدادات وأمان <span>⚙</span></button>
+      </nav>
+      <div class="sidebar-foot">
+        <small id="admin-email"></small>
+        <button id="logout-btn" class="ghost logout-btn">تسجيل الخروج</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">مساحة خاصة · الباقيات</p>
+          <h1 id="page-title">نظرة عامة</h1>
+        </div>
+        <div class="top-actions">
+          <button class="ghost" id="export-json">تصدير JSON</button>
+          <button class="ghost" id="preview-btn">معاينة الذكر ↗</button>
+        </div>
+      </header>
+
+      <section id="overview" class="view active-view">
+        <div class="welcome">
+          <div>
+            <p class="eyebrow">أهلاً بك</p>
+            <h2>لوحة إدارة المحتوى والإشعارات.</h2>
+            <p>الأذكار تُحفظ في Firestore وتظهر فوراً في التطبيق بعد النشر.</p>
+          </div>
+        </div>
+        <div class="stats-grid">
+          <article class="stat"><span>إجمالي الأذكار</span><strong id="stat-total">—</strong><small>في المكتبة</small></article>
+          <article class="stat"><span>منشور</span><strong id="stat-published">—</strong><small>ظاهر للمستخدمين</small></article>
+          <article class="stat"><span>مسودات</span><strong id="stat-draft">—</strong><small>غير ظاهرة</small></article>
+          <article class="stat accent"><span>رسائل جديدة</span><strong id="stat-feedback">—</strong><small>صندوق الوارد</small></article>
+        </div>
+        <div class="content-grid">
+          <article class="panel">
+            <div class="panel-head">
+              <div><p class="eyebrow">مركز العمل</p><h3>إجراءات سريعة</h3></div>
+            </div>
+            <div class="quick-actions">
+              <button data-view="azkar"><b>＋</b><span><strong>أضف ذكراً جديداً</strong><small>إلى المكتبة</small></span><i>←</i></button>
+              <button data-view="feedback"><b>✉</b><span><strong>راجع الرسائل</strong><small>ردود المستخدمين</small></span><i>←</i></button>
+              <button data-view="notify"><b>◎</b><span><strong>أرسل إشعاراً</strong><small>موضوع all</small></span><i>←</i></button>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="azkar" class="view">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">المحتوى</p>
+            <h2>مكتبة الأذكار</h2>
+            <p>اسحب الصفوف لإعادة الترتيب. التعديلات تُحفظ في Firestore.</p>
+          </div>
+          <button class="primary" id="add-zekr">＋ ذكر جديد</button>
+        </div>
+        <div class="toolbar">
+          <input id="search" type="search" placeholder="ابحث في الأذكار..." />
+          <select id="filter">
+            <option value="all">كل التصنيفات</option>
+            <option value="sabah">الصباح</option>
+            <option value="masaa">المساء</option>
+            <option value="sleep">النوم</option>
+            <option value="travel">السفر</option>
+            <option value="worry">الهم والقلق</option>
+            <option value="rizq">الرزق</option>
+            <option value="illness">المرض والشفاء</option>
+            <option value="waking">الاستيقاظ</option>
+          </select>
+          <select id="status-filter">
+            <option value="all">كل الحالات</option>
+            <option value="published">منشور</option>
+            <option value="draft">مسودة</option>
+          </select>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>الترتيب</th>
+                <th>نص الذكر</th>
+                <th>التصنيف</th>
+                <th>التكرار</th>
+                <th>الحالة</th>
+                <th>المصدر</th>
+                <th>إجراءات</th>
+              </tr>
+            </thead>
+            <tbody id="azkar-table"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="feedback" class="view">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">التواصل</p>
+            <h2>صندوق الرسائل</h2>
+            <p>ردود المشرف تُحفظ في Firestore ويراها المستخدم في التطبيق.</p>
+          </div>
+        </div>
+        <div class="feedback-layout">
+          <div class="feedback-list" id="feedback-list"></div>
+          <div class="feedback-detail" id="feedback-detail">
+            <p class="empty-hint">اختر رسالة من القائمة.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="notify" class="view">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">الإشعارات</p>
+            <h2>إشعار عام للتطبيق</h2>
+            <p>يُنشأ مستند في <code>admin_jobs</code> وتُرسله Cloud Function إلى موضوع FCM <code>all</code>.</p>
+          </div>
+        </div>
+        <article class="panel">
+          <label>العنوان<input id="notify-title" placeholder="عنوان الإشعار" maxlength="80" /></label>
+          <label>النص<textarea id="notify-body" rows="4" placeholder="نص الإشعار" maxlength="240"></textarea></label>
+          <div class="modal-actions">
+            <button class="primary" id="send-notify">إرسال إلى الجميع</button>
+          </div>
+          <p class="empty-hint">يُطبَّق حد زمني بسيط: لا أكثر من إشعار واحد كل دقيقة من هذه اللوحة.</p>
+        </article>
+      </section>
+
+      <section id="categories" class="view">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">تنظيم المحتوى</p>
+            <h2>التصنيفات</h2>
+            <p>الأربعة الأساسية ثابتة، وما تضيفه هنا يظهر في التطبيق مباشرة دون إصدار جديد.</p>
+          </div>
+          <button class="primary" id="add-category">＋ تصنيف جديد</button>
+        </div>
+        <div class="category-grid" id="category-grid"></div>
+      </section>
+
+      <section id="settings" class="view">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">التحكم</p>
+            <h2>إعدادات وأمان</h2>
+          </div>
+        </div>
+        <article class="security-card">
+          <strong>الوصول بالأدوار (RBAC)</strong>
+          <p>
+            الدخول عبر Google فقط. يُسمح بالمتابعة إذا وُجد مستند
+            <code>admins/{uid}</code> (أو مطالبة مخصصة <code>admin: true</code>).
+            أنشئ أول مشرف يدوياً من Firebase Console:
+            مجموعة <code>admins</code> → مستند بمعرّف UID → حقل
+            <code>role: super_admin</code>.
+          </p>
+          <p>لا تُخزَّن كلمة مرور في هذه اللوحة، ولا تعتمد على إخفاء الرابط.</p>
+        </article>
+        <div class="settings-list" style="margin-top:16px">
+          <p class="empty-hint">صدّر نسخة احتياطية من الأذكار من زر «تصدير JSON» في الأعلى.</p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal" id="editor-modal" aria-hidden="true">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div><p class="eyebrow">محرر المحتوى</p><h2 id="modal-title">إضافة ذكر</h2></div>
+        <button class="close" id="close-modal" type="button">×</button>
+      </div>
+      <label>نص الذكر<textarea id="field-text" rows="4" placeholder="اكتب نص الذكر..." required></textarea></label>
+      <div class="form-grid">
+        <label>التصنيف
+          <select id="field-category">
+            <option value="sabah">الصباح</option>
+            <option value="masaa">المساء</option>
+            <option value="sleep">النوم</option>
+            <option value="travel">السفر</option>
+            <option value="worry">الهم والقلق</option>
+            <option value="rizq">الرزق</option>
+            <option value="illness">المرض والشفاء</option>
+            <option value="waking">الاستيقاظ</option>
+          </select>
+        </label>
+        <label>عدد التكرار<input id="field-repeat" type="number" min="1" value="1" /></label>
+      </div>
+      <label>الفضل<textarea id="field-fadl" rows="3" placeholder="فضل الذكر أو الأجر"></textarea></label>
+      <label>المصدر<input id="field-source" placeholder="تخريج الحديث أو الكتاب" /></label>
+      <details class="audio-sources">
+        <summary>تسجيلات القراء (اختياري)</summary>
+        <p class="muted">أضف روابط HTTPS لتسجيلات تملك حق نشرها. تُستخدم فقط عند توفر تسجيل للقارئ المختار؛ وإلا يستخدم التطبيق النطق العربي الاحتياطي.</p>
+        <label>رابط تسجيل احتياطي<input id="field-audio-url" type="url" inputmode="url" placeholder="https://…/dhikr.mp3" /></label>
+        <label>مشاري العفاسي<input id="field-audio-mishary" type="url" inputmode="url" placeholder="https://…/mishary.mp3" /></label>
+        <label>عبد الباسط عبد الصمد<input id="field-audio-abdulbasit" type="url" inputmode="url" placeholder="https://…/abdulbasit.mp3" /></label>
+        <label>ماهر المعيقلي<input id="field-audio-maher" type="url" inputmode="url" placeholder="https://…/maher.mp3" /></label>
+        <label>ياسر الدوسري<input id="field-audio-yasser" type="url" inputmode="url" placeholder="https://…/yasser.mp3" /></label>
+      </details>
+      <label class="publish-toggle">
+        <span><strong>نشر مباشر</strong></span>
+        <input id="field-published" type="checkbox" checked />
+      </label>
+      <div class="modal-actions">
+        <button class="ghost" id="cancel-modal" type="button">إلغاء</button>
+        <button class="primary" id="save-zekr" type="button">حفظ</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="category-modal" aria-hidden="true">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div><p class="eyebrow">تنظيم المحتوى</p><h2 id="cat-modal-title">تصنيف جديد</h2></div>
+        <button class="close" id="close-cat-modal" type="button">×</button>
+      </div>
+      <label>المعرّف (إنجليزي صغير، لا يتغير لاحقاً)
+        <input id="cat-id" placeholder="مثال: home" pattern="[a-z0-9_-]{2,30}" dir="ltr" />
+      </label>
+      <label>العنوان الظاهر في التطبيق<input id="cat-title" maxlength="40" placeholder="أذكار المنزل" /></label>
+      <label>وصف قصير<input id="cat-subtitle" maxlength="80" placeholder="عند الدخول والخروج" /></label>
+      <label>الأيقونة
+        <select id="cat-icon">
+          <option value="star">نجمة</option><option value="sun">شمس</option><option value="moon">قمر</option>
+          <option value="bed">سرير</option><option value="car">سيارة</option><option value="heart">قلب</option>
+          <option value="book">كتاب</option><option value="home">بيت</option><option value="food">طعام</option>
+          <option value="rain">مطر</option><option value="shield">حماية</option><option value="mosque">مسجد</option>
+        </select>
+      </label>
+      <label class="publish-toggle">
+        <span><strong>ظاهر في التطبيق</strong></span>
+        <input id="cat-published" type="checkbox" checked />
+      </label>
+      <div class="modal-actions">
+        <button class="ghost" id="cancel-cat-modal" type="button">إلغاء</button>
+        <button class="primary" id="save-category" type="button">حفظ</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="preview-modal" aria-hidden="true">
+    <div class="modal-card preview-card">
+      <div class="modal-head">
+        <div><p class="eyebrow">معاينة التطبيق</p><h2>كيف يظهر الذكر</h2></div>
+        <button class="close" id="close-preview" type="button">×</button>
+      </div>
+      <p class="preview-meta" id="preview-meta"></p>
+      <div class="preview-zekr" id="preview-zekr"></div>
+      <div class="preview-block"><strong>الفضل</strong><p id="preview-fadl"></p></div>
+      <div class="preview-block"><strong>المصدر</strong><p id="preview-source"></p></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="./firebase-config.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
+END SOURCE FILE: admin-panel/index.html
+
+========================================================================================
+SOURCE FILE: admin-panel/robots.txt
+========================================================================================
+User-agent: *
+Disallow: /
+END SOURCE FILE: admin-panel/robots.txt
+
+========================================================================================
+SOURCE FILE: admin-panel/styles.css
+========================================================================================
+@import url('https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@400;500;600;700&display=swap');
+:root{--ink:#17251d;--muted:#718077;--line:#e1e9e2;--paper:#f7faf7;--card:#fff;--green:#4f765d;--green-dark:#294b38;--mint:#e6f1e8;--shadow:0 16px 50px rgba(33,63,44,.07)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:'Noto Kufi Arabic',Tahoma,sans-serif;font-size:13px}
+.shell{display:none;min-height:100vh}.shell.ready{display:flex}
+.sidebar{width:260px;background:#183025;color:#eff7ef;padding:28px 18px 22px;display:flex;flex-direction:column;gap:28px}
+.brand{display:flex;align-items:center;gap:11px;padding:4px 10px}
+.brand-mark{width:40px;height:40px;display:grid;place-items:center;border-radius:13px;background:#cde3ce;color:#21422f;font-size:24px;font-weight:700}
+.brand strong{display:block;font-size:17px}.brand small{display:block;color:#9db7a5;font-size:10px;margin-top:2px}
+.private-badge{border:1px solid #3d5d4a;color:#b8d4bd;border-radius:10px;text-align:center;padding:8px;font-size:10px}
+nav{display:grid;gap:7px}
+.nav-item{border:0;background:transparent;color:#b5cbb9;text-align:right;padding:13px 14px;border-radius:12px;font:inherit;cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:.2s}
+.nav-item:hover,.nav-item.active{background:#2a4a38;color:white}
+.nav-badge{background:#e8b86d;color:#183025;border-radius:20px;padding:2px 8px;font-size:11px;font-weight:700}
+.nav-badge.hidden{display:none}
+.sidebar-foot{margin-top:auto;border-top:1px solid #365444;padding:18px 8px;color:#a7bead;font-size:10px}
+.logout-btn{margin-top:10px;width:100%;font-size:11px;padding:8px!important}
+.main{flex:1;padding:36px 5vw 70px;max-width:1500px;margin:auto}
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px}
+.topbar h1{font-size:25px;margin:0}
+.top-actions{display:flex;gap:10px}
+.ghost,.primary{border:1px solid var(--line);background:var(--card);color:var(--green-dark);padding:11px 17px;border-radius:11px;font:inherit;cursor:pointer}
+.primary{background:var(--green);border-color:var(--green);color:white;font-weight:600}
+.view{display:none}.active-view{display:block}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin:20px 0}
+.stat,.panel,.category-card{background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow)}
+.stat{padding:19px}.stat span{display:block;color:var(--muted);font-size:11px}
+.stat strong{display:block;font-size:25px;margin:9px 0 3px}.stat.accent strong{color:var(--green)}
+.panel{padding:24px}
+.section-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;gap:12px;flex-wrap:wrap}
+.section-head h2{font-size:22px;margin:0}
+.toolbar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.toolbar input,.toolbar select{border:1px solid var(--line);border-radius:10px;background:var(--card);padding:12px 14px;font:inherit}
+.toolbar input{flex:1;min-width:140px}
+.table-wrap{background:var(--card);border:1px solid var(--line);border-radius:17px;overflow:auto}
+table{width:100%;border-collapse:collapse;text-align:right}
+th,td{padding:12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:11px;color:var(--muted);background:#fbfdfb}
+.draggable-row{cursor:grab}.draggable-row.dragging{opacity:.45}.draggable-row.drag-over{background:var(--mint)}
+.drag-handle{color:var(--muted);cursor:grab;user-select:none;width:28px}
+.order-cell{white-space:nowrap}
+.order-num{margin-right:6px;color:var(--muted);font-size:11px}
+.pill{background:var(--mint);color:var(--green-dark);border-radius:20px;padding:5px 9px;font-size:10px}
+.icon-btn{border:0;background:transparent;color:var(--green);font:inherit;cursor:pointer}
+.category-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px}
+.category-card{padding:20px}.category-card .symbol{font-size:24px;color:var(--green)}
+.category-card h3{margin:10px 0 4px}.category-card p{color:var(--muted);font-size:11px;margin:0}
+.security-card{background:#fff8eb;border:1px solid #f0dfb9;border-radius:16px;padding:18px;color:#6f562c}
+.security-card p{font-size:12px;line-height:1.9;margin:8px 0 0}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(12px);background:#183025;color:#fff;padding:12px 18px;border-radius:10px;opacity:0;pointer-events:none;transition:.25s;z-index:20}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.feedback-layout{display:grid;grid-template-columns:1fr 1.2fr;gap:16px;min-height:400px}
+.feedback-list,.feedback-detail{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:var(--shadow)}
+.feedback-list{display:flex;flex-direction:column;gap:8px;max-height:70vh;overflow:auto}
+.feedback-item{border:1px solid var(--line);background:#fbfdfb;border-radius:12px;padding:12px;text-align:right;font:inherit;cursor:pointer;display:grid;gap:6px}
+.feedback-item.active{border-color:var(--green);background:var(--mint)}
+.feedback-item small{color:var(--muted);font-size:11px}
+.feedback-body{background:#f7faf7;border-radius:12px;padding:14px;line-height:1.9;margin-bottom:14px;white-space:pre-wrap}
+.admin-reply{background:#eef6ef;border-radius:12px;padding:12px;margin-bottom:12px}
+.feedback-detail label{display:block;font-size:11px;color:var(--muted);font-weight:600;margin-bottom:12px}
+.feedback-detail textarea,.feedback-detail select,.panel label input,.panel label textarea{display:block;width:100%;margin-top:7px;padding:12px;border:1px solid var(--line);border-radius:10px;font:inherit}
+.panel label{display:block;font-size:11px;color:var(--muted);font-weight:600;margin-bottom:12px}
+.empty-hint{color:var(--muted);text-align:center;padding:32px 12px;margin:0}
+.modal{position:fixed;inset:0;background:rgba(20,39,28,.48);display:none;align-items:center;justify-content:center;padding:20px;z-index:5}
+.modal.open{display:flex}
+.modal-card{background:var(--card);width:min(640px,100%);max-height:92vh;overflow:auto;border-radius:22px;padding:24px}
+.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.modal-head h2{margin:0;font-size:20px}
+.close{border:0;background:var(--mint);width:34px;height:34px;border-radius:50%;font-size:20px;cursor:pointer}
+.modal-card label{display:block;font-size:11px;color:var(--muted);font-weight:600;margin-bottom:12px}
+.modal-card input,.modal-card textarea,.modal-card select{display:block;width:100%;margin-top:6px;padding:12px;border:1px solid var(--line);border-radius:10px;font:inherit}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.publish-toggle{display:flex!important;justify-content:space-between;align-items:center;background:#f7faf7;border-radius:12px;padding:12px}
+.publish-toggle input{width:18px!important;margin:0!important}
+.modal-actions{display:flex;gap:10px;margin-top:16px}
+.status-draft{background:#fff0d7;color:#8d6429}.status-published{background:var(--mint);color:var(--green-dark)}
+.preview-card{max-width:460px}
+.preview-meta{color:var(--muted);font-size:12px;margin:0 0 14px}
+.preview-zekr{background:linear-gradient(180deg,#f7faf7,#eef5ef);border:1px solid var(--line);border-radius:18px;padding:24px;font-size:18px;line-height:1.9;text-align:center;margin-bottom:14px}
+.preview-block{margin-bottom:10px}.preview-block strong{display:block;font-size:12px;color:var(--green);margin-bottom:4px}
+.preview-block p{margin:0;color:var(--muted);line-height:1.7;font-size:13px}
+.auth-gate{position:fixed;inset:0;z-index:10;background:linear-gradient(135deg,#183025,#395f47);display:grid;place-items:center;padding:20px}
+.auth-gate.hidden{display:none}
+.auth-card{width:min(420px,100%);background:#fff;border-radius:24px;padding:32px;text-align:center}
+.auth-card .brand-mark{margin:0 auto 18px}
+.auth-card h1{margin:0 0 10px}.auth-card p{color:var(--muted);line-height:1.9}
+.auth-card .primary{width:100%;margin:16px 0}
+.auth-card small{color:#c0392b;font-size:12px;display:block;min-height:18px}
+.eyebrow{margin:0;color:var(--muted);font-size:11px;letter-spacing:.04em}
+.welcome{background:linear-gradient(135deg,#eef6ef,#fff);border:1px solid var(--line);border-radius:22px;padding:24px;margin-bottom:8px}
+.welcome h2{margin:8px 0}
+.welcome p{color:var(--muted);margin:0}
+.content-grid{display:grid;gap:16px}
+.quick-actions{display:grid;gap:10px}
+.quick-actions button{display:flex;align-items:center;gap:12px;width:100%;border:1px solid var(--line);background:#fbfdfb;border-radius:14px;padding:14px;font:inherit;cursor:pointer;text-align:right}
+.quick-actions button:hover{border-color:var(--green);background:var(--mint)}
+.quick-actions b{width:36px;height:36px;display:grid;place-items:center;background:var(--mint);border-radius:10px;color:var(--green-dark)}
+.quick-actions span{flex:1;display:grid;gap:2px}
+.quick-actions small{color:var(--muted);font-weight:400}
+.quick-actions i{color:var(--muted);font-style:normal}
+.settings-list{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:8px 16px}
+code{background:var(--mint);padding:1px 6px;border-radius:6px;font-size:11px}
+@media(max-width:900px){.feedback-layout,.stats-grid{grid-template-columns:1fr}}
+@media(max-width:850px){.sidebar{width:72px;padding:16px 8px}.brand div,.private-badge,.sidebar-foot small,.logout-btn{display:none}.main{padding:20px 14px}}
+END SOURCE FILE: admin-panel/styles.css

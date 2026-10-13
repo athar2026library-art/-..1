@@ -1,0 +1,1458 @@
+BAQIYAT — SOURCE EXPORT FOR AI REVIEW
+Component: ROOT-CONFIG-AND-CI
+Part: 01
+Source branch: main (export generated on a separate branch)
+Encoding: UTF-8. Original relative paths are marked per file.
+This is a review/export format, not a compilable project folder.
+
+========================================================================================
+SOURCE FILE: .github/workflows/android-validation.yml
+========================================================================================
+name: Baqiyat validation
+
+on:
+  push:
+    branches: [main, fix/baqiyat-secure-ai]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: baqiyat-validation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # Run the action-downloaded Gradle distribution directly; do not execute the unrecognized wrapper JAR.
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+          validate-wrappers: false
+
+      - name: Create non-secret Firebase config for CI
+        run: |
+          cat > app/google-services.json <<'JSON'
+          {
+            "project_info": {
+              "project_number": "123456789012",
+              "project_id": "baqiyat-ci-only",
+              "storage_bucket": "baqiyat-ci-only.appspot.com"
+            },
+            "client": [{
+              "client_info": {
+                "mobilesdk_app_id": "1:123456789012:android:abcdef1234567890",
+                "android_client_info": {
+                  "package_name": "com.baqiyat.azkar"
+                }
+              },
+              "oauth_client": [{
+                "client_id": "123456789012-ci.apps.googleusercontent.com",
+                "client_type": 3
+              }],
+              "api_key": [{ "current_key": "AIzaSyDUMMY_FOR_CI_ONLY" }],
+              "services": {
+                "appinvite_service": {
+                  "other_platform_oauth_client": []
+                }
+              }
+            }],
+            "configuration_version": "1"
+          }
+          JSON
+
+      - name: Add Gemini API Key for CI
+        run: echo "geminiApiKey=${{ secrets.GEMINI_API_KEY }}" >> local.properties
+
+      - name: Check patch whitespace
+        run: git diff --check
+
+      - name: Run Firestore security rules tests
+        working-directory: firebase
+        run: |
+          npm ci
+          npm run test:rules
+
+      - name: Run Android unit tests and compile APK
+        run: gradle :app:testDebugUnitTest :app:assembleDebug --no-daemon --stacktrace
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: baqiyat-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Run Cloud Functions tests
+        working-directory: firebase/functions
+        run: |
+          npm install --ignore-scripts
+          npm test
+END SOURCE FILE: .github/workflows/android-validation.yml
+
+========================================================================================
+SOURCE FILE: .github/workflows/deploy-admin-panel.yml
+========================================================================================
+name: Deploy owner panel to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "admin-panel/**"
+      - ".github/workflows/deploy-admin-panel.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Upload owner panel
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: admin-panel
+
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
+END SOURCE FILE: .github/workflows/deploy-admin-panel.yml
+
+========================================================================================
+SOURCE FILE: .github/workflows/deploy-firestore-rules.yml
+========================================================================================
+name: Deploy Firestore Rules
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-firestore-rules
+  cancel-in-progress: false
+
+jobs:
+  deploy-rules:
+    name: Test and deploy Firestore rules
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: firebase/package-lock.json
+
+      - name: Install Firebase dependencies
+        working-directory: firebase
+        run: npm ci
+
+      - name: Run Firestore rules tests
+        working-directory: firebase
+        run: npm run test:rules
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_CREDENTIALS }}
+
+      - name: Deploy Firestore rules
+        working-directory: firebase
+        run: npx firebase-tools deploy --only firestore:rules --project svrpmtt --non-interactive
+END SOURCE FILE: .github/workflows/deploy-firestore-rules.yml
+
+========================================================================================
+SOURCE FILE: .github/workflows/deploy-functions.yml
+========================================================================================
+name: Deploy Firebase Functions
+
+on:
+  push:
+    branches:
+      - feature/private-admin-panel
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-firebase-functions-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy-functions:
+    name: Deploy Cloud Functions
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: firebase/functions/package-lock.json
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_CREDENTIALS }}
+
+      - name: Install function dependencies
+        working-directory: firebase/functions
+        run: npm ci
+
+      - name: Run function unit tests
+        working-directory: firebase/functions
+        run: npm test
+
+      - name: Validate function source
+        working-directory: firebase/functions
+        run: node --check index.js
+
+      - name: Deploy Firebase Functions
+        working-directory: firebase
+        run: npx --yes firebase-tools deploy --only functions --project svrpmtt --non-interactive
+END SOURCE FILE: .github/workflows/deploy-functions.yml
+
+========================================================================================
+SOURCE FILE: BAQIYAT_PROJECT_STATUS_REPORT.md
+========================================================================================
+# تقرير حالة مشروع الباقيات
+
+**تاريخ التقرير:** 1 أكتوبر 2026
+**الفرع:** `feature/private-admin-panel`
+**آخر مرحلة:** Firebase AI Logic بلا مفتاح في الـ APK، قواعد Firestore بدون بريد مالك ثابت، و39 اختبار محاكٍ ناجح.
+
+## الخلاصة التنفيذية
+
+أصبح مشروع **الباقيات** في حالة تطوير متقدمة مقارنة بالنسخة الأولية. يحتوي تطبيق Android الآن على تجربة قراءة حديثة للأذكار، أذكار صباح ومساء مكتملة بالمصادر والتكرارات، حفظ محسّن للتقدم، اهتزازات تفاعلية، شريط إنجاز، دعم الوضع الليلي، المساعد الذكي عبر Firebase AI Logic، تسجيل الدخول بحساب Google، نظام الشكاوى والاقتراحات، والإشعارات. كما توجد لوحة مالك عربية بتصميم RTL ومتصلة بـ Firebase لإدارة المحتوى والشكاوى والإشعارات عبر Google Auth وRBAC (`admins/{uid}` أو custom claim `admin:true`).
+
+لا تُولَّد أحاديث من المساعد، ولا توجد مسبحة حرة، ولا يُضمَّن مفتاح Gemini في الـ APK.
+
+## الحالة الحالية حسب النظام
+
+| النظام | الحالة الحالية | الدليل أو الملاحظة |
+|---|---|---|
+| تطبيق Android | جاهز للبناء والتثبيت | `:app:assembleDebug` نجح |
+| شاشة الأذكار | محسّنة للأداء والتفاعل | الحفظ لا يحدث مع كل نقرة، والبطاقة كاملة قابلة للنقر |
+| المساعد الذكي | Firebase AI Logic | النموذج `gemini-2.5-flash` عبر `firebase-ai` + App Check — بلا مفتاح في الـ APK |
+| تسجيل الدخول Google | مهيأ | Web Client ID مأخوذ من `client_type = 3` في `google-services.json` |
+| Firebase | متصل | Authentication وFirestore وStorage وFCM مستخدمة في التطبيق واللوحة |
+| قواعد Firestore | موحّدة ومقوّاة | `firebase/firestore.rules` هو ملف النشر؛ نسخة الجذر متزامنة |
+| اختبارات القواعد | 39/39 ناجح | `npm run test:rules` على محاكي المنفذ 8181 |
+| لوحة المالك | Google + RBAC | لا كلمة مرور ثابتة؛ الدخول عبر Google ثم `admins/{uid}` |
+| اختبارات UI | مضافة ومجمّعة | اختبارات Compose لتسجيل الدخول والأذكار |
+| اختبار الصوت | مضاف ومجمّع | اختبار lifecycle لمشغل `AudioPlayer` |
+| اختبار جهاز فعلي | لم يُنفذ بعد | لا توجد أجهزة متصلة عبر ADB |
+
+## تحسينات واجهة الأذكار وتجربة القراءة
+
+أُعيد تصميم شاشة القراءة حول التفاعل المباشر. أصبحت بطاقة الذكر بأكملها منطقة النقر بدل الاعتماد على زر صغير، ويؤدي النقر إلى إنقاص العداد فورًا مع اهتزاز خفيف عند تفعيل الاهتزازات. عند وصول العداد إلى الصفر يصدر اهتزاز تأكيدي ثم ينتقل التطبيق إلى الذكر التالي بحركة قصيرة.
+
+أُضيف شريط تقدم علوي يعرض نسبة الإنجاز داخل الورد الحالي. كما أُضيفت أزرار واضحة للانتقال إلى الذكر السابق أو التالي وإعادة ضبط العداد. تظهر حالة الإكمال عند نهاية الورد مع خيار العودة إلى الصفحة الرئيسية.
+
+تم إصلاح نقطة أداء مهمة في `AzkarScreen.kt`. لم يعد التطبيق يستدعي `saveLastReadState` مع كل نقرة تسبيح. يُحفظ التقدم عند تغير `currentIndex` أو عند مغادرة الشاشة عبر `DisposableEffect`. يقلل ذلك عمليات DataStore المتكررة ويمنع منافسة عمليات الإدخال مع عمليات I/O على الواجهة.
+
+اكتملت نصوص الأذكار المشهورة في أذكار الصباح والمساء، ومنها آية الكرسي، المعوذات، سيد الاستغفار، وذكر «أصبحنا وأصبح الملك لله»، مع المصادر وفضائل الذكر وعدد التكرار. كما تم فحص حقول البيانات للتأكد من عدم وجود نصوص أساسية فارغة.
+
+## المساعد الذكي
+
+يستخدم التطبيق Firebase AI Logic SDK (`firebase-ai`) مع النموذج `gemini-2.5-flash` عبر `GenerativeBackend.googleAI()`. المصادقة هي مشروع Firebase + App Check (Play Integrity في الإصدار، Debug في التطوير). **لا يوجد مفتاح Gemini داخل الـ APK ولا داخل `BuildConfig`.** تُنفذ الطلبات خارج خيط الواجهة باستخدام `Dispatchers.IO`.
+
+تعالج طبقة المستودع حالات انقطاع الشبكة وانتهاء المهلة برسالة عربية واضحة، كما تعالج HTTP 429 / `RESOURCE_EXHAUSTED` برسالة تشير إلى تجاوز حد الاستخدام المؤقت. وتحتوي طبقة `AppViewModel` على حالة تحميل مستقلة حتى لا تبقى شاشة المساعد في حالة انتظار بعد فشل الطلب.
+
+تقدم شاشة المساعد رسائل عربية مختصرة، وتطلب من النموذج الاعتماد على المصادر الموثوقة (الأحاديث الصحيحة وحصن المسلم) وعدم إصدار فتاوى أو أحكام شرعية من عنده. يظل هذا النظام مساعدًا للمعلومة والتدبر، ولا يحل محل التحقق العلمي أو سؤال أهل الاختصاص.
+
+## تسجيل الدخول بحساب Google
+
+يستخدم التطبيق Credential Manager مع Google ID Token ثم يربط الاعتماد بحساب Firebase عبر `GoogleAuthProvider`. تم التحقق من أن القيمة في `strings.xml` هي Web Client ID الحقيقي:
+
+```text
+372887186106-ori5bj4fde42ovqabuh34eedt3f1dcta.apps.googleusercontent.com
+```
+
+وتطابق القيمة الموجودة في `app/google-services.json` تحت `client_type = 3`. أُضيفت علامة اختبار مستقرة لزر تسجيل الدخول:
+
+```text
+google-sign-in-button
+```
+
+يؤكد اختبار Compose أن الزر ظاهر ومفعّل في شاشة الإعدادات. لا يفتح الاختبار مزود Google الفعلي تلقائيًا، لأن ذلك يحتاج حسابًا حقيقيًا وتفاعلًا خارجيًا على جهاز اختبار.
+
+## الصوت وقراءة الأذكار
+
+كان `AudioPlayer.kt` يستخدم الاستدعاء القديم:
+
+```kotlin
+continuation.resume(value, null)
+```
+
+تم استبداله بالواجهة الحديثة التي تستقبل callback للإلغاء:
+
+```kotlin
+continuation.resume(value) { _, _, _ -> }
+```
+
+طُبق التغيير على إكمال النطق، الأخطاء، الإيقاف، وحالات فشل التهيئة أو فشل `speak`. كما تم تحديث اللغة العربية من `Locale("ar")` إلى:
+
+```kotlin
+Locale.forLanguageTag("ar")
+```
+
+أُضيف اختبار Android باسم `AudioPlayerInstrumentedTest`. ينشئ الاختبار مشغل الصوت، يتحقق من أن الحالة الأولية ليست قيد التشغيل، ثم يستدعي `shutdown()` داخل `finally` لضمان تحرير موارد Text-to-Speech حتى عند فشل assertion.
+
+هذا اختبار lifecycle آمن ولا يدعي نجاح إخراج صوت فعلي. التحقق من النطق العربي، اختيار محرك TTS، جودة الصوت، واستمرار القراءة يحتاج جهازًا أو محاكيًا مزودًا بمحرك Text-to-Speech فعلي.
+
+## اختبارات Android المضافة
+
+أُضيفت اختبارات Compose في `BaqiyatUiTest.kt` تغطي:
+
+1. ظهور زر تسجيل الدخول باستخدام Google والتأكد من قابليته للتفاعل.
+2. فتح أذكار الصباح.
+3. ظهور بطاقة الذكر والعداد والتفاعل مع البطاقة بالنقر.
+
+أُضيفت علامات اختبار مستقرة إلى الواجهة:
+
+```text
+google-sign-in-button
+dhikr-card
+dhikr-counter
+```
+
+تم تجميع اختبارات Android بنجاح عبر:
+
+```bash
+:app:compileDebugAndroidTestKotlin
+:app:assembleDebugAndroidTest
+```
+
+## حالة البناء والتحذيرات
+
+آخر عملية بناء نفذت المهام التالية بنجاح:
+
+```bash
+:app:assembleDebug
+:app:compileDebugAndroidTestKotlin
+:app:assembleDebugAndroidTest
+```
+
+نتجت الملفات التالية:
+
+- `app/build/outputs/apk/debug/app-debug.apk`
+- `app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk`
+
+اختفت تحذيرات `AudioPlayer` المتعلقة بـ `CancellableContinuation` و`Locale`. يوجد تحذير مستقل في `MainActivity.kt` متعلق بـ `FirebaseMessaging.getToken()` ووسمه deprecated في إصدار Firebase Messaging الحالي. هذا التحذير لا يرتبط بنظام الصوت، ولا يوجد في الواجهة العامة الحالية بديل مباشر مكافئ داخل نفس API. يمكن عزل هذا الاستدعاء أو تحديث مكتبة Firebase في مرحلة مستقلة بعد اختبار FCM على جهاز حقيقي.
+
+## لوحة المالك وFirebase
+
+تتصل لوحة المالك بـ Firebase Authentication (Google) وFirestore وStorage. تشمل وظائفها إدارة محتوى الأذكار، حالات المسودة والنشر، صندوق الشكاوى والاقتراحات، البحث والتصفية، عرض المرفقات، السجل الزمني، الرد المباشر، تحديث حالة الشكوى، وإرسال إشعارات عبر كتابة `notifications/{id}` بحالة `queued` (تستهلكها Cloud Function).
+
+**الدخول:** Google Sign-In ثم التحقق من وجود `admins/{uid}` أو custom claim `admin:true`. لا توجد كلمة مرور ثابتة في الواجهة، ولا بريد مالك مضمّن في القواعد.
+
+**تمهيد أول مشرف:** بعد إزالة البريد الثابت من القواعد، يجب إنشاء مستند `admins/{uid}` بدور `super_admin` من Firebase Console أو Admin SDK قبل أن يتمكن أي حساب من إدارة اللوحة.
+
+## قواعد Firestore واختباراتها
+
+ملف النشر الرسمي: `firebase/firestore.rules` (نسخة الجذر متزامنة). أبرز الضمانات:
+
+- المحتوى المنشور فقط يُقرأ للعامة؛ المسودات للأدمن.
+- المستخدم لا يكتب مفاتيح صلاحيات (`role`, `admin`, …).
+- التقدم بصيغة تاريخ `yyyy-MM-dd` وحد أعلى للتسبيح.
+- الشكاوى تُنشأ بحالة `new` بدون رد أدمن.
+- الإشعارات تُنشأ `queued` فقط؛ التعديل والحذف ممنوعان من العميل.
+- `admin_jobs` تُنشأ `pending` فقط.
+- `system/*` كتابة ممنوعة من العميل.
+- catch-all: deny.
+
+الاختبارات: `firebase/tests/rules.test.mjs` — 39 اختبارًا على 6 مجموعات (محتوى، ملف المستخدم، التقدم، الشكاوى، الإشعارات/المهام، RBAC). البريد العادي **لا** يمنح صلاحية أدمن.
+
+التشغيل من `firebase/`:
+
+```bash
+npm install
+npm run test:rules
+```
+
+النشر من `firebase/`:
+
+```bash
+firebase deploy --only firestore:rules,firestore:indexes,storage
+```
+
+## القيود الحالية
+
+لم يُنفذ اختبار تثبيت وتشغيل فعلي على جهاز Android في هذه البيئة لأن `adb devices` لم يعرض أي جهاز أو محاكي. لذلك لا يمكن من بيئة البناء وحدها تأكيد جودة صوت TTS الفعلية أو نجاح نافذة Google Credential Manager أو سلاسة الانتقال على عتاد محدد.
+
+كما أن اختبار UI الحالي يعتمد على شاشة التطبيق الحقيقية وعلى بيانات Firebase المحلية أو الشبكية. ولرفع موثوقية الاختبارات في CI، يُستحسن لاحقًا توفير fake repositories وحقن dependencies بدل تهيئة Firebase وDataStore وWorkManager أثناء كل اختبار.
+
+نشر القواعد ودوال FCM يحتاج تسجيل دخول Firebase CLI على مشروع `svrpmtt` من جهاز المالك.
+
+## التوصيات التالية (على المالك في Firebase Console)
+
+1. إنشاء `admins/{uid}` بدور `super_admin` لأول حساب مالك.
+2. نشر القواعد والفهارس والتخزين من مجلد `firebase/`.
+3. نشر Cloud Function `dispatchOwnerNotification` إن لم تكن منشورة.
+4. إضافة نطاق الاستضافة إلى Authorized domains في Authentication.
+
+يوصى أولًا بتوصيل جهاز Android فعلي وتشغيل الاختبارات التالية:
+
+```bash
+adb devices
+./gradlew connectedDebugAndroidTest
+```
+
+## الملفات الرئيسية
+
+- [مشغل الصوت](app/src/main/java/com/example/ui/AudioPlayer.kt)
+- [اختبار مشغل الصوت](app/src/androidTest/java/com/example/AudioPlayerInstrumentedTest.kt)
+- [اختبارات واجهة التطبيق](app/src/androidTest/java/com/example/BaqiyatUiTest.kt)
+- [شاشة الأذكار](app/src/main/java/com/example/ui/screens/AzkarScreen.kt)
+- [مستودع المساعد الذكي](app/src/main/java/com/example/data/AiRepository.kt)
+- [قواعد Firestore](firebase/firestore.rules)
+- [اختبارات القواعد](firebase/tests/rules.test.mjs)
+- [ملف إعداد Web Client ID](app/src/main/res/values/strings.xml)
+
+## References
+
+[1]: https://developer.android.com/develop/ui/compose/testing "Android Compose testing documentation"
+[2]: https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-cancellable-continuation/ "Kotlin Coroutines CancellableContinuation API"
+[3]: https://firebase.google.com/docs/cloud-messaging/android/client "Firebase Cloud Messaging Android client documentation"
+[4]: https://developer.android.com/reference/android/speech/tts/TextToSpeech "Android TextToSpeech API reference"
+[5]: https://firebase.google.com/docs/ai-logic/get-started "Firebase AI Logic"
+END SOURCE FILE: BAQIYAT_PROJECT_STATUS_REPORT.md
+
+========================================================================================
+SOURCE FILE: MERGE_RESOLUTION.md
+========================================================================================
+# Merge resolution note
+
+Conflicts between `main` and `feature/private-admin-panel` were resolved by keeping the feature branch versions (unrelated histories / add-add conflicts).
+
+If this commit alone does not update the merge base, the local merge commit `0b3ac6c` must be pushed with git credentials.
+END SOURCE FILE: MERGE_RESOLUTION.md
+
+========================================================================================
+SOURCE FILE: build.gradle.kts
+========================================================================================
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+plugins {
+  alias(libs.plugins.android.application) apply false
+  alias(libs.plugins.kotlin.compose) apply false
+  alias(libs.plugins.google.devtools.ksp) apply false
+  alias(libs.plugins.roborazzi) apply false
+  alias(libs.plugins.secrets) apply false
+  alias(libs.plugins.google.services) apply false
+}
+END SOURCE FILE: build.gradle.kts
+
+========================================================================================
+SOURCE FILE: design/tokens.json
+========================================================================================
+{
+  "$comment": "المصدر المرجعي لتوكنز الباقيات. التطبيق يقرأ منها يدوياً الآن (Color.kt)، واللوحة ستستهلكها في المرحلة 6.",
+  "radius": { "xs": 8, "s": 12, "m": 20, "l": 28, "xl": 36, "pill": 999 },
+  "motion": { "pressMs": 120, "screenMs": 280, "completeMs": 700, "themeMs": 500 },
+  "font": { "zekr": "Amiri", "ui": "IBM Plex Sans Arabic", "zekrLineHeightRatio": 1.95 },
+  "modes": {
+    "day":     { "background": "#F1F3E8", "backgroundDeep": "#E4EAD8", "ink": "#16362A", "muted": "#4F6A5D", "primary": "#1B4B3A", "accent": "#B28A22", "mint": "#DCE7D3", "buttonFrom": "#1B4B3A", "buttonTo": "#2F6B52", "onButton": "#F8F6EA" },
+    "fajr":    { "background": "#0D2A30", "backgroundDeep": "#081C21", "ink": "#EAF2EE", "muted": "#A9C5C0", "primary": "#8FD3C2", "accent": "#E2C968", "mint": "#B9DDD3", "buttonFrom": "#8FD3C2", "buttonTo": "#5FB5A3", "onButton": "#0D2A30" },
+    "maghrib": { "background": "#262A1B", "backgroundDeep": "#1A1C12", "ink": "#F7ECD3", "muted": "#CDBF9C", "primary": "#EDB84F", "accent": "#F0C96A", "mint": "#E6D8A8", "buttonFrom": "#F0C96A", "buttonTo": "#D49A33", "onButton": "#2A220F" },
+    "night":   { "background": "#0F2920", "backgroundDeep": "#081A13", "ink": "#F4F2E7", "muted": "#B4C7B9", "primary": "#E2C968", "accent": "#E2C968", "mint": "#B9D4B6", "buttonFrom": "#E2C968", "buttonTo": "#C9A63D", "onButton": "#1A2A1F" }
+  }
+}
+END SOURCE FILE: design/tokens.json
+
+========================================================================================
+SOURCE FILE: docs/DEPLOY.md
+========================================================================================
+# أوامر النشر والصلاحيات (نفّذها من جهازك المصادق)
+
+```bash
+# 1) المشروع
+firebase use svrpmtt
+
+# 2) سر Gemini (مرة واحدة)
+firebase functions:secrets:set GEMINI_API_KEY
+
+# 3) منح صلاحية أدمن (عدّل البريد أو استخدم UID)
+cd firebase/functions && node make_admin.js YOUR_EMAIL@example.com
+
+# 4) النشر
+firebase deploy --only firestore:rules,storage,functions
+```
+
+## App Check
+1. سجّل SHA-256 لمفتاح التوقيع وPlay App Signing في Firebase.
+2. فعّل Play Integrity لتطبيق Android.
+3. لنسخة debug: انسخ Debug token من Logcat وأضفه في Console.
+4. لا تفعّل Enforce إلا بعد أسبوع مراقبة بلا رفض للنسخ الشرعية.
+
+## تقييد مفاتيح Google Cloud
+- مفتاح Android: قيّده بالحزمة `com.baqiyat.azkar` + بصمة SHA-1/256.
+- مفتاح الويب: HTTP referrers فقط.
+
+## تحقق بعد البناء
+```bash
+./gradlew :app:assembleDebug :app:assembleRelease
+# لا يوجد GEMINI في الـ APK:
+# unzip -p app/build/outputs/apk/release/*.apk | strings | grep -i gemini || echo clean
+```
+END SOURCE FILE: docs/DEPLOY.md
+
+========================================================================================
+SOURCE FILE: docs/FEEDBACK_NOTIFICATIONS_PLAN.md
+========================================================================================
+# خطة التنفيذ
+
+- [x] تعريف الوحدات وعقد Firestore والصلاحيات.
+- [ ] إضافة معاينة لوحة المالك: قائمة الشكاوى، تفاصيل الحالة، تبويب الإشعارات.
+- [ ] إضافة قواعد Firestore للطلبات والإشعارات وملفات المستخدم.
+- [ ] إضافة نماذج Android للشكاوى والإشعارات وتسجيل الدخول الإلزامي عند الإرسال.
+- [ ] إضافة تسجيل FCM tokens ومعالج إشعارات Android.
+- [ ] إضافة Cloud Function/خادم آمن لإرسال FCM بعد نشره من Firebase.
+- [ ] بناء Android وموقع Web والتحقق من المسارات الأساسية.
+END SOURCE FILE: docs/FEEDBACK_NOTIFICATIONS_PLAN.md
+
+========================================================================================
+SOURCE FILE: docs/FEEDBACK_NOTIFICATIONS_SPEC.md
+========================================================================================
+# نظام الشكاوى والاقتراحات والإشعارات
+
+## خريطة القدرات
+
+| الوحدة | المسؤولية | تعتمد على |
+|---|---|---|
+| identity | تسجيل دخول المستخدم وربط الطلبات به | — |
+| feedback | المساعد الذكي، إرسال الشكوى، المتابعة والرد | identity |
+| notifications | تسجيل أجهزة FCM وإنشاء حملات الإشعار وسجل الإرسال | identity |
+| owner-console | معاينة وإدارة الشكاوى والإشعارات | feedback, notifications |
+
+ترتيب التنفيذ: identity → feedback وnotifications → owner-console.
+
+## الهدف
+تمكين مستخدم تطبيق أذكار من وصف شكوى أو اقتراح عبر مساعد عربي، مراجعة الملخص والتصنيف قبل الإرسال، ثم متابعة الحالة والرد. وتمكين المالك من إدارة الطلبات وإرسال إشعارات للمستخدمين.
+
+## قرار تسجيل الدخول
+تسجيل الدخول إلزامي عند الإرسال والمتابعة، وليس عند فتح المساعد أو كتابة المسودة. يستخدم التطبيق Google/Firebase Auth الموجود، ويُحفظ الطلب تحت `users/{uid}/feedback/{feedbackId}` مع نسخة إدارية في `feedback/{feedbackId}`.
+
+## عقد البيانات
+
+`feedback/{feedbackId}` يحتوي: `userId`, `userEmail`, `type`, `title`, `message`, `aiSummary`, `aiCategory`, `priority`, `status`, `adminReply`, `internalNote`, `createdAt`, `updatedAt`, `resolvedAt`.
+
+`notifications/{notificationId}` يحتوي: `title`, `body`, `audience`, `status`, `createdBy`, `createdAt`, `sentAt`, `deliveryCount`.
+
+`users/{uid}` يحتوي: `fcmTokens`, `appVersion`, `notificationsEnabled`, `updatedAt`.
+
+## الصلاحيات
+المستخدم المسجل يقرأ ويحدّث طلباته الأساسية فقط. المشرف ذو Custom Claim `admin == true` يقرأ ويدير الشكاوى والإشعارات. الإرسال الفعلي إلى FCM يتم عبر Cloud Function/خدمة خلفية تستخدم Admin SDK؛ لا تُوضع مفاتيح الخدمة في Android أو المتصفح.
+
+## تجربة المساعد
+يفتح المستخدم المساعد، يكتب بحرية، ثم تظهر بطاقة تأكيد تعرض النوع والعنوان والملخص والأولوية. لا يتم إنشاء سجل Firestore إلا بعد تسجيل الدخول والتأكيد.
+
+## الإشعارات
+النسخة الأولى تدعم إشعاراً عاماً لجميع المستخدمين مع حفظ سجل الإرسال. تضاف الجماهير المخصصة لاحقاً بعد استقرار تسجيل FCM tokens.
+
+## التحقق
+- صفحة لوحة المالك تعرض تبويبي الشكاوى والإشعارات مع بيانات معاينة واضحة.
+- `pnpm check` و`pnpm build` ينجحان.
+- Android يبني مع Firebase Auth/Firestore/FCM.
+- القواعد تمنع القراءة والكتابة غير المصرح بها.
+- لا تُرفع أسرار Firebase Admin أو service account إلى Git.
+
+## الحدود
+- دائماً: التحقق من الحقول، إظهار حالة الطلب، وعدم إرسال AI نصاً دون تأكيد.
+- يحتاج إعداداً خارجياً: نشر Cloud Function وربط Firebase Cloud Messaging، وتأكيد Authorized Domains.
+- ممنوع: وضع Server Key أو Service Account في التطبيق أو الموقع.
+
+## المسار التالي
+إضافة Cloud Function فعلية للإرسال الجماعي بعد تزويد Firebase Functions/Cloud project بصلاحية النشر، ثم اختبار جهاز Android حقيقي.
+END SOURCE FILE: docs/FEEDBACK_NOTIFICATIONS_SPEC.md
+
+========================================================================================
+SOURCE FILE: docs/GEMINI_LOCAL_TESTING.md
+========================================================================================
+# اختبار Gemini مباشرة على Android (تجريبي)
+
+هذا الإعداد مخصص للبناء المحلي فقط. لا تضف المفتاح إلى Git أو إلى ملف داخل المستودع.
+
+1. افتح ملف `local.properties` في جذر المشروع (وهو مستثنى من Git).
+2. أضف سطرًا مستقلًا:
+
+   `geminiApiKey=ضع_مفتاح_Gemini_هنا`
+
+3. نفّذ مزامنة Gradle ثم ابنِ نسخة debug.
+4. افتح التطبيق وجرّب المساعد مع اتصال إنترنت.
+
+إذا لم يعمل الطلب، تحقق من صلاحية المفتاح، وتفعيل Gemini API/إتاحته للمشروع، وقيود الحصة المجانية. قد تختلف الإتاحة والحدود حسب الحساب والمنطقة.
+
+**تنبيه:** المفتاح الذي يُمرّر إلى `BuildConfig` يصبح قابلًا للاستخراج من APK. هذا مسار تجريبي خاص، وليس إعدادًا مناسبًا لتطبيق منشور. ألغِ المفتاح وأصدر آخر إذا سبق مشاركته علنًا أو ظهر في سجل يمكن لغيرك الوصول إليه.
+END SOURCE FILE: docs/GEMINI_LOCAL_TESTING.md
+
+========================================================================================
+SOURCE FILE: docs/INTEGRATION_PR.md
+========================================================================================
+# فرع التكامل النظيف
+
+هذا الفرع `feature/admin-panel-integration` مُنشأ من `main` مباشرة، ثم نُقلت إليه تحديثات التطبيق ولوحة المالك من `feature/private-admin-panel` كـ commits جديدة.
+
+النتيجة: **لا تعارض تاريخ (unrelated histories)** — زر الدمج الأخضر متاح على PR إلى `main`.
+END SOURCE FILE: docs/INTEGRATION_PR.md
+
+========================================================================================
+SOURCE FILE: docs/PHASE1_DESIGN_SYSTEM.md
+========================================================================================
+# نظام التصميم — المرحلة 1
+
+انظر المستودع للتفاصيل الكاملة عن الألوان والخطوط والمكوّنات المشتركة.
+
+---
+
+# المرحلة 2: التنقل والرئيسية
+
+- الشريط السفلي صار 4 وجهات: **الرئيسية · المسبحة · رحلتي · المزيد**. نقطة حمراء على «المزيد» عند وجود رد جديد على شكوى.
+- «المساعد» و«تواصل معنا» و«الإعدادات» صارت داخل «المزيد»، وكل منها بزر رجوع، ويختفي الشريط السفلي فيها.
+- المسبحة شاشة جديدة بسيطة (أهداف 33/99/100/حر وجولات). التفاصيل الأغنى في المرحلة 3.
+- الرئيسية: بطاقة «وردك الآن» (تقترح الورد حسب الساعة: `suggestWird`)، حلقات اليوم (صباح، مساء، تسبيح من 100)، اختصارات، ذكر اليوم مع مشاركة كصورة، أقسام الأذكار، وبطاقة رحلتي.
+- لا يوجد تتبع لإتمام «أذكار النوم» في قاعدة البيانات (Room يحفظ الصباح والمساء والتسبيح فقط)، لذلك حلقة اليوم الثالثة هي التسبيح. إضافة النوم تتطلب ترحيل قاعدة البيانات وحقلاً في Firestore، وتدخل مع «رحلتي» في المرحلة 4.
+END SOURCE FILE: docs/PHASE1_DESIGN_SYSTEM.md
+
+========================================================================================
+SOURCE FILE: docs/PHASE2_SECURITY.md
+========================================================================================
+# المرحلة 2 — الأمان والخصوصية (ما تم في الكود + ما تفعله أنت)
+
+## تم في المستودع
+
+- `generateGemini` Callable: `europe-west1`، `enforceAppCheck`، مصادقة، `mode`/`text`، حد طول 500، سر `GEMINI_API_KEY`، system prompt على الخادم، حد معدل `rateLimits/{uid}` (3/دقيقة، 30/يوم).
+- `deleteAccount` Callable: حذف `users/{uid}` وفروعه + feedback + Auth.
+- `AiRepository` يستدعي الدالة فقط (لا مفتاح في APK).
+- قواعد Firestore/Storage موحّدة: claims/`admins` فقط (لا إيميل)، `rateLimits` و`audit_logs` للكتابة من الخادم فقط، feedback ≤ 1000 حرف.
+- استبعاد قاعدة Room من cloud backup.
+- صفحات `docs/legal/privacy.html` و`delete-account.html`.
+- زر حذف الحساب في الإعدادات.
+
+## أوامر عندك (بعد `firebase login`)
+
+```bash
+cd firebase
+firebase use svrpmtt
+firebase functions:secrets:set GEMINI_API_KEY
+# عيّن claim أدمن (عدّل UID في make_admin.js):
+cd functions && npm ci && node make_admin.js && cd ..
+firebase deploy --only firestore:rules,storage,functions
+```
+
+## App Check (ترتيب)
+
+1. سجّل التطبيق: Play Integrity + SHA-256.
+2. Debug token من Logcat → Console.
+3. Monitor أسبوعاً.
+4. بعدها Enforce على Functions/Firestore/Storage.
+
+## فوترة
+
+Google Cloud → Billing → Budget alert على مشروع `svrpmtt` بحد منخفض.
+
+## نظافة المفاتيح
+
+```bash
+# محلياً إن وُجد gitleaks
+gitleaks detect --source . --log-opts="--all"
+```
+
+إن ظهر مفتاح Gemini قديماً في أي commit: **أعد توليده** واحفظه كـ Secret فقط.
+قيّد مفتاح Android (`AIza...`) بحزمة `com.baqiyat.azkar` وبصمة التوقيع.
+
+## استضافة الصفحات القانونية
+
+انشر `docs/legal/` على Firebase Hosting أو أي استضافة عامة، وضع الروابط في Play Console → Data safety / Account deletion.
+END SOURCE FILE: docs/PHASE2_SECURITY.md
+
+========================================================================================
+SOURCE FILE: docs/PHASE3_APPLY.md
+========================================================================================
+# تطبيق بقية المرحلة 3
+
+رُفعت إلى الفرع الأساسيات: `ArabicText`، `Haptics`، `Type`/`ReaderFont`، `SettingsRepository` (مفضلة/أهداف/خط)، `FavoritesScreen`، `MoreScreen`، ومسار `favorites` في `AppNavGraph`.
+
+## انسخ من `baqiyat-phase3-full-project.zip` (أو طبّق `baqiyat-phase3.patch`)
+
+```text
+app/src/main/java/com/example/data/AzkarData.kt
+app/src/main/java/com/example/ui/AppViewModel.kt
+app/src/main/java/com/example/ui/AudioPlayer.kt
+app/src/main/java/com/example/ui/screens/AzkarScreen.kt
+app/src/main/java/com/example/ui/screens/HomeScreen.kt
+app/src/main/java/com/example/ui/screens/SearchScreen.kt
+app/src/main/java/com/example/ui/screens/TasbihScreen.kt
+app/src/main/java/com/example/ui/screens/StatsScreen.kt   # buildWeekChart internal
+app/src/main/res/font/scheherazade_regular.ttf
+app/src/main/res/font/scheherazade_bold.ttf
+```
+
+## بعد النسخ
+
+```bash
+git pull origin feature/private-admin-panel
+# انسخ الملفات أعلاه من الـ zip
+./gradlew :app:assembleDebug
+./gradlew test --tests com.example.ArabicTextTest
+```
+
+## ماذا تضيف الملفات المتبقية
+
+- **AzkarData**: `byIds` + بحث بلا تشكيل + عنوان favorites
+- **AppViewModel**: favorites / readerFont / dailyGoal / tasbihTarget + setters
+- **AudioPlayer**: `currentRange` لتمييز الكلمة المنطوقة
+- **AzkarScreen**: مفضلة، وضع تركيز، خط القراءة، تمييز النطق
+- **TasbihScreen**: عبارات، هدف محفوظ، هدف يومي، Haptics، مخطط أسبوع
+- **SearchScreen**: فلاتر + تمييز + قلب المفضلة
+- **HomeScreen**: اختصار المفضلة + هدف اليوم من dailyGoal
+END SOURCE FILE: docs/PHASE3_APPLY.md
+
+========================================================================================
+SOURCE FILE: docs/PHASE4_APPLY.md
+========================================================================================
+# المرحلة 4 — ما رُفع وما يبقى نسخه من الـ zip
+
+## رُفع إلى `feature/private-admin-panel`
+
+- `UserProgress.completedSleep` + Room v3 + `MIGRATION_2_3`
+- `ProgressDao` / `ProgressRepository` (updateSleep, getAllProgressFlow, merge)
+- `SettingsRepository` (weeklyGoal, accent)
+- `Journey.kt` + `JourneyTest.kt` (سلسلة + عفو + شارات + heatmap)
+- `ProgressStats.kt` (buildWeekChart / calculateStreak القديمة)
+- `WirdSuggestion` يدعم sleepDone
+
+## انسخ من `baqiyat-phase4-full-project.zip`
+
+```text
+app/src/main/java/com/example/ui/screens/JourneyScreen.kt
+app/src/main/java/com/example/ui/theme/Color.kt
+app/src/main/java/com/example/ui/theme/Theme.kt
+app/src/main/java/com/example/ui/AppViewModel.kt
+app/src/main/java/com/example/ui/AppNavGraph.kt
+app/src/main/java/com/example/MainActivity.kt
+app/src/main/java/com/example/ui/screens/AzkarScreen.kt
+app/src/main/java/com/example/ui/screens/HomeScreen.kt
+app/src/main/java/com/example/ui/screens/SettingsScreen.kt   # إن وُجد اختيار الثيم
+firebase/firestore.rules
+firebase/tests/rules.test.mjs
+```
+
+ثم:
+
+```bash
+git pull origin feature/private-admin-panel
+# انسخ الملفات أعلاه
+firebase deploy --only firestore:rules   # قبل إصدار التطبيق
+./gradlew :app:assembleDebug test
+```
+
+**مهم:** انشر قواعد Firestore قبل إصدار نسخة التطبيق التي تكتب `completedSleep`، وإلا تُرفض المزامنة.
+END SOURCE FILE: docs/PHASE4_APPLY.md
+
+========================================================================================
+SOURCE FILE: docs/PHASE5_APPLY.md
+========================================================================================
+# المرحلة 5 — مكتمل تقريباً على `feature/private-admin-panel`
+
+## تم رفعه بالكامل
+
+| المكوّن | الحالة |
+|---------|--------|
+| Categories / CustomWirds / CategoryIcons | ✅ |
+| firestore.rules (validCategory + items) | ✅ |
+| rules.test.mjs (اختبارات التصنيفات) | ✅ |
+| SettingsRepository (أوراد) | ✅ |
+| AppViewModel (categories + customWirds) | ✅ |
+| FirestoreRepository.observeCategories | ✅ |
+| AppNavGraph (wirds / wird_edit) | ✅ |
+| WirdsScreen / WirdEditorScreen | ✅ |
+| MoreScreen | ✅ |
+| AiServicesScreen (رقائق الشعور) | ✅ |
+| AzkarData.builtInOrEmpty | ✅ |
+| HomeScreen (تصنيفات ديناميكية) | ✅ |
+| AzkarScreen (wird_ / favorites / فارغ / تحميل) | ✅ |
+| JourneyScreen | ✅ |
+| admin-panel/index.html (مودال التصنيف) | ✅ |
+
+## ملف واحد انسخه يدوياً من الـ zip
+
+```bash
+# من baqiyat-phase5-full-project.zip
+cp admin-panel/app.js  <repo>/admin-panel/app.js
+git add admin-panel/app.js && git commit -m "feat(phase5): admin-panel dynamic categories CRUD"
+```
+
+السبب: حجم `app.js` (~27KB) يتجاوز حد استدعاء الرفع الآمن في هذه الجلسة؛ باقي اللوحة (`index.html`) مرفوع.
+
+## بعد السحب
+
+```bash
+git pull origin feature/private-admin-panel
+# انسخ app.js إن لم يكن محدّثاً
+firebase deploy --only firestore:rules
+# ثم Hosting للوحة إن لزم
+./gradlew :app:assembleDebug test
+```
+
+**شرط الخروج:** مشرف يضيف تصنيفاً وأذكاره من اللوحة → تظهر في التطبيق بلا إصدار.
+END SOURCE FILE: docs/PHASE5_APPLY.md
+
+========================================================================================
+SOURCE FILE: docs/PRODUCT_UPGRADE.md
+========================================================================================
+# خطة رفع أذكار إلى منتج متكامل
+
+## الهدف
+تحويل التطبيق من نموذج Android محلي ولوحة HTML تجريبية إلى منتج عربي متماسك: تجربة قراءة مريحة، محتوى مركزي تديره لوحة خاصة، ومزامنة آمنة عبر Firebase.
+
+## المعمارية المستهدفة
+
+```mermaid
+flowchart LR
+  A[Android App] --> B[Firebase Auth]
+  A --> C[Firestore]
+  D[Admin Panel] --> B
+  D --> C
+  C --> E[Content: categories / azkar / settings]
+  C --> F[User data: progress / favorites]
+```
+
+التطبيق يقرأ المحتوى المنشور من Firestore مع إبقاء نسخة محلية للعمل دون اتصال. لوحة الإدارة لا تكتب مباشرةً من دون تسجيل دخول؛ صلاحية المشرف تكون عبر Firebase custom claim باسم `admin: true`. تقدّم المستخدم يبقى معزولاً داخل `users/{uid}`، بينما المحتوى العام يُنشر فقط عبر وثائق `content/*`.
+
+## مراحل التنفيذ
+
+| المرحلة | النتيجة | شرط الخروج |
+|---|---|---|
+| الأساس والأمان | قواعد Firestore، لا أسرار في المستودع، عقد محتوى ثابت | لا يمكن للمستخدم العادي الكتابة إلى المحتوى |
+| تجربة Android | واجهة منزلية، قارئ أذكار، مفضلة، نسخ ومشاركة، offline-first | مسارات القراءة الأساسية تعمل دون شبكة |
+| لوحة الإدارة | دخول مشرف، محرر نص منظم، حالات مسودة/منشور، سجل تحديث | لا تظهر أدوات الإدارة قبل التحقق من claim |
+| المزامنة | نشر من اللوحة إلى التطبيق، تعارضات واضحة، نسخة cache | تعديل ذكر من اللوحة يظهر بعد refresh آمن |
+| الجودة والنشر | اختبارات، مراقبة أخطاء، بيانات أولية، إعدادات نشر | APK وواجهة الإدارة قابلان للنشر والتراجع |
+
+## نموذج البيانات
+
+- `content/categories/{categoryId}`: الاسم، الوصف، الأيقونة، الترتيب، `isPublished`.
+- `content/azkar/{zekrId}`: النص، الفضل، المصدر، عدد التكرار، `categoryId`، الترتيب، `isPublished`, `updatedAt`.
+- `content/appSettings`: النسخة، رسالة اليوم، تفعيل الميزات.
+- `users/{uid}/progress/{date}`: تقدّم اليوم فقط.
+- `users/{uid}/favorites/{zekrId}`: مفضلة المستخدم.
+
+## ما يحتاجه الربط الفعلي
+
+1. ملف `google-services.json` لتطبيق Android.
+2. إعداد Web App في نفس مشروع Firebase للوحة.
+3. تفعيل Google Auth وFirestore.
+4. إنشاء حساب المشرف ومنحه custom claim `admin` من بيئة موثوقة، وليس من JavaScript المتصفح.
+
+## ملاحظات أمنية
+
+`noindex` و`robots.txt` يمنعان الفهرسة فقط ولا يمنعان الدخول. حماية اللوحة الحقيقية هي Firebase Auth + Firestore Rules + استضافة HTTPS. لا تضع مفاتيح Gemini أو مفاتيح Firebase الخاصة داخل ملفات الواجهة العامة.
+END SOURCE FILE: docs/PRODUCT_UPGRADE.md
+
+========================================================================================
+SOURCE FILE: docs/RESOLVE_PR1_CONFLICTS.md
+========================================================================================
+# حل تعارضات PR #1 (main ← feature/private-admin-panel)
+
+السبب: الفرعان لهما تاريخ غير مشترك (unrelated histories) فكل الملفات المشتركة تظهر كـ add/add conflicts.
+
+## الحل (من جهازك المصادق على GitHub)
+
+```bash
+git fetch origin
+git checkout feature/private-admin-panel
+git pull origin feature/private-admin-panel
+
+# دمج main مع السماح بالتاريخ غير المشترك
+git merge origin/main --allow-unrelated-histories --no-commit
+
+# الإبقاء على نسخة feature لكل التعارضات
+git checkout --ours .
+git add -A
+git commit -m "merge: resolve conflicts with main (keep feature versions)"
+git push origin feature/private-admin-panel
+```
+
+بعد الدفع حدّث صفحة PR #1 — يفترض أن يختفي التنبيه الأحمر ويظهر زر الدمج الأخضر.
+
+## بديل: فرع جاهز من قاعدة main
+
+يوجد فرع `resolve-merge-main` مبني من `main`. بعد اكتمال نسخ الملفات إليه يمكن دمجه مباشرة في `main` بدون تعارضات تاريخ.
+END SOURCE FILE: docs/RESOLVE_PR1_CONFLICTS.md
+
+========================================================================================
+SOURCE FILE: docs/legal/delete-account.html
+========================================================================================
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>حذف الحساب — الباقيات</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; line-height: 1.7; }
+  </style>
+</head>
+<body>
+  <h1>حذف حساب الباقيات</h1>
+  <p>لحذف حسابك وبياناتك المرتبطة (التقدم، الشكاوى، رموز الإشعارات):</p>
+  <ol>
+    <li>افتح تطبيق الباقيات وسجّل الدخول بحساب Google.</li>
+    <li>اذهب إلى <strong>الإعدادات</strong>.</li>
+    <li>اضغط <strong>حذف الحساب نهائياً</strong> وأكّد العملية.</li>
+  </ol>
+  <p>سيُحذف مستند المستخدم وفروعه من Firestore وحساب Firebase Auth. قد تحتاج إلى إعادة تسجيل الدخول حديثاً قبل الحذف لأسباب أمنية.</p>
+  <p>إن تعذّر الحذف من التطبيق، تواصل عبر شاشة «تواصل معنا» داخل التطبيق مع ذكر البريد المرتبط بالحساب.</p>
+</body>
+</html>
+END SOURCE FILE: docs/legal/delete-account.html
+
+========================================================================================
+SOURCE FILE: docs/legal/privacy.html
+========================================================================================
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>سياسة الخصوصية — الباقيات</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; line-height: 1.7; color: #1a1a1a; }
+    h1 { font-size: 1.5rem; }
+    h2 { font-size: 1.15rem; margin-top: 1.5rem; }
+  </style>
+</head>
+<body>
+  <h1>سياسة الخصوصية — تطبيق الباقيات</h1>
+  <p>آخر تحديث: أكتوبر 2026</p>
+  <h2>البيانات التي نجمعها</h2>
+  <ul>
+    <li>حساب Google (معرّف المستخدم والبريد عند تسجيل الدخول عبر Firebase Authentication).</li>
+    <li>تقدم الأذكار والإحصائيات المحلية التي تُزامن اختيارياً مع السحابة.</li>
+    <li>رموز إشعارات FCM لإرسال التذكيرات عند تفعيلها.</li>
+    <li>نصوص حرة ترسلها إلى المساعد الذكي (تُعالَج عبر خوادم Google Gemini ولا تُخزَّن كمفتاح في التطبيق).</li>
+    <li>شكاوى واقتراحات تختار إرسالها مع مرفقات اختيارية (صور).</li>
+  </ul>
+  <h2>الاستخدام</h2>
+  <p>نستخدم البيانات لتقديم خدمة الأذكار، المزامنة، الإشعارات، والرد على الشكاوى. المساعد الذكي يقدّم إجابات آلية وليست فتوى شرعية.</p>
+  <h2>الحذف</h2>
+  <p>يمكنك حذف حسابك وبياناتك من داخل التطبيق (الإعدادات ← حذف الحساب) أو عبر <a href="delete-account.html">صفحة طلب الحذف</a>.</p>
+  <h2>التواصل</h2>
+  <p>للاستفسارات المتعلقة بالخصوصية استخدم قناة «تواصل معنا» داخل التطبيق.</p>
+</body>
+</html>
+END SOURCE FILE: docs/legal/privacy.html
+
+========================================================================================
+SOURCE FILE: gradle/libs.versions.toml
+========================================================================================
+[versions]
+agp = "9.1.1"
+coreKtx = "1.18.0"
+junit = "4.13.2"
+junitVersion = "1.3.0"
+espressoCore = "3.7.0"
+lifecycleRuntimeKtx = "2.8.7"
+lifecycleViewmodelCompose = "2.8.7"
+lifecycleRuntimeCompose = "2.8.7"
+activityCompose = "1.10.1"
+kotlin = "2.2.10"
+composeBom = "2024.09.00"
+googleDevtoolsKsp = "2.3.5"
+navigationCompose = "2.8.9"
+roomRuntime = "2.7.0"
+roomKtx = "2.7.0"
+roomCompiler = "2.7.0"
+kotlinxCoroutinesTest = "1.10.2"
+core = "1.6.1"
+runner = "1.6.2"
+coilCompose = "2.7.0"
+retrofit = "2.12.0"
+converterMoshi = "2.12.0"
+kotlinxCoroutinesAndroid = "1.10.2"
+kotlinxCoroutinesCore = "1.10.2"
+accompanistPermissions = "0.37.3"
+playServicesLocation = "21.3.0"
+cameraCamera2 = "1.5.0"
+cameraLifecycle = "1.5.0"
+cameraView = "1.5.0"
+cameraCore = "1.5.0"
+loggingInterceptor = "4.10.0"
+okhttp = "4.10.0"
+moshiKotlin = "1.15.2"
+moshiKotlinCodegen = "1.15.2"
+datastorePreferences = "1.1.7"
+robolectric = "4.16.1"
+roborazzi = "1.59.0"
+firebaseBom = "34.17.0"
+secretsGradlePlugin = "2.0.1"
+googleServices = "4.5.0"
+credentials = "1.5.0"
+googleid = "1.1.1"
+
+[libraries]
+androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+junit = { group = "junit", name = "junit", version.ref = "junit" }
+androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
+androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
+androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
+androidx-lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "lifecycleViewmodelCompose" }
+androidx-lifecycle-runtime-compose = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "lifecycleRuntimeCompose" }
+androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
+androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
+androidx-compose-ui = { group = "androidx.compose.ui", name = "ui" }
+androidx-compose-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
+androidx-compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
+androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
+androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
+androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
+androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
+androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "roomRuntime" }
+androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "roomKtx" }
+androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "roomCompiler" }
+kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "kotlinxCoroutinesTest" }
+androidx-core = { group = "androidx.test", name = "core", version.ref = "core" }
+androidx-runner = { group = "androidx.test", name = "runner", version.ref = "runner" }
+androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
+androidx-compose-material-icons-core = { group = "androidx.compose.material", name = "material-icons-core" }
+androidx-compose-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
+coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coilCompose" }
+retrofit = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
+converter-moshi = { group = "com.squareup.retrofit2", name = "converter-moshi", version.ref = "converterMoshi" }
+kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "kotlinxCoroutinesAndroid" }
+kotlinx-coroutines-play-services = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-play-services", version.ref = "kotlinxCoroutinesAndroid" }
+kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "kotlinxCoroutinesCore" }
+retrofit-converter-serialization = { group = "com.squareup.retrofit2", name = "converter-kotlinx-serialization", version.ref = "retrofit" }
+kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version = "1.8.0" }
+accompanist-permissions = { group = "com.google.accompanist", name = "accompanist-permissions", version.ref = "accompanistPermissions" }
+play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
+androidx-camera-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "cameraCamera2" }
+androidx-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "cameraLifecycle" }
+androidx-camera-view = { group = "androidx.camera", name = "camera-view", version.ref = "cameraView" }
+androidx-camera-core = { group = "androidx.camera", name = "camera-core", version.ref = "cameraCore" }
+logging-interceptor = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "loggingInterceptor" }
+okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
+moshi-kotlin = { group = "com.squareup.moshi", name = "moshi-kotlin" , version.ref = "moshiKotlin" }
+moshi-kotlin-codegen = { group = "com.squareup.moshi", name = "moshi-kotlin-codegen", version.ref = "moshiKotlinCodegen" }
+androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastorePreferences" }
+robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
+roborazzi = { group = "io.github.takahirom.roborazzi", name = "roborazzi", version.ref = "roborazzi" }
+roborazzi-compose = { group = "io.github.takahirom.roborazzi", name = "roborazzi-compose", version.ref = "roborazzi" }
+roborazzi-junit-rule = { group = "io.github.takahirom.roborazzi", name = "roborazzi-junit-rule", version.ref = "roborazzi" }
+firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
+firebase-ai = { group = "com.google.firebase", name = "firebase-ai" }
+firebase-appcheck-debug = { group = "com.google.firebase", name = "firebase-appcheck-debug" }
+firebase-appcheck-playintegrity = { group = "com.google.firebase", name = "firebase-appcheck-playintegrity" }
+firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore" }
+firebase-auth = { group = "com.google.firebase", name = "firebase-auth" }
+firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging" }
+androidx-credentials = { group = "androidx.credentials", name = "credentials", version.ref = "credentials" }
+androidx-credentials-play-services = { group = "androidx.credentials", name = "credentials-play-services-auth", version.ref = "credentials" }
+googleid = { group = "com.google.android.libraries.identity.googleid", name = "googleid", version.ref = "googleid" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+google-devtools-ksp = { id = "com.google.devtools.ksp", version.ref = "googleDevtoolsKsp" }
+roborazzi = { id = "io.github.takahirom.roborazzi", version.ref = "roborazzi" }
+secrets = { id = "com.google.android.libraries.mapsplatform.secrets-gradle-plugin", version.ref = "secretsGradlePlugin" }
+google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+END SOURCE FILE: gradle/libs.versions.toml
+
+========================================================================================
+SOURCE FILE: gradle/wrapper/gradle-wrapper.properties
+========================================================================================
+distributionBase=GRADLE_USER_HOME
+distributionPath=wrapper/dists
+distributionUrl=https\://services.gradle.org/distributions/gradle-9.3.1-bin.zip
+zipStoreBase=GRADLE_USER_HOME
+zipStorePath=wrapper/dists
+END SOURCE FILE: gradle/wrapper/gradle-wrapper.properties
+
+========================================================================================
+SOURCE FILE: gradle.properties
+========================================================================================
+# Project-wide Gradle settings.
+org.gradle.jvmargs=-Xmx4g -Dfile.encoding=UTF-8
+org.gradle.parallel=true
+kotlin.code.style=official
+android.nonTransitiveRClass=true
+org.gradle.caching=true
+org.gradle.configuration-cache=true
+org.gradle.workers.max=4
+kotlin.compiler.execution.strategy=in-process
+googleServices.missing.passthrough=true
+
+# R8 full mode – stronger shrinking/obfuscation for release
+android.enableR8.fullMode=true
+
+# Prefer non-transitive R classes (already true above)
+android.nonFinalResIds=true
+END SOURCE FILE: gradle.properties
+
+========================================================================================
+SOURCE FILE: gradlew
+========================================================================================
+#!/usr/bin/env sh
+
+##############################################################################
+##
+##  Gradle start up script for UN*X
+##
+##############################################################################
+
+# Attempt to set APP_HOME
+# Resolve links: $0 may be a link
+PRG="$0"
+# Need this for relative symlinks.
+while [ -h "$PRG" ] ; do
+    ls=`ls -ld "$PRG"`
+    link=`expr "$ls" : '.*-> \(.*\)$'`
+    if expr "$link" : '/.*' > /dev/null; then
+        PRG="$link"
+    else
+        PRG=`dirname "$PRG"`"/$link"
+    fi
+done
+SAVED="`pwd`"
+cd "`dirname \"$PRG\"`/" >/dev/null
+APP_HOME="`pwd -P`"
+cd "$SAVED" >/dev/null
+
+APP_NAME="Gradle"
+APP_BASE_NAME=`basename "$0"`
+
+# Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS to pass JVM options to this script.
+DEFAULT_JVM_OPTS=""
+
+# Use the maximum available, or set MAX_FD != -1 to use that value.
+MAX_FD="maximum"
+
+warn () {
+    echo "$*"
+}
+
+die () {
+    echo
+    echo "$*"
+    echo
+    exit 1
+}
+
+# OS specific support (must be 'true' or 'false').
+cygwin=false
+msys=false
+darwin=false
+nonstop=false
+case "`uname`" in
+  CYGWIN* )
+    cygwin=true
+    ;;
+  Darwin* )
+    darwin=true
+    ;;
+  MINGW* )
+    msys=true
+    ;;
+  NONSTOP* )
+    nonstop=true
+    ;;
+esac
+
+CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
+
+# Determine the Java command to use to start the JVM.
+if [ -n "$JAVA_HOME" ] ; then
+    if [ -x "$JAVA_HOME/jre/sh/java" ] ; then
+        # IBM's JDK on AIX uses strange locations for the executables
+        JAVACMD="$JAVA_HOME/jre/sh/java"
+    else
+        JAVACMD="$JAVA_HOME/bin/java"
+    fi
+    if [ ! -x "$JAVACMD" ] ; then
+        die "ERROR: JAVA_HOME is set to an invalid directory: $JAVA_HOME
+
+Please set the JAVA_HOME variable in your environment to match the
+location of your Java installation."
+    fi
+else
+    JAVACMD="java"
+    which java >/dev/null 2>&1 || die "ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH.
+
+Please set the JAVA_HOME variable in your environment to match the
+location of your Java installation."
+fi
+
+# Increase the maximum file descriptors if we can.
+if [ "$cygwin" = "false" -a "$darwin" = "false" -a "$nonstop" = "false" ] ; then
+    MAX_FD_LIMIT=`ulimit -H -n`
+    if [ $? -eq 0 ] ; then
+        if [ "$MAX_FD" = "maximum" -o "$MAX_FD" = "max" ] ; then
+            MAX_FD="$MAX_FD_LIMIT"
+        fi
+        ulimit -n $MAX_FD
+        if [ $? -ne 0 ] ; then
+            warn "Could not set maximum file descriptor limit: $MAX_FD"
+        fi
+    else
+        warn "Could not query maximum file descriptor limit: $MAX_FD_LIMIT"
+    fi
+fi
+
+# For Darwin, add options to specify how the application appears in the dock
+if $darwin; then
+    GRADLE_OPTS="$GRADLE_OPTS \"-Xdock:name=$APP_NAME\" \"-Xdock:icon=$APP_HOME/media/gradle.icns\""
+fi
+
+# For Cygwin, switch paths to Windows format before running java
+if $cygwin ; then
+    APP_HOME=`cygpath --path --mixed "$APP_HOME"`
+    CLASSPATH=`cygpath --path --mixed "$CLASSPATH"`
+    JAVACMD=`cygpath --unix "$JAVACMD"`
+
+    # We build the pattern for arguments to be converted via cygpath
+    ROOTDIRSRAW=`find -L / -maxdepth 1 -mindepth 1 -type d 2>/dev/null`
+    SEP=""
+    for dir in $ROOTDIRSRAW ; do
+        ROOTDIRS="$ROOTDIRS$SEP$dir"
+        SEP="|"
+    done
+    OURCYGPATTERN="(^($ROOTDIRS))"
+    # Add a user-defined pattern to the cygpath arguments
+    if [ "$GRADLE_CYGPATTERN" != "" ] ; then
+        OURCYGPATTERN="$OURCYGPATTERN|($GRADLE_CYGPATTERN)"
+    fi
+    # Now convert the arguments - kludge to limit ourselves to /bin/sh
+    i=0
+    for arg in "$@" ; do
+        CHECK=`echo "$arg"|egrep -c "$OURCYGPATTERN" -`
+        CHECK2=`echo "$arg"|egrep -c "^-"`                                 ### Determine if an option
+
+        if [ $CHECK -ne 0 ] && [ $CHECK2 -eq 0 ] ; then                    ### Added a condition
+            eval `echo args$i`=`cygpath --path --ignore --mixed "$arg"`
+        else
+            eval `echo args$i`="\"$arg\""
+        fi
+        i=$((i+1))
+    done
+    case $i in
+        (0) set -- ;;
+        (1) set -- "$args0" ;;
+        (2) set -- "$args0" "$args1" ;;
+        (3) set -- "$args0" "$args1" "$args2" ;;
+        (4) set -- "$args0" "$args1" "$args2" "$args3" ;;
+        (5) set -- "$args0" "$args1" "$args2" "$args3" "$args4" ;;
+        (6) set -- "$args0" "$args1" "$args2" "$args3" "$args4" "$args5" ;;
+        (7) set -- "$args0" "$args1" "$args2" "$args3" "$args4" "$args5" "$args6" ;;
+        (8) set -- "$args0" "$args1" "$args2" "$args3" "$args4" "$args5" "$args6" "$args7" ;;
+        (9) set -- "$args0" "$args1" "$args2" "$args3" "$args4" "$args5" "$args6" "$args7" "$args8" ;;
+    esac
+fi
+
+# Escape application args
+save () {
+    for i do printf %s\\n "$i" | sed "s/'/'\\\\''/g;1s/^/'/;\$s/\$/' \\\\/" ; done
+    echo " "
+}
+APP_ARGS=$(save "$@")
+
+# Collect all arguments for the java command, following the shell quoting and substitution rules
+if $JAVACMD --add-opens java.base/java.lang=ALL-UNNAMED -version ; then
+    DEFAULT_JVM_OPTS="--add-opens java.base/java.lang=ALL-UNNAMED $DEFAULT_JVM_OPTS"
+fi
+
+eval set -- $DEFAULT_JVM_OPTS $JAVA_OPTS $GRADLE_OPTS "\"-Dorg.gradle.appname=$APP_BASE_NAME\"" -classpath "\"$CLASSPATH\"" org.gradle.wrapper.GradleWrapperMain "$APP_ARGS"
+
+# by default we should be in the correct project dir, but when run from Finder on Mac, the cwd is wrong
+if [ "$(uname)" = "Darwin" ] && [ "$HOME" = "$PWD" ]; then
+  cd "$(dirname "$0")"
+fi
+
+exec "$JAVACMD" "$@"
+END SOURCE FILE: gradlew
+
+========================================================================================
+SOURCE FILE: gradlew.bat
+========================================================================================
+@if "%DEBUG%" == "" @echo off
+@rem ##########################################################################
+@rem
+@rem  Gradle startup script for Windows
+@rem
+@rem ##########################################################################
+
+@rem Set local scope for the variables with windows NT shell
+if "%OS%"=="Windows_NT" setlocal
+
+set DIRNAME=%~dp0
+if "%DIRNAME%" == "" set DIRNAME=.
+set APP_BASE_NAME=%~n0
+set APP_HOME=%DIRNAME%
+
+@rem Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS to pass JVM options to this script.
+set DEFAULT_JVM_OPTS=
+
+@rem Find java.exe
+if defined JAVA_HOME goto findJavaFromJavaHome
+
+set JAVA_EXE=java.exe
+%JAVA_EXE% -version >NUL 2>&1
+if "%ERRORLEVEL%" == "0" goto init
+
+echo.
+echo ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH.
+echo.
+echo Please set the JAVA_HOME variable in your environment to match the
+echo location of your Java installation.
+
+goto fail
+
+:findJavaFromJavaHome
+set JAVA_HOME=%JAVA_HOME:"=%
+set JAVA_EXE=%JAVA_HOME%/bin/java.exe
+
+if exist "%JAVA_EXE%" goto init
+
+echo.
+echo ERROR: JAVA_HOME is set to an invalid directory: %JAVA_HOME%
+echo.
+echo Please set the JAVA_HOME variable in your environment to match the
+echo location of your Java installation.
+
+goto fail
+
+:init
+@rem Get command-line arguments, handling Windows variants
+
+if not "%OS%" == "Windows_NT" goto win9xME_args
+
+:win9xME_args
+@rem Slurp the command line arguments.
+set CMD_LINE_ARGS=
+set _SKIP=2
+
+:win9xME_args_slurp
+if "x%~1" == "x" goto execute
+
+set CMD_LINE_ARGS=%*
+
+:execute
+@rem Setup the command line
+
+set CLASSPATH=%APP_HOME%\gradle\wrapper\gradle-wrapper.jar
+
+@rem Execute Gradle
+"%JAVA_EXE%" %DEFAULT_JVM_OPTS% %JAVA_OPTS% %GRADLE_OPTS% "-Dorg.gradle.appname=%APP_BASE_NAME%" -classpath "%CLASSPATH%" org.gradle.wrapper.GradleWrapperMain %CMD_LINE_ARGS%
+
+:end
+@rem End local scope for the variables with windows NT shell
+if "%ERRORLEVEL%"=="0" goto mainEnd
+
+:fail
+rem Set variable GRADLE_EXIT_CONSOLE if you need the _script_ return code instead of
+rem the _cmd.exe /c_ return code!
+if  not "" == "%GRADLE_EXIT_CONSOLE%" exit 1
+exit /b 1
+
+:mainEnd
+if "%OS%"=="Windows_NT" endlocal
+
+:omega
+END SOURCE FILE: gradlew.bat
+
+========================================================================================
+SOURCE FILE: metadata.json
+========================================================================================
+{
+  "name": "أذكار",
+  "description": "تطبيق أذكار الصباح والمساء، خفيف، بدون إنترنت، وبتصميم مريح للعين.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+END SOURCE FILE: metadata.json
+
+========================================================================================
+SOURCE FILE: settings.gradle.kts
+========================================================================================
+pluginManagement {
+  repositories {
+    google {
+      content {
+        includeGroupByRegex("com\\.android.*")
+        includeGroupByRegex("com\\.google.*")
+        includeGroupByRegex("androidx.*")
+      }
+    }
+    mavenCentral()
+    gradlePluginPortal()
+  }
+}
+
+plugins { id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0" }
+
+dependencyResolutionManagement {
+  repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+  repositories {
+    google()
+    mavenCentral()
+  }
+}
+
+rootProject.name = "Azkar"
+
+include(":app")
+END SOURCE FILE: settings.gradle.kts

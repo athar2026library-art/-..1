@@ -1,0 +1,1868 @@
+BAQIYAT — SOURCE EXPORT FOR AI REVIEW
+Component: ANDROID-APP
+Part: 03
+Source branch: main (export generated on a separate branch)
+Encoding: UTF-8. Original relative paths are marked per file.
+This is a review/export format, not a compilable project folder.
+
+========================================================================================
+SOURCE FILE: app/src/main/java/com/example/ui/components/BaqiyatComponents.kt
+========================================================================================
+package com.example.ui.components
+
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.drawOutline
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.ui.theme.Baqiyat
+import com.example.ui.theme.MihrabShape
+import com.example.ui.theme.rememberMotionEnabled
+
+fun Modifier.pressScale(source: MutableInteractionSource, pressedScale: Float = 0.975f): Modifier = composed {
+    val motion = rememberMotionEnabled()
+    val pressed by source.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed && motion) pressedScale else 1f,
+        animationSpec = spring(dampingRatio = 0.62f, stiffness = Spring.StiffnessMedium),
+        label = "pressScale"
+    )
+    graphicsLayer { scaleX = scale; scaleY = scale }
+}
+
+@Composable
+fun BaqiyatBackground(modifier: Modifier = Modifier, content: @Composable BoxScope.() -> Unit) {
+    val p = Baqiyat.colors
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(Brush.verticalGradient(listOf(p.background, p.backgroundDeep)))
+            .drawWithCache {
+                val tile = 76.dp.toPx()
+                val r = tile * 0.30f
+                val d = r * 1.4142f
+                val path = Path()
+                val cols = (size.width / tile).toInt() + 2
+                val rows = (size.height / tile).toInt() + 2
+                for (i in 0 until cols) {
+                    for (j in 0 until rows) {
+                        val cx = i * tile
+                        val cy = j * tile
+                        path.moveTo(cx - r, cy - r)
+                        path.lineTo(cx + r, cy - r)
+                        path.lineTo(cx + r, cy + r)
+                        path.lineTo(cx - r, cy + r)
+                        path.close()
+                        path.moveTo(cx, cy - d)
+                        path.lineTo(cx + d, cy)
+                        path.lineTo(cx, cy + d)
+                        path.lineTo(cx - d, cy)
+                        path.close()
+                    }
+                }
+                val center = Offset(size.width / 2f, 0f)
+                val glowRadius = size.width * 0.95f
+                val glow = Brush.radialGradient(listOf(p.glow, Color.Transparent), center = center, radius = glowRadius)
+                val stroke = Stroke(width = 1.dp.toPx())
+                val patternColor = p.accent.copy(alpha = if (p.isLight) 0.07f else 0.05f)
+                onDrawBehind {
+                    drawCircle(brush = glow, radius = glowRadius, center = center)
+                    drawPath(path, color = patternColor, style = stroke)
+                }
+            },
+        content = content
+    )
+}
+
+@Composable
+fun GlassCard(
+    modifier: Modifier = Modifier,
+    shape: Shape = MaterialTheme.shapes.large,
+    onClick: (() -> Unit)? = null,
+    clickLabel: String? = null,
+    contentPadding: PaddingValues = PaddingValues(20.dp),
+    horizontalAlignment: Alignment.Horizontal = Alignment.Start,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    val p = Baqiyat.colors
+    val source = remember { MutableInteractionSource() }
+    val base = if (onClick != null) modifier.pressScale(source) else modifier
+    Column(
+        modifier = base
+            .clip(shape)
+            .background(
+                Brush.verticalGradient(listOf(p.glass.copy(alpha = (p.glass.alpha + 0.05f).coerceAtMost(1f)), p.glass))
+            )
+            .border(1.dp, Brush.verticalGradient(listOf(p.glassHighlight, p.line)), shape)
+            .then(
+                if (onClick != null) Modifier.clickable(
+                    interactionSource = source,
+                    indication = null,
+                    onClickLabel = clickLabel,
+                    role = Role.Button,
+                    onClick = onClick
+                ) else Modifier
+            )
+            .padding(contentPadding),
+        horizontalAlignment = horizontalAlignment,
+        content = content
+    )
+}
+
+@Composable
+fun MihrabCard(
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+    clickLabel: String? = null,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    val p = Baqiyat.colors
+    val shape = remember { MihrabShape() }
+    val source = remember { MutableInteractionSource() }
+    val base = if (onClick != null) modifier.pressScale(source, 0.985f) else modifier
+    Column(
+        modifier = base
+            .clip(shape)
+            .background(
+                Brush.verticalGradient(listOf(p.glass.copy(alpha = (p.glass.alpha + 0.06f).coerceAtMost(1f)), p.glass))
+            )
+            .border(1.5.dp, Brush.verticalGradient(listOf(p.accent, p.accent.copy(alpha = 0.35f))), shape)
+            .drawBehind {
+                val inset = 14.dp.toPx()
+                val inner = MihrabShape(20f).createOutline(
+                    Size(size.width - inset * 2, size.height - inset * 2), layoutDirection, this
+                )
+                translate(inset, inset) {
+                    drawOutline(inner, color = p.line, style = Stroke(width = 1.dp.toPx()))
+                }
+            }
+            .then(
+                if (onClick != null) Modifier.clickable(
+                    interactionSource = source,
+                    indication = null,
+                    onClickLabel = clickLabel,
+                    role = Role.Button,
+                    onClick = onClick
+                ) else Modifier
+            ),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        content = content
+    )
+}
+
+/** OnHero: زر فوق البطاقة المتدرجة (خلفية فاتحة بنص بلون التدرج). */
+enum class BaqiyatButtonStyle { Primary, Glass, Text, OnHero }
+
+@Composable
+fun BaqiyatButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    style: BaqiyatButtonStyle = BaqiyatButtonStyle.Primary,
+    icon: ImageVector? = null,
+    enabled: Boolean = true,
+    height: Dp = 52.dp
+) {
+    val p = Baqiyat.colors
+    val shape = RoundedCornerShape(50)
+    val source = remember { MutableInteractionSource() }
+    val contentColor = when (style) {
+        BaqiyatButtonStyle.Primary -> p.onButton
+        BaqiyatButtonStyle.Glass -> p.ink
+        BaqiyatButtonStyle.Text -> p.primary
+        BaqiyatButtonStyle.OnHero -> p.buttonFrom
+    }
+    val look = when (style) {
+        BaqiyatButtonStyle.Primary -> Modifier
+            .background(Brush.linearGradient(listOf(p.buttonFrom, p.buttonTo)))
+            .border(1.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.35f), Color.Transparent)), shape)
+        BaqiyatButtonStyle.Glass -> Modifier
+            .background(p.glass)
+            .border(1.dp, p.accent, shape)
+        BaqiyatButtonStyle.Text -> Modifier
+        BaqiyatButtonStyle.OnHero -> Modifier.background(p.onButton)
+    }
+    Row(
+        modifier = modifier
+            .heightIn(min = height)
+            .graphicsLayer { alpha = if (enabled) 1f else 0.4f }
+            .pressScale(source, 0.97f)
+            .clip(shape)
+            .then(look)
+            .clickable(
+                interactionSource = source,
+                indication = null,
+                enabled = enabled,
+                role = Role.Button,
+                onClick = onClick
+            )
+            .padding(horizontal = 28.dp),
+        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (icon != null) {
+            Icon(icon, contentDescription = null, tint = contentColor, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(8.dp))
+        }
+        Text(text, color = contentColor, style = MaterialTheme.typography.labelLarge.copy(fontSize = 16.sp, fontWeight = FontWeight.SemiBold), textAlign = TextAlign.Center)
+    }
+}
+
+@Composable
+fun BaqiyatChip(
+    text: String,
+    modifier: Modifier = Modifier,
+    selected: Boolean = false,
+    enabled: Boolean = true,
+    onClick: () -> Unit = {}
+) {
+    val p = Baqiyat.colors
+    val shape = RoundedCornerShape(50)
+    val bg = if (selected) p.mint.copy(alpha = if (p.isLight) 1f else 0.22f) else p.glass
+    val borderColor = if (selected) p.accent else p.line
+    Box(
+        modifier = modifier
+            .graphicsLayer { alpha = if (enabled) 1f else 0.55f }
+            .heightIn(min = 40.dp)
+            .clip(shape)
+            .background(bg)
+            .border(1.dp, borderColor, shape)
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+            .padding(horizontal = 16.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(text, color = p.ink, style = MaterialTheme.typography.labelLarge)
+    }
+}
+
+@Composable
+fun ProgressRing(
+    progress: Float,
+    modifier: Modifier = Modifier,
+    size: Dp = 84.dp,
+    stroke: Dp = 5.dp,
+    content: @Composable BoxScope.() -> Unit = {}
+) {
+    val p = Baqiyat.colors
+    val animated by animateFloatAsState(
+        targetValue = progress.coerceIn(0f, 1f),
+        animationSpec = tween(350, easing = FastOutSlowInEasing),
+        label = "ring"
+    )
+    Box(modifier.size(size), contentAlignment = Alignment.Center) {
+        Canvas(Modifier.fillMaxSize()) {
+            val w = stroke.toPx()
+            val inset = w / 2f
+            val arcSize = Size(this.size.width - w, this.size.height - w)
+            drawArc(
+                color = p.line,
+                startAngle = 0f,
+                sweepAngle = 360f,
+                useCenter = false,
+                topLeft = Offset(inset, inset),
+                size = arcSize,
+                style = Stroke(width = w)
+            )
+            if (animated > 0.001f) {
+                drawArc(
+                    brush = Brush.linearGradient(listOf(p.buttonFrom, p.accent)),
+                    startAngle = -90f,
+                    sweepAngle = 360f * animated,
+                    useCenter = false,
+                    topLeft = Offset(inset, inset),
+                    size = arcSize,
+                    style = Stroke(width = w, cap = StrokeCap.Round)
+                )
+            }
+        }
+        content()
+    }
+}
+
+data class BaqiyatNavItem(val label: String, val icon: ImageVector, val badge: Boolean = false)
+
+@Composable
+fun FloatingNavBar(
+    items: List<BaqiyatNavItem>,
+    selectedIndex: Int,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val p = Baqiyat.colors
+    val barShape = RoundedCornerShape(50)
+    val solid = p.glass.compositeOver(p.background)
+    BoxWithConstraints(
+        modifier = modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(horizontal = 16.dp, vertical = 10.dp)
+    ) {
+        val itemWidth = (maxWidth - 12.dp) / items.size
+        val indicatorX by animateDpAsState(
+            targetValue = itemWidth * selectedIndex,
+            animationSpec = spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow),
+            label = "navIndicator"
+        )
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(66.dp)
+                .shadow(
+                    elevation = if (p.isLight) 14.dp else 0.dp,
+                    shape = barShape,
+                    ambientColor = p.primary.copy(alpha = 0.2f),
+                    spotColor = p.primary.copy(alpha = 0.25f)
+                )
+                .clip(barShape)
+                .background(solid)
+                .border(1.dp, Brush.verticalGradient(listOf(p.glassHighlight, p.line)), barShape)
+                .padding(6.dp)
+        ) {
+            Box(
+                Modifier
+                    .offset(x = indicatorX)
+                    .width(itemWidth)
+                    .fillMaxHeight()
+                    .clip(barShape)
+                    .background(Brush.linearGradient(listOf(p.buttonFrom, p.buttonTo)))
+            )
+            Row(Modifier.fillMaxSize()) {
+                items.forEachIndexed { index, item ->
+                    val selected = index == selectedIndex
+                    val tint by animateColorAsState(if (selected) p.onButton else p.muted, label = "navTint")
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clip(barShape)
+                            .selectable(
+                                selected = selected,
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                role = Role.Tab,
+                                onClick = { onSelect(index) }
+                            ),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center
+                    ) {
+                        Box {
+                            Icon(item.icon, contentDescription = null, tint = tint, modifier = Modifier.size(22.dp))
+                            if (item.badge) {
+                                Box(
+                                    Modifier
+                                        .align(Alignment.TopEnd)
+                                        .size(9.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.error)
+                                )
+                            }
+                        }
+                        Text(
+                            item.label,
+                            color = tint,
+                            style = MaterialTheme.typography.labelSmall,
+                            maxLines = 1
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun BaqiyatBackButton(onClick: () -> Unit) {
+    IconButton(onClick = onClick) {
+        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "رجوع", tint = Baqiyat.colors.primary)
+    }
+}
+END SOURCE FILE: app/src/main/java/com/example/ui/components/BaqiyatComponents.kt
+
+========================================================================================
+SOURCE FILE: app/src/main/java/com/example/ui/screens/AiServicesScreen.kt
+========================================================================================
+package com.example.ui.screens
+
+import com.example.ui.components.BaqiyatBackButton
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import android.app.Activity
+import androidx.compose.ui.Alignment
+import androidx.compose.material.icons.filled.BookmarkAdd
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Stop
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.DisposableEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.ui.AudioPlayer
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.horizontalScroll
+import com.example.ui.AppViewModel
+import com.example.ui.ChatMessage
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AiServicesScreen(
+    viewModel: AppViewModel,
+    onNavigateBack: (() -> Unit)? = null
+) {
+    val messages by viewModel.chatMessages.collectAsState()
+    val isLoadingAi by viewModel.isLoadingAi.collectAsState()
+    val userSignedIn by viewModel.userSignedIn.collectAsState()
+    val savedAiAzkar by viewModel.savedAiAzkar.collectAsStateWithLifecycle()
+    val audioSpeed by viewModel.audioSpeed.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val activity = context as? Activity
+    val audioPlayer = remember(context.applicationContext) { AudioPlayer(context.applicationContext) }
+    val isAudioPlaying by audioPlayer.isPlaying.collectAsStateWithLifecycle()
+
+    DisposableEffect(audioPlayer) {
+        onDispose { audioPlayer.shutdown() }
+    }
+
+    var inputText by remember { mutableStateOf("") }
+    val listState = rememberLazyListState()
+
+    LaunchedEffect(messages.size) {
+        if (messages.isNotEmpty()) listState.animateScrollToItem(messages.lastIndex)
+    }
+
+    Scaffold(
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
+        topBar = {
+            TopAppBar(
+                title = { Text("المساعد الذكي", fontWeight = FontWeight.Bold) },
+                navigationIcon = { if (onNavigateBack != null) BaqiyatBackButton(onNavigateBack) },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = androidx.compose.ui.graphics.Color.Transparent
+                )
+            )
+        },
+        bottomBar = {
+            Surface(
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 2.dp,
+                shadowElevation = 8.dp
+            ) {
+                if (!userSignedIn) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                            .navigationBarsPadding(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            "يحتاج المساعد إلى تسجيل الدخول لحماية الاستخدام وتحديد الحصة اليومية.",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Button(
+                            onClick = { activity?.let(viewModel::signIn) },
+                            enabled = activity != null,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("تسجيل الدخول باستخدام Google")
+                        }
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                            .navigationBarsPadding(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedTextField(
+                            value = inputText,
+                            onValueChange = { inputText = it.take(500) },
+                            modifier = Modifier.weight(1f),
+                            placeholder = { Text("اسأل عن ذكر أو صف شعورك...") },
+                            maxLines = 3,
+                            shape = RoundedCornerShape(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        if (isLoadingAi) {
+                            TextButton(onClick = viewModel::cancelAiRequest) {
+                                Text("إلغاء")
+                            }
+                        } else {
+                            IconButton(
+                                onClick = {
+                                    val t = inputText.trim()
+                                    if (t.isNotEmpty()) {
+                                        viewModel.sendChatMessage(t)
+                                        inputText = ""
+                                    }
+                                },
+                                modifier = Modifier
+                                    .background(MaterialTheme.colorScheme.primary, CircleShape)
+                                    .padding(4.dp),
+                                enabled = inputText.isNotBlank()
+                            ) {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.Send,
+                                    contentDescription = "إرسال",
+                                    tint = MaterialTheme.colorScheme.onPrimary
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    ) { padding ->
+        LazyColumn(
+            state = listState,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(horizontal = 16.dp),
+            contentPadding = PaddingValues(vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            items(messages) { message ->
+                ChatBubble(
+                    message = message,
+                    isSaved = savedAiAzkar.contains(message.text),
+                    isAudioPlaying = isAudioPlaying,
+                    onSave = { viewModel.saveAiZekr(message.text) },
+                    onPlay = {
+                        if (isAudioPlaying) {
+                            audioPlayer.stop()
+                        } else {
+                            audioPlayer.playLoop(extractDuaForSpeech(message.text), 1, rate = audioSpeed)
+                        }
+                    }
+                )
+            }
+            if (!userSignedIn) {
+                item {
+                    Card(
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                    ) {
+                        Text(
+                            "بعد تسجيل الدخول ستتمكن من طرح أسئلة عن الأذكار والحصول على الإجابات مع المراجع المتاحة.",
+                            modifier = Modifier.padding(18.dp),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            } else if (messages.size <= 1 && !isLoadingAi) {
+                item { MoodChips(onPick = { viewModel.sendChatMessage(it) }) }
+            }
+        }
+    }
+}
+
+private val MOODS = listOf(
+    "قلق" to "أشعر بالقلق",
+    "حزن" to "أشعر بالحزن",
+    "ضيق" to "أشعر بضيق في صدري",
+    "خوف" to "أشعر بالخوف",
+    "شكر" to "أريد أن أشكر الله",
+    "فرح" to "أشعر بالفرح والسرور",
+    "سفر" to "أنا مسافر الآن",
+    "استخارة" to "أريد أن أستخير الله في أمر",
+    "مرض" to "أنا أو أحد أحبابي مريض",
+    "توبة" to "أريد التوبة والاستغفار"
+)
+
+/** رقائق شعور سريعة قبل الكتابة: تُرسل طلباً جاهزاً للمساعد. */
+@Composable
+private fun MoodChips(onPick: (String) -> Unit) {
+    Column {
+        Text("كيف تشعر الآن؟", style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(10.dp))
+        MOODS.chunked(5).forEach { row ->
+            Row(
+                Modifier.horizontalScroll(androidx.compose.foundation.rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                row.forEach { (label, phrase) ->
+                    com.example.ui.components.BaqiyatChip(
+                        text = label,
+                        onClick = { onPick("$phrase. اقترح لي ذكراً أو دعاءً مناسباً من الأحاديث الصحيحة مع مصدره.") }
+                    )
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+        }
+    }
+}
+
+@Composable
+fun ChatBubble(
+    message: ChatMessage,
+    isSaved: Boolean = false,
+    isAudioPlaying: Boolean = false,
+    onSave: () -> Unit = {},
+    onPlay: () -> Unit = {}
+) {
+    val alignment = if (message.isUser) Alignment.CenterStart else Alignment.CenterEnd
+    val bubbleColor = if (message.isUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
+    val textColor = if (message.isUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+    val shape = if (message.isUser) {
+        RoundedCornerShape(24.dp, 24.dp, 4.dp, 24.dp)
+    } else {
+        RoundedCornerShape(24.dp, 24.dp, 24.dp, 4.dp)
+    }
+
+    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = alignment) {
+        Card(
+            shape = shape,
+            colors = CardDefaults.cardColors(containerColor = bubbleColor),
+            elevation = CardDefaults.cardElevation(defaultElevation = if (message.isUser) 0.dp else 1.dp),
+            modifier = Modifier.widthIn(max = 300.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                if (message.isLoading) {
+                    ThinkingIndicator()
+                } else {
+                    Text(
+                        text = message.text,
+                        color = textColor,
+                        fontSize = 16.sp,
+                        lineHeight = 24.sp
+                    )
+                    if (message.actionsEnabled && !message.isUser && !message.isLoading) {
+                        Spacer(Modifier.height(10.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            TextButton(onClick = onPlay) {
+                                androidx.compose.material3.Icon(
+                                    if (isAudioPlaying) Icons.Default.Stop
+                                    else Icons.Default.PlayArrow,
+                                    contentDescription = null
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text(if (isAudioPlaying) "إيقاف الصوت" else "استماع")
+                            }
+                            TextButton(onClick = onSave, enabled = !isSaved) {
+                                androidx.compose.material3.Icon(
+                                    if (isSaved) Icons.Default.Check
+                                    else Icons.Default.BookmarkAdd,
+                                    contentDescription = null
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text(if (isSaved) "محفوظ في أذكاري" else "أضف إلى أذكاري")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun extractDuaForSpeech(reply: String): String {
+    val heading = Regex("(?m)^\\s*(?:\\*\\*)?الذكر(?:\\*\\*)?\\s*[:：]\\s*")
+    val match = heading.find(reply) ?: return reply
+    val start = match.range.last + 1
+    val tail = reply.substring(start)
+    val nextSection = Regex("(?m)^\\s*(?:\\*\\*)?(?:فضله|الفضل|المصدر|المرجع)(?:\\*\\*)?\\s*[:：]")
+        .find(tail)
+    val dua = if (nextSection == null) tail else tail.substring(0, nextSection.range.first)
+    return dua.trim().ifBlank { reply }
+}
+
+@Composable
+private fun ThinkingIndicator() {
+    val transition = rememberInfiniteTransition(label = "ai-thinking")
+    val pulse by transition.animateFloat(
+        initialValue = 0.35f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 720),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "ai-thinking-pulse"
+    )
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(28.dp),
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.22f + pulse * 0.35f),
+                strokeWidth = 2.5.dp
+            )
+            Text(
+                text = "✦",
+                color = MaterialTheme.colorScheme.primary.copy(alpha = pulse),
+                fontSize = 12.sp
+            )
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(
+                text = "جاري التحضير...",
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                repeat(3) { index ->
+                    Box(
+                        modifier = Modifier
+                            .size(5.dp)
+                            .background(
+                                MaterialTheme.colorScheme.primary.copy(
+                                    alpha = (0.35f + pulse * 0.5f) - index * 0.08f
+                                ),
+                                CircleShape
+                            )
+                    )
+                }
+            }
+        }
+    }
+}
+END SOURCE FILE: app/src/main/java/com/example/ui/screens/AiServicesScreen.kt
+
+========================================================================================
+SOURCE FILE: app/src/main/java/com/example/ui/screens/AzkarScreen.kt
+========================================================================================
+package com.example.ui.screens
+
+import android.app.NotificationManager
+import android.content.Context
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import com.example.ui.components.BaqiyatButton
+import com.example.ui.components.MihrabCard
+import com.example.ui.components.ProgressRing
+import com.example.ui.theme.ZekrTextStyle
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.RepeatOne
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.data.AzkarData
+import com.example.data.CategoryDefaults
+import com.example.data.CustomWirds
+import com.example.data.Zekr
+import com.example.ui.AppViewModel
+import com.example.ui.AudioPlayer
+import com.example.ui.ShareHelper
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AzkarScreen(
+    category: String,
+    viewModel: AppViewModel,
+    onNavigateBack: () -> Unit
+) {
+    val customWirds by viewModel.customWirds.collectAsStateWithLifecycle()
+    val categories by viewModel.categories.collectAsStateWithLifecycle()
+    val isCustomWird = category.startsWith("wird_")
+    val isSnapshotMode = category == "favorites" || isCustomWird
+    val customWird = if (isCustomWird) customWirds.firstOrNull { "wird_${it.id}" == category } else null
+    val fallbackAzkar = remember(category, customWirds) {
+        when {
+            category == "favorites" -> AzkarData.byIds(viewModel.favorites.value)
+            isCustomWird -> customWirds.firstOrNull { "wird_${it.id}" == category }
+                ?.let { CustomWirds.resolve(it, AzkarData.all()) }.orEmpty()
+            else -> AzkarData.builtInOrEmpty(category)
+        }
+    }
+    val liveAzkar by remember(category) {
+        if (isSnapshotMode) flowOf<List<Zekr>?>(null)
+        else viewModel.observePublishedAzkar(category).map<List<Zekr>, List<Zekr>?> { it }
+    }.collectAsStateWithLifecycle(initialValue = null)
+    val azkarList = liveAzkar?.takeIf { it.isNotEmpty() } ?: fallbackAzkar
+    val isLoadingContent = liveAzkar == null && !isSnapshotMode && fallbackAzkar.isEmpty()
+    val title = when {
+        category == "favorites" -> "المفضلة"
+        isCustomWird -> customWird?.name ?: "وردي"
+        CategoryDefaults.isBuiltIn(category) -> AzkarData.titleFor(category)
+        else -> categories.firstOrNull { it.id == category }?.title ?: "الأذكار"
+    }
+
+    val lastReadCategory by viewModel.lastReadCategory.collectAsStateWithLifecycle()
+    val lastReadIndex by viewModel.lastReadIndex.collectAsStateWithLifecycle()
+    val lastReadRemaining by viewModel.lastReadRemaining.collectAsStateWithLifecycle()
+    val fontSize by viewModel.fontSize.collectAsStateWithLifecycle()
+    val isVibrationEnabled by viewModel.isVibrationEnabled.collectAsStateWithLifecycle()
+    val keepScreenOn by viewModel.keepScreenOn.collectAsStateWithLifecycle()
+    val autoDnd by viewModel.autoDnd.collectAsStateWithLifecycle()
+    val hideVirtues by viewModel.hideVirtues.collectAsStateWithLifecycle()
+    val hideSources by viewModel.hideSources.collectAsStateWithLifecycle()
+    val autoPlayEnabled by viewModel.autoPlayEnabled.collectAsStateWithLifecycle()
+    val audioSpeed by viewModel.audioSpeed.collectAsStateWithLifecycle()
+    val reciterId by viewModel.reciterId.collectAsStateWithLifecycle()
+
+    var currentIndex by remember { mutableIntStateOf(0) }
+    var countRemaining by remember { mutableIntStateOf(1) }
+    var isInitialized by remember { mutableStateOf(false) }
+    var showBottomSheet by remember { mutableStateOf(false) }
+    var isDownloadingAudio by remember { mutableStateOf(false) }
+    var audioStatus by remember { mutableStateOf("") }
+
+    val context = LocalContext.current
+    val view = LocalView.current
+    val audioPlayer = remember(context.applicationContext) {
+        AudioPlayer(context.applicationContext)
+    }
+    val isPlaying by audioPlayer.isPlaying.collectAsStateWithLifecycle()
+    val coroutineScope = rememberCoroutineScope()
+
+    DisposableEffect(audioPlayer) {
+        onDispose {
+            audioPlayer.shutdown()
+            viewModel.flushPendingTasbeeh()
+        }
+    }
+
+    DisposableEffect(keepScreenOn) {
+        if (keepScreenOn) view.keepScreenOn = true
+        onDispose { view.keepScreenOn = false }
+    }
+
+    DisposableEffect(autoDnd) {
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        var originalFilter = -1
+        if (autoDnd && notificationManager.isNotificationPolicyAccessGranted) {
+            originalFilter = notificationManager.currentInterruptionFilter
+            notificationManager.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_ALARMS)
+        }
+        onDispose {
+            if (autoDnd && notificationManager.isNotificationPolicyAccessGranted && originalFilter != -1) {
+                notificationManager.setInterruptionFilter(originalFilter)
+            }
+        }
+    }
+
+    LaunchedEffect(azkarList, category) {
+        if (!isSnapshotMode && lastReadCategory == category && lastReadIndex < azkarList.size) {
+            currentIndex = lastReadIndex
+            countRemaining = lastReadRemaining
+        } else {
+            currentIndex = 0
+            countRemaining = azkarList.firstOrNull()?.repeatCount ?: 1
+        }
+        isInitialized = true
+    }
+
+    val latestCountRemaining by rememberUpdatedState(countRemaining)
+    DisposableEffect(category, currentIndex, isInitialized) {
+        onDispose {
+            if (isInitialized && !isSnapshotMode && currentIndex < azkarList.size) {
+                viewModel.saveLastReadState(category, currentIndex, latestCountRemaining)
+            }
+        }
+    }
+
+    if (!isInitialized) return
+
+    if (isLoadingContent) {
+        Scaffold(containerColor = androidx.compose.ui.graphics.Color.Transparent) { padding ->
+            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        }
+        return
+    }
+
+    if (azkarList.isEmpty()) {
+        Scaffold(
+            containerColor = androidx.compose.ui.graphics.Color.Transparent,
+            topBar = {
+                TopAppBar(
+                    title = { Text(title) },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "رجوع")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
+                )
+            }
+        ) { padding ->
+            Column(
+                Modifier.fillMaxSize().padding(padding).padding(32.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("لا أذكار بعد", style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    if (isCustomWird) "هذا الورد فارغ أو حُذفت أذكاره."
+                    else "لم تُنشر أذكار لهذا التصنيف بعد.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(Modifier.height(20.dp))
+                BaqiyatButton(text = "العودة", onClick = onNavigateBack)
+            }
+        }
+        return
+    }
+
+    if (currentIndex >= azkarList.size) {
+        LaunchedEffect(Unit) {
+            viewModel.flushPendingTasbeeh()
+            if (!isSnapshotMode) {
+                if (category == "sabah") viewModel.completeSabah()
+                else if (category == "masaa") viewModel.completeMasaa()
+                else if (category == "sleep") viewModel.completeSleep()
+                viewModel.clearLastReadState()
+            }
+        }
+        Scaffold(containerColor = androidx.compose.ui.graphics.Color.Transparent) { padding ->
+            Column(
+                modifier = Modifier.fillMaxSize().padding(padding),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("🌿", fontSize = 64.sp)
+                Spacer(modifier = Modifier.height(24.dp))
+                Text("تقبل الله طاعتك", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(32.dp))
+                BaqiyatButton(
+                    text = "العودة للرئيسية",
+                    onClick = onNavigateBack,
+                    modifier = Modifier.padding(horizontal = 40.dp)
+                )
+            }
+        }
+        return
+    }
+
+    val currentZekr = azkarList[currentIndex]
+    val selectedAudioUrl = currentZekr.audioUrlsByReciter[reciterId] ?: currentZekr.audioUrl
+    val playCurrentZekr: (Int, Boolean) -> Unit = { repetitions, autoAdvance ->
+        val itemIndex = currentIndex
+        val onComplete: (() -> Unit)? = if (autoAdvance) {
+            {
+                coroutineScope.launch {
+                    delay(450)
+                    if (currentIndex == itemIndex) currentIndex++
+                }
+            }
+        } else null
+
+        if (!selectedAudioUrl.isNullOrBlank() && selectedAudioUrl.startsWith("https://")) {
+            audioPlayer.playRecording(
+                url = selectedAudioUrl,
+                speed = audioSpeed,
+                repetitions = repetitions,
+                onCompletion = onComplete
+            )
+        } else {
+            audioPlayer.playLoop(
+                text = currentZekr.text,
+                times = repetitions,
+                rate = audioSpeed,
+                onCompletion = onComplete
+            )
+        }
+    }
+    val completedItems = currentIndex +
+        ((currentZekr.repeatCount - countRemaining).toFloat() / currentZekr.repeatCount.coerceAtLeast(1))
+    val readingProgress = (completedItems / azkarList.size.coerceAtLeast(1)).coerceIn(0f, 1f)
+
+    LaunchedEffect(currentIndex, autoPlayEnabled) {
+        if (isInitialized) {
+            countRemaining = currentZekr.repeatCount
+            audioPlayer.stop()
+            if (autoPlayEnabled) {
+                delay(350)
+                playCurrentZekr(1, true)
+            }
+        }
+    }
+
+    val onDecrement = {
+        if (countRemaining > 0) {
+            countRemaining--
+            viewModel.addTasbeeh(1)
+            if (isVibrationEnabled) vibrateLight(context)
+            if (countRemaining == 0) {
+                if (isVibrationEnabled) vibrateCompletion(context)
+                coroutineScope.launch {
+                    delay(if (autoPlayEnabled) 1200 else 300)
+                    currentIndex++
+                }
+            }
+        }
+    }
+
+    Scaffold(
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
+        topBar = {
+            Column {
+                TopAppBar(
+                    title = { Text(title, fontWeight = FontWeight.Bold, fontSize = 20.sp) },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "رجوع")
+                        }
+                    },
+                    actions = {
+                        FilterChip(
+                            selected = autoPlayEnabled,
+                            onClick = { viewModel.setAutoPlay(!autoPlayEnabled) },
+                            label = { Text(if (autoPlayEnabled) "تلقائي" else "يدوي", fontSize = 12.sp) }
+                        )
+                        TextButton(onClick = { viewModel.setFontSize((fontSize - 2f).coerceAtLeast(16f)) }) {
+                            Text("A-", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        }
+                        TextButton(onClick = { viewModel.setFontSize((fontSize + 2f).coerceAtMost(48f)) }) {
+                            Text("A+", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
+                )
+                LinearProgressIndicator(
+                    progress = { readingProgress },
+                    modifier = Modifier.fillMaxWidth().height(2.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        "${currentIndex + 1} / ${azkarList.size}",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                    )
+                    if (autoPlayEnabled) {
+                        Text("قراءة مستمرة", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
+                    }
+                }
+            }
+        },
+        bottomBar = {
+            Surface(color = androidx.compose.ui.graphics.Color.Transparent) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 12.dp)
+                        .navigationBarsPadding()
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        FilledTonalIconButton(onClick = {
+                            if (isPlaying) audioPlayer.stop()
+                            else playCurrentZekr(1, false)
+                        }) {
+                            Icon(
+                                if (isPlaying) Icons.Default.Stop else Icons.Default.VolumeUp,
+                                contentDescription = if (isPlaying) "إيقاف" else "استماع"
+                            )
+                        }
+                        FilledTonalIconButton(onClick = { playCurrentZekr(3, false) }) {
+                            Icon(Icons.Default.Repeat, contentDescription = "تكرار 3 مرات")
+                        }
+                        FilledTonalIconButton(onClick = { playCurrentZekr(5, false) }) {
+                            Icon(Icons.Default.RepeatOne, contentDescription = "تكرار 5 مرات")
+                        }
+                    }
+                    if (!selectedAudioUrl.isNullOrBlank() && selectedAudioUrl.startsWith("https://")) {
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedButton(
+                            onClick = {
+                                if (!isDownloadingAudio) {
+                                    coroutineScope.launch {
+                                        isDownloadingAudio = true
+                                        val downloaded = audioPlayer.downloadRecording(selectedAudioUrl)
+                                        isDownloadingAudio = false
+                                        audioStatus = if (downloaded) {
+                                            "تم حفظ الصوت على الجهاز للاستماع دون إنترنت."
+                                        } else {
+                                            "تعذر تنزيل التسجيل. تحقق من الرابط والاتصال بالإنترنت."
+                                        }
+                                    }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !isDownloadingAudio
+                        ) {
+                            if (isDownloadingAudio) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp
+                                )
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                if (audioPlayer.hasCachedRecording(selectedAudioUrl)) {
+                                    "الصوت محفوظ دون إنترنت"
+                                } else {
+                                    "تنزيل صوت القارئ"
+                                }
+                            )
+                        }
+                        if (audioStatus.isNotBlank()) {
+                            Text(
+                                audioStatus,
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.Center,
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TextButton(onClick = { if (currentIndex > 0) currentIndex-- }, enabled = currentIndex > 0) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
+                            Spacer(Modifier.width(4.dp))
+                            Text("السابق")
+                        }
+                        TextButton(onClick = {
+                            countRemaining = currentZekr.repeatCount
+                            if (isVibrationEnabled) vibrateLight(context)
+                        }) {
+                            Icon(Icons.Default.Refresh, contentDescription = null)
+                            Spacer(Modifier.width(4.dp))
+                            Text("إعادة")
+                        }
+                        IconButton(onClick = { showBottomSheet = true }) {
+                            Icon(Icons.Default.Info, contentDescription = "معلومات", tint = MaterialTheme.colorScheme.primary)
+                        }
+                        TextButton(onClick = { if (currentIndex < azkarList.size - 1) currentIndex++ }) {
+                            Text("التالي")
+                            Spacer(Modifier.width(4.dp))
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+                        }
+                    }
+                }
+            }
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp, vertical = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            MihrabCard(
+                modifier = Modifier.fillMaxWidth().testTag("dhikr-card"),
+                onClick = onDecrement,
+                clickLabel = "إنقاص العدّاد"
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 26.dp, end = 26.dp, top = 92.dp, bottom = 30.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    AnimatedContent(
+                        targetState = currentZekr,
+                        transitionSpec = { fadeIn(tween(400)) togetherWith fadeOut(tween(400)) },
+                        label = "zekr_text"
+                    ) { zekr ->
+                        Text(
+                            text = zekr.text,
+                            style = ZekrTextStyle.copy(fontSize = fontSize.sp, lineHeight = (fontSize * 1.95f).sp),
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    Spacer(Modifier.height(28.dp))
+                    ProgressRing(
+                        progress = if (currentZekr.repeatCount == 0) 1f
+                        else (currentZekr.repeatCount - countRemaining).toFloat() / currentZekr.repeatCount,
+                        size = 96.dp
+                    ) {
+                        Text(
+                            "$countRemaining",
+                            modifier = Modifier.testTag("dhikr-counter"),
+                            style = MaterialTheme.typography.headlineSmall.copy(fontSize = 34.sp),
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(18.dp))
+            Text(
+                "اضغط على القوس أو الزر للمتابعة",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(14.dp))
+            BaqiyatButton(
+                text = if (countRemaining > 1) "سبّح • متبقي $countRemaining" else "تمّ الذكر",
+                onClick = onDecrement,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(Modifier.height(12.dp))
+        }
+
+        if (showBottomSheet) {
+            ModalBottomSheet(
+                onDismissRequest = { showBottomSheet = false },
+                containerColor = MaterialTheme.colorScheme.surface
+            ) {
+                Column(modifier = Modifier.fillMaxWidth().padding(24.dp).padding(bottom = 24.dp)) {
+                    Text("شرح وفضل الذكر", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    if (!hideVirtues && currentZekr.fadl.isNotEmpty()) {
+                        Text("الفضل:", fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(currentZekr.fadl, color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 24.sp)
+                        Spacer(modifier = Modifier.height(16.dp))
+                    } else if (!hideVirtues) {
+                        Text("لم يرد فضل محدد نصاً لهذا الذكر.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+
+                    if (!hideSources && currentZekr.source.isNotEmpty()) {
+                        Text("المصدر:", fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(currentZekr.source, color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 24.sp)
+                    }
+
+                    Spacer(modifier = Modifier.height(22.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        OutlinedButton(
+                            onClick = { copyText(context, currentZekr.text); showBottomSheet = false },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(14.dp)
+                        ) {
+                            Icon(Icons.Default.ContentCopy, null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(7.dp))
+                            Text("نسخ")
+                        }
+                        Button(
+                            onClick = {
+                                try {
+                                    ShareHelper.shareZekrAsImage(
+                                        context,
+                                        currentZekr.text,
+                                        currentZekr.source
+                                    )
+                                } catch (_: Exception) { }
+                                showBottomSheet = false
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(14.dp)
+                        ) {
+                            Icon(Icons.Default.Share, null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(7.dp))
+                            Text("مشاركة")
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun vibrateLight(context: Context) {
+    try {
+        val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            vibrator.vibrate(VibrationEffect.createOneShot(30, VibrationEffect.DEFAULT_AMPLITUDE))
+        } else {
+            @Suppress("DEPRECATION")
+            vibrator.vibrate(30)
+        }
+    } catch (_: Exception) { }
+}
+
+private fun vibrateCompletion(context: Context) {
+    try {
+        val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            vibrator.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 40, 40, 40), -1))
+        } else {
+            @Suppress("DEPRECATION")
+            vibrator.vibrate(longArrayOf(0, 40, 40, 40), -1)
+        }
+    } catch (_: Exception) { }
+}
+
+private fun copyText(context: Context, text: String) {
+    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+    clipboard.setPrimaryClip(android.content.ClipData.newPlainText("zekr", text))
+}
+END SOURCE FILE: app/src/main/java/com/example/ui/screens/AzkarScreen.kt
+
+========================================================================================
+SOURCE FILE: app/src/main/java/com/example/ui/screens/FavoritesScreen.kt
+========================================================================================
+package com.example.ui.screens
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.data.AzkarData
+import com.example.ui.AppViewModel
+import com.example.ui.ShareHelper
+import com.example.ui.components.BaqiyatBackButton
+import com.example.ui.components.BaqiyatButton
+import com.example.ui.components.GlassCard
+import com.example.ui.theme.Baqiyat
+import com.example.ui.theme.ZekrTextStyle
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FavoritesScreen(
+    viewModel: AppViewModel,
+    onNavigateBack: () -> Unit,
+    onRead: () -> Unit
+) {
+    val ids by viewModel.favorites.collectAsStateWithLifecycle()
+    val savedAiAzkar by viewModel.savedAiAzkar.collectAsStateWithLifecycle()
+    val items = remember(ids) { AzkarData.byIds(ids) }
+    val context = LocalContext.current
+    val p = Baqiyat.colors
+
+    Scaffold(
+        containerColor = Color.Transparent,
+        topBar = {
+            TopAppBar(
+                title = { Text("المفضلة وأذكاري", style = MaterialTheme.typography.titleLarge) },
+                navigationIcon = { BaqiyatBackButton(onNavigateBack) },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+            )
+        }
+    ) { padding ->
+        if (items.isEmpty() && savedAiAzkar.isEmpty()) {
+            Column(
+                Modifier.fillMaxSize().padding(padding).padding(32.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Icon(Icons.Default.Favorite, null, Modifier.size(56.dp), tint = p.accent.copy(alpha = .5f))
+                Spacer(Modifier.height(16.dp))
+                Text("لم تحفظ شيئاً بعد", style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "احفظ الأذكار من شاشة القراءة، أو أضف إجابات المساعد إلى «أذكاري» لتعود إليها لاحقاً.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp),
+                contentPadding = PaddingValues(top = 8.dp, bottom = 32.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                if (items.isNotEmpty()) {
+                    item {
+                        BaqiyatButton(
+                            text = "اقرأ المفضلة (${items.size})",
+                            onClick = onRead,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    items(items, key = { it.id }) { z ->
+                        GlassCard(Modifier.fillMaxWidth(), contentPadding = PaddingValues(18.dp)) {
+                            Text(AzkarData.titleFor(z.category), style = MaterialTheme.typography.labelMedium, color = p.accent)
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                z.text,
+                                style = ZekrTextStyle.copy(fontSize = 20.sp, lineHeight = 38.sp),
+                                maxLines = 4,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Spacer(Modifier.height(6.dp))
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    if (z.repeatCount > 1) "يُقال ${z.repeatCount} مرات" else z.source,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                IconButton(onClick = { runCatching { ShareHelper.shareZekrAsImage(context, z.text, z.source) } }) {
+                                    Icon(Icons.Default.Share, contentDescription = "مشاركة", tint = p.primary)
+                                }
+                                IconButton(onClick = { viewModel.toggleFavorite(z.id) }) {
+                                    Icon(Icons.Default.Favorite, contentDescription = "إزالة من المفضلة", tint = p.accent)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (savedAiAzkar.isNotEmpty()) {
+                    item {
+                        Text(
+                            "أذكاري المحفوظة من المساعد",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = p.accent,
+                            modifier = Modifier.padding(top = 12.dp)
+                        )
+                    }
+                    items(savedAiAzkar, key = { "ai:$it" }) { saved ->
+                        GlassCard(Modifier.fillMaxWidth(), contentPadding = PaddingValues(18.dp)) {
+                            Text(
+                                saved,
+                                style = ZekrTextStyle.copy(fontSize = 17.sp, lineHeight = 30.sp),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End
+                            ) {
+                                IconButton(onClick = { runCatching { ShareHelper.shareZekrAsImage(context, saved, "إجابة المساعد الذكي") } }) {
+                                    Icon(Icons.Default.Share, contentDescription = "مشاركة", tint = p.primary)
+                                }
+                                IconButton(onClick = { viewModel.removeAiZekr(saved) }) {
+                                    Icon(Icons.Default.Delete, contentDescription = "حذف من أذكاري", tint = MaterialTheme.colorScheme.error)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+END SOURCE FILE: app/src/main/java/com/example/ui/screens/FavoritesScreen.kt
+
+========================================================================================
+SOURCE FILE: app/src/main/java/com/example/ui/screens/FeedbackScreen.kt
+========================================================================================
+package com.example.ui.screens
+
+import android.app.Activity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.SupportAgent
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import android.net.Uri
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.data.FeedbackDraft
+import com.example.ui.AppViewModel
+
+@androidx.compose.material3.ExperimentalMaterial3Api
+@Composable
+fun FeedbackScreen(viewModel: AppViewModel) {
+    val signedIn by viewModel.userSignedIn.collectAsStateWithLifecycle()
+    val history by viewModel.myFeedback.collectAsStateWithLifecycle()
+    val unreadCount by viewModel.unreadFeedbackCount.collectAsStateWithLifecycle()
+    var type by remember { mutableStateOf("suggestion") }
+    var message by remember { mutableStateOf("") }
+    var attachmentUri by remember { mutableStateOf<Uri?>(null) }
+    var showConfirmation by remember { mutableStateOf(false) }
+    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri -> attachmentUri = uri }
+    val activity = LocalContext.current as? Activity
+
+    Scaffold(
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
+        topBar = {
+            TopAppBar(
+                title = { Text("الشكاوى والاقتراحات", fontWeight = FontWeight.Bold) },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
+            )
+        }
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp),
+            contentPadding = PaddingValues(vertical = 18.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            item {
+                Card(
+                    shape = RoundedCornerShape(22.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Column(Modifier.padding(19.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.SupportAgent, null, tint = MaterialTheme.colorScheme.onPrimary)
+                            Spacer(Modifier.padding(5.dp))
+                            Text(
+                                "نسعد بتواصلك",
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp
+                            )
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            "اكتب اقتراحك أو ملاحظتك بحرية، وسيصل فريق الباقيات ويرد عليك عند الحاجة.",
+                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = .82f),
+                            fontSize = 13.sp,
+                            lineHeight = 21.sp
+                        )
+                    }
+                }
+            }
+            item {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(selected = type == "suggestion", onClick = { type = "suggestion" }, label = { Text("اقتراح") })
+                    FilterChip(selected = type == "complaint", onClick = { type = "complaint" }, label = { Text("شكوى") })
+                    FilterChip(selected = type == "technical", onClick = { type = "technical" }, label = { Text("مشكلة تقنية") })
+                }
+            }
+            item {
+                OutlinedTextField(
+                    value = message,
+                    onValueChange = { message = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 6,
+                    label = { Text("اكتب رسالتك") },
+                    placeholder = { Text("مثلاً: أقترح إضافة...") },
+                    shape = RoundedCornerShape(16.dp)
+                )
+            }
+            item {
+                OutlinedButton(
+                    onClick = { imagePicker.launch("image/*") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Text(if (attachmentUri == null) "إرفاق صورة للمشكلة" else "تم اختيار صورة ✓")
+                }
+            }
+            item {
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Lock, null, tint = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.padding(5.dp))
+                        Text(
+                            if (signedIn) {
+                                "أنت مسجّل الدخول، وستستطيع متابعة الرد."
+                            } else {
+                                "سيُطلب تسجيل الدخول عند الإرسال لمتابعة الطلب والرد."
+                            },
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+            item {
+                Button(
+                    onClick = { if (message.isNotBlank()) showConfirmation = true },
+                    enabled = message.isNotBlank(),
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.Send, null)
+                    Spacer(Modifier.padding(4.dp))
+                    Text("مراجعة وإرسال")
+                }
+            }
+            if (history.isNotEmpty()) {
+                item {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text("طلباتي السابقة", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        if (unreadCount > 0) {
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                                shape = RoundedCornerShape(20.dp)
+                            ) {
+                                Text(
+                                    "$unreadCount تحديث غير مقروء",
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                    color = MaterialTheme.colorScheme.onErrorContainer,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                }
+                items(history) { item ->
+                    Card(
+                        onClick = { if (item.replyUnread) viewModel.markFeedbackReplyRead(item.id) },
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (item.replyUnread) {
+                                MaterialTheme.colorScheme.secondaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.surface
+                            }
+                        )
+                    ) {
+                        Column(Modifier.padding(15.dp)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(item.title.ifBlank { item.message.take(52) }, fontWeight = FontWeight.Bold)
+                                if (item.replyUnread) {
+                                    Text("جديد", color = MaterialTheme.colorScheme.error, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                            Spacer(Modifier.height(5.dp))
+                            Text(statusLabel(item.status), color = MaterialTheme.colorScheme.primary, fontSize = 11.sp)
+                            if (item.adminReply.isNotBlank()) {
+                                Spacer(Modifier.height(7.dp))
+                                Text("رد الفريق: ${item.adminReply}", fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if (showConfirmation) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showConfirmation = false },
+            title = { Text("تأكيد الإرسال") },
+            text = {
+                Text("سيتم إرسال رسالتك إلى فريق الباقيات، ويمكنك متابعة حالتها بعد تسجيل الدخول.")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showConfirmation = false
+                        viewModel.submitFeedback(
+                            FeedbackDraft(
+                                type = type,
+                                title = if (type == "suggestion") "اقتراح مستخدم" else "طلب من المستخدم",
+                                message = message,
+                                aiSummary = message.take(140),
+                                aiCategory = type,
+                                attachmentUri = attachmentUri
+                            ),
+                            activity
+                        )
+                    }
+                ) {
+                    Icon(Icons.Default.CheckCircle, null)
+                    Spacer(Modifier.padding(3.dp))
+                    Text("تأكيد")
+                }
+            },
+            dismissButton = {
+                Button(onClick = { showConfirmation = false }) { Text("تعديل") }
+            }
+        )
+    }
+}
+
+private fun statusLabel(status: String): String = when (status) {
+    "new" -> "جديد"
+    "in_progress" -> "قيد المعالجة"
+    "resolved" -> "تم الحل"
+    "completed" -> "مكتملة"
+    else -> "مغلق"
+}
+END SOURCE FILE: app/src/main/java/com/example/ui/screens/FeedbackScreen.kt
