@@ -1,6 +1,4 @@
 import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
-import java.util.Properties
-import java.io.FileInputStream
 
 plugins {
   alias(libs.plugins.android.application)
@@ -19,17 +17,6 @@ android {
     minSdk = 24
     targetSdk = 36
 
-    // قراءة مفتاح Gemini من local.properties أو من متغيرات البيئة (CI / GitHub Actions) كاحتياط تام
-    val localProps = Properties().apply {
-      val localPropsFile = rootProject.file("local.properties")
-      if (localPropsFile.exists()) {
-        FileInputStream(localPropsFile).use { load(it) }
-      }
-    }
-    val rawGeminiKey = localProps.getProperty("geminiApiKey") ?: System.getenv("GEMINI_API_KEY") ?: ""
-    val geminiKey = rawGeminiKey.replace("\\", "\\\\").replace("\"", "\\\"")
-
-    buildConfigField("String", "GEMINI_API_KEY", "\"$geminiKey\"")
     versionCode = 1
     versionName = "1.0"
 
