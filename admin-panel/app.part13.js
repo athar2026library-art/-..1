@@ -9,6 +9,7 @@
         },
         () => {
           db.collection("feedback")
+            .orderBy("createdAt", "desc")
             .limit(100)
             .get()
             .then((snap) => {
