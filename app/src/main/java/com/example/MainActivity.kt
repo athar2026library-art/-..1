@@ -101,7 +101,7 @@ class MainActivity : ComponentActivity() {
             val user = FirebaseAuth.getInstance().currentUser ?: return@addOnSuccessListener
             FirebaseFirestore.getInstance().collection("users").document(user.uid).set(
                 mapOf(
-                    "fcmTokens" to FieldValue.arrayUnion(token),
+                    "fcmTokens" to listOf(token),
                     "updatedAt" to FieldValue.serverTimestamp()
                 ),
                 com.google.firebase.firestore.SetOptions.merge()
