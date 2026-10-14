@@ -26,3 +26,10 @@
     $("#filter")?.addEventListener("change", renderTable);
     $("#status-filter")?.addEventListener("change", renderTable);
     $("#btn-add")?.addEventListener("click", () => openEditor(null));
+
+    document.addEventListener("click", (e) => {
+      const btn = e.target.closest("button, .action-card, a");
+      if(!btn) return;
+      if(btn.id === "add-zekr" || btn.textContent.includes("ذكر جديد")) openEditor(null);
+      if(btn.id === "btn-add-category" || btn.textContent.includes("تصنيف جديد")) openCategoryEditor(null);
+    });

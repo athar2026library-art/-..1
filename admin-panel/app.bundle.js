@@ -190,36 +190,19 @@
     }
   }
 
-    function openCategoryEditor(id) {
+      function openCategoryEditor(id) {
     editingCategoryId = id || null;
     const c = id ? categories.find((x) => x.id === id) : null;
-    const titleEl = $("#cat-modal-title");
-    if (titleEl) titleEl.textContent = c ? "تعديل التصنيف" : "إضافة تصنيف";
-
-    const idInput = $("#cat-field-id") || $("#cat-id");
-    if (idInput) {
-      idInput.value = c?.id || "";
-      idInput.disabled = !!c;
-    }
-
-    const nameInput = $("#cat-field-name") || $("#cat-title");
-    if (nameInput) nameInput.value = c?.title || c?.name || "";
-
-    const iconInput = $("#cat-field-icon") || $("#cat-icon");
-    if (iconInput) iconInput.value = c?.icon || "star";
-
-    const descInput = $("#cat-field-desc") || $("#cat-subtitle");
-    if (descInput) descInput.value = c?.subtitle || c?.desc || "";
-
-    const orderInput = $("#cat-field-order") || $("#cat-order");
-    if (orderInput) orderInput.value = c?.order ?? 100;
-
-    const pubInput = $("#cat-field-published") || $("#cat-published");
-    if (pubInput) pubInput.checked = c ? c.published !== false : true;
+    
+    if($("#cat-modal-title")) $("#cat-modal-title").textContent = c ? "تعديل التصنيف" : "إضافة تصنيف";
+    if($("#cat-id")) { $("#cat-id").value = c?.id || ""; $("#cat-id").disabled = !!c; }
+    if($("#cat-title")) $("#cat-title").value = c?.title || c?.name || "";
+    if($("#cat-icon")) $("#cat-icon").value = c?.icon || "book";
+    if($("#cat-subtitle")) $("#cat-subtitle").value = c?.subtitle || c?.desc || "";
+    if($("#cat-published")) $("#cat-published").checked = c ? c.published !== false : true;
 
     const modal = $("#category-modal");
-    modal?.classList.add("open");
-    modal?.setAttribute("aria-hidden", "false");
+    if(modal) { modal.classList.add("open"); modal.setAttribute("aria-hidden", "false"); }
   }
 
   function closeCategoryEditor() {
@@ -799,6 +782,13 @@
     $("#filter")?.addEventListener("change", renderTable);
     $("#status-filter")?.addEventListener("change", renderTable);
     $("#btn-add")?.addEventListener("click", () => openEditor(null));
+
+    document.addEventListener("click", (e) => {
+      const btn = e.target.closest("button, .action-card, a");
+      if(!btn) return;
+      if(btn.id === "add-zekr" || btn.textContent.includes("ذكر جديد")) openEditor(null);
+      if(btn.id === "btn-add-category" || btn.textContent.includes("تصنيف جديد")) openCategoryEditor(null);
+    });
     $("#btn-add-category")?.addEventListener("click", () => openCategoryEditor(null));
     $("#save-editor")?.addEventListener("click", () => saveEditor().catch((e) => toast(e.message)));
     $("#close-editor")?.addEventListener("click", closeEditor);
@@ -819,6 +809,13 @@
       const msg = document.querySelector("#auth-message");
       if (msg) {
         msg.textContent =
+
+    $("#save-zekr")?.addEventListener("click", () => saveEditor().catch(e => toast(e.message)));
+    $("#save-category")?.addEventListener("click", () => saveCategory().catch(e => toast(e.message)));
+    $("#close-modal")?.addEventListener("click", closeEditor);
+    $("#cancel-modal")?.addEventListener("click", closeEditor);
+    $("#close-cat-modal")?.addEventListener("click", closeCategoryEditor);
+    $("#cancel-cat-modal")?.addEventListener("click", closeCategoryEditor);
           "تعذر تحميل إعداد Firebase. افتح اللوحة من Firebase Hosting أو عرّف window.firebaseConfig.";
       }
       return;

@@ -18,3 +18,10 @@
       const msg = document.querySelector("#auth-message");
       if (msg) {
         msg.textContent =
+
+    $("#save-zekr")?.addEventListener("click", () => saveEditor().catch(e => toast(e.message)));
+    $("#save-category")?.addEventListener("click", () => saveCategory().catch(e => toast(e.message)));
+    $("#close-modal")?.addEventListener("click", closeEditor);
+    $("#cancel-modal")?.addEventListener("click", closeEditor);
+    $("#close-cat-modal")?.addEventListener("click", closeCategoryEditor);
+    $("#cancel-cat-modal")?.addEventListener("click", closeCategoryEditor);
