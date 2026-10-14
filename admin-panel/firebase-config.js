@@ -21,8 +21,13 @@ window.AZKAR_FIREBASE_CONFIG = {
   apply(window.AZKAR_FIREBASE_CONFIG);
   apply(window.firebaseConfig);
 
-  // Firebase Hosting provides /__/firebase/init.json on its project domain.
-  // The static config remains available when this Manus-hosted panel is used.
+  var host = location.hostname || "";
+  var onFirebaseHosting = /(^|\.)firebaseapp\.com$|(^|\.)web\.app$/.test(host);
+  if (!onFirebaseHosting) {
+    window.firebaseHostingConfigPromise = Promise.resolve(null);
+    return;
+  }
+
   window.firebaseHostingConfigPromise = fetch("/__/firebase/init.json", {
     cache: "no-store",
   })

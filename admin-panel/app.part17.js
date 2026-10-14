@@ -1,10 +1,10 @@
-    modal.setAttribute("aria-hidden", "false");
+    modal?.setAttribute("aria-hidden", "false");
   }
 
   function closeEditor() {
     const modal = $("#editor-modal");
-    modal.classList.remove("open");
-    modal.setAttribute("aria-hidden", "true");
+    modal?.classList.remove("open");
+    modal?.setAttribute("aria-hidden", "true");
     editingId = null;
   }
 
@@ -28,12 +28,19 @@
       toast("روابط الصوت يجب أن تبدأ بـ HTTPS وألا تحتوي مسافات.");
       return;
     }
+    const repeat = Math.min(1000, Math.max(1, Math.round(Number($("#field-repeat")?.value) || 1)));
+    const category = $("#field-category")?.value || "sabah";
+    const known = ["sabah", "masaa", "sleep", "travel", "worry", "rizq", "illness", "waking"];
+    if (!known.includes(category) && !categories.some((c) => c.id === category && !c.builtin)) {
+      toast("التصنيف غير موجود في Firestore. أضفه أولاً من شاشة التصنيفات.");
+      return;
+    }
     const payload = {
-      text,
-      category: $("#field-category")?.value || "sabah",
-      repeat: Number($("#field-repeat")?.value) || 1,
-      fadl: $("#field-fadl")?.value.trim() || "",
-      source: $("#field-source")?.value.trim() || "",
+      text: text.slice(0, 3999),
+      category,
+      repeat,
+      fadl: ($("#field-fadl")?.value || "").trim().slice(0, 3999),
+      source: ($("#field-source")?.value || "").trim().slice(0, 499),
       audioUrl,
       audioUrlsByReciter,
       published: !!$("#field-published")?.checked,

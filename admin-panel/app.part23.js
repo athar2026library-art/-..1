@@ -1,11 +1,21 @@
-    $("#btn-add-category")?.addEventListener("click", () => openCategoryEditor(null));
-    $("#save-editor")?.addEventListener("click", () => saveEditor().catch((e) => toast(e.message)));
-    $("#close-editor")?.addEventListener("click", closeEditor);
-    $("#save-category")?.addEventListener("click", () => saveCategory().catch((e) => toast(e.message)));
-    $("#close-category")?.addEventListener("click", closeCategoryEditor);
+    $("#add-category")?.addEventListener("click", () => openCategoryEditor(null));
+    $("#save-zekr")?.addEventListener("click", () => saveEditor().catch((e) => toast(e.message || "تعذر الحفظ")));
+    $("#close-modal")?.addEventListener("click", closeEditor);
+    $("#cancel-modal")?.addEventListener("click", closeEditor);
+    $("#save-category")?.addEventListener("click", () => saveCategory().catch((e) => toast(e.message || "تعذر حفظ التصنيف")));
+    $("#close-cat-modal")?.addEventListener("click", closeCategoryEditor);
+    $("#cancel-cat-modal")?.addEventListener("click", closeCategoryEditor);
     $("#close-preview")?.addEventListener("click", closePreview);
     $("#export-json")?.addEventListener("click", exportJson);
-    $("#send-notify")?.addEventListener("click", () => sendNotify().catch((e) => toast(e.message)));
+    $("#send-notify")?.addEventListener("click", () => sendNotify().catch((e) => toast(e.message || "تعذر الإرسال")));
+    ["#editor-modal", "#category-modal", "#preview-modal"].forEach((sel) => {
+      $(sel)?.addEventListener("click", (event) => {
+        if (event.target !== event.currentTarget) return;
+        if (sel === "#editor-modal") closeEditor();
+        else if (sel === "#category-modal") closeCategoryEditor();
+        else closePreview();
+      });
+    });
   }
 
   const initializeAdminPanel = async () => {

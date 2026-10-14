@@ -15,14 +15,13 @@
   }
 
   function bindUi() {
-    $$(".nav-item").forEach((btn) =>
+    $$("button[data-view]").forEach((btn) =>
       btn.addEventListener("click", () => go(btn.dataset.view))
     );
-    $("#btn-logout")?.addEventListener("click", () => auth.signOut());
-    $("#logout-btn")?.addEventListener("click", () => auth.signOut());
-    $("#btn-google")?.addEventListener("click", () => signInWithGoogle());
+    $("#logout-btn")?.addEventListener("click", () => auth?.signOut());
     $("#google-login-btn")?.addEventListener("click", () => signInWithGoogle());
     $("#search")?.addEventListener("input", renderTable);
     $("#filter")?.addEventListener("change", renderTable);
     $("#status-filter")?.addEventListener("change", renderTable);
-    $("#btn-add")?.addEventListener("click", () => openEditor(null));
+    $("#add-zekr")?.addEventListener("click", () => openEditor(null));
+    $("#preview-btn")?.addEventListener("click", () => openPreview(null));

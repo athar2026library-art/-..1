@@ -1,14 +1,3 @@
-        return;
-      }
-      await categoriesCol().doc(id).set({
-        ...payload,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      });
-      toast("تمت إضافة التصنيف");
-    }
-    closeCategoryEditor();
-  }
-
   async function deleteCategory(id) {
     if (!id || BUILTIN_CATEGORIES.some((b) => b.id === id)) {
       toast("لا يمكن حذف التصنيفات المدمجة");
