@@ -190,6 +190,12 @@ describe('users / profile', () => {
   it('المالك يدمج توكن FCM', async () => {
     await assertSucceeds(setDoc(doc(user(), 'users', 'user-a'), { fcmTokens: ['tok-b'], updatedAt: new Date() }, { merge: true }));
   });
+  it('يرفض قائمة توكنات FCM أكبر من خمسة', async () => {
+    await assertFails(setDoc(doc(user(), 'users', 'user-a'), {
+      fcmTokens: ['a', 'b', 'c', 'd', 'e', 'f'],
+      updatedAt: new Date(),
+    }, { merge: true }));
+  });
 
   it('المالك لا يمنح نفسه role', async () => {
     await assertFails(setDoc(doc(user(), 'users', 'user-a'), { role: 'admin' }, { merge: true }));
