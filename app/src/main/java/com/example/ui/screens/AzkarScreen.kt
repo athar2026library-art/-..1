@@ -66,12 +66,13 @@ fun AzkarScreen(
 ) {
     val customWirds by viewModel.customWirds.collectAsStateWithLifecycle()
     val categories by viewModel.categories.collectAsStateWithLifecycle()
+    val favorites by viewModel.favorites.collectAsStateWithLifecycle()
     val isCustomWird = category.startsWith("wird_")
     val isSnapshotMode = category == "favorites" || isCustomWird
     val customWird = if (isCustomWird) customWirds.firstOrNull { "wird_${it.id}" == category } else null
-    val fallbackAzkar = remember(category, customWirds) {
+    val fallbackAzkar = remember(category, customWirds, favorites) {
         when {
-            category == "favorites" -> AzkarData.byIds(viewModel.favorites.value)
+            category == "favorites" -> AzkarData.byIds(favorites)
             isCustomWird -> customWirds.firstOrNull { "wird_${it.id}" == category }
                 ?.let { CustomWirds.resolve(it, AzkarData.all()) }.orEmpty()
             else -> AzkarData.builtInOrEmpty(category)
