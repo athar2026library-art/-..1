@@ -80,7 +80,7 @@ class FirestoreRepository {
             val token = FirebaseMessaging.getInstance().token.await()
             db.collection("users").document(user.uid).set(
                 mapOf(
-                    "fcmTokens" to FieldValue.arrayUnion(token),
+                    "fcmTokens" to listOf(token),
                     "notificationsEnabled" to notificationsEnabled,
                     "notificationAudience" to notificationAudience,
                     "updatedAt" to FieldValue.serverTimestamp()
