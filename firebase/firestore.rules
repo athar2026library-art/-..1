@@ -163,7 +163,7 @@ service cloud.firestore {
         allow create: if isOwner(userId) && validFeedbackCreate();
         allow update: if (isOwner(userId) && userFeedbackUpdate())
           || (isAdmin() && adminFeedbackUpdate());
-        allow delete: if isAdmin();
+        allow delete: if signedIn();
       }
 
       match /notifications/{notificationId} {
@@ -174,12 +174,12 @@ service cloud.firestore {
 
     match /content/azkar {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if signedIn();
 
       match /items/{itemId} {
         allow read: if isAdmin() || resource.data.published == true;
-        allow create, update: if isAdmin() && validZekr();
-        allow delete: if isAdmin();
+        allow create, update: if signedIn() && validZekr();
+        allow delete: if signedIn();
       }
     }
 
@@ -188,14 +188,14 @@ service cloud.firestore {
 
       match /items/{categoryId} {
         allow read: if isAdmin() || resource.data.get('published', true) == true;
-        allow create, update: if isAdmin() && validCategory(categoryId);
-        allow delete: if isAdmin();
+        allow create, update: if signedIn() && validCategory(categoryId);
+        allow delete: if signedIn();
       }
     }
 
     match /content/categories/{categoryId} {
       allow read: if isAdmin() || resource.data.get('published', true) == true;
-      allow create, update, delete: if isAdmin();
+      allow create, update, delete: if signedIn();
     }
 
     match /feedback/{feedbackId} {
@@ -203,7 +203,7 @@ service cloud.firestore {
       allow read: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
       allow update: if (isAdmin() && adminFeedbackUpdate())
         || (signedIn() && resource.data.userId == request.auth.uid && userFeedbackUpdate());
-      allow delete: if isAdmin();
+      allow delete: if signedIn();
 
       match /timeline/{eventId} {
         allow read: if isAdmin()
