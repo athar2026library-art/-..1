@@ -1,11 +1,12 @@
     const toIdx = sorted.findIndex((z) => z.id === toId);
     if (fromIdx < 0 || toIdx < 0) return;
+    const fromOrder = sorted[fromIdx].order ?? fromIdx + 1;
+    const toOrder = sorted[toIdx].order ?? toIdx + 1;
     const [moved] = sorted.splice(fromIdx, 1);
     sorted.splice(toIdx, 0, moved);
     const batch = db.batch();
-    sorted.forEach((z, i) => {
-      batch.update(itemsCol().doc(z.id), { order: i + 1 });
-    });
+    batch.update(itemsCol().doc(fromId), { order: toOrder });
+    batch.update(itemsCol().doc(toId), { order: fromOrder });
     await batch.commit();
     toast("تم حفظ الترتيب");
   }
