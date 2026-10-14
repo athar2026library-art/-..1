@@ -208,4 +208,9 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
             prefs[MY_AZKAR] = (prefs[MY_AZKAR] ?: emptySet()) - text
         }
     }
+
+    /** Removes all local preferences when the signed-in account is permanently deleted. */
+    suspend fun clearAll() {
+        dataStore.edit { it.clear() }
+    }
 }
