@@ -148,6 +148,9 @@ service cloud.firestore {
         && noPrivilegeKeys(request.resource.data)
         && request.resource.data.diff(resource.data).affectedKeys()
           .hasOnly(['fcmTokens', 'updatedAt', 'notificationsEnabled', 'notificationAudience', 'displayName', 'email']);
+      allow update: if isOwner(userId)
+        && (!request.resource.data.keys().hasAny(['fcmTokens'])
+          || (request.resource.data.fcmTokens is list && request.resource.data.fcmTokens.size() <= 5));
       allow delete: if isOwner(userId);
 
       match /progress/{date} {
