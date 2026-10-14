@@ -401,7 +401,7 @@ class AppViewModel(
                     .call()
                     .await()
                 progressRepository.clearLocalProgress()
-                progressRepository.initTodayProgress()
+                settingsRepository.clearAll()
                 authRepository.signOut()
                 _userSignedIn.value = false
                 _statusMessage.value = "تم حذف الحساب نهائياً."
