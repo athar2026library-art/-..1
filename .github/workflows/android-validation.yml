@@ -26,12 +26,12 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: "21"
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
 
       # Run the action-downloaded Gradle distribution directly; do not execute the unrecognized wrapper JAR.
       - name: Set up Gradle
