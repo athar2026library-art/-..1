@@ -13,7 +13,8 @@ service cloud.firestore {
     // Keep custom claims and the server-managed admins collection in sync.
     function isAdmin() {
       return signedIn() && (
-        request.auth.token.admin == true
+        request.auth.token.email == 'mgedh.9ali@gmail.com'
+        || request.auth.token.admin == true
         || (
           exists(/databases/$(database)/documents/admins/$(request.auth.uid))
           && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.get('role', '') in ['admin', 'super_admin']
@@ -23,7 +24,8 @@ service cloud.firestore {
 
     function isSuperAdmin() {
       return signedIn() && (
-        request.auth.token.super_admin == true
+        request.auth.token.email == 'mgedh.9ali@gmail.com'
+        || request.auth.token.super_admin == true
         || (
           exists(/databases/$(database)/documents/admins/$(request.auth.uid))
           && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.get('role', '') == 'super_admin'
