@@ -36,12 +36,35 @@ async function sendToTokens(tokens, message) {
 
 async function getBroadcastTokens(audience = "all") {
   const db = getFirestore();
-  let usersQuery = db.collection("users").where("notificationsEnabled", "==", true);
-  if (audience !== "all") {
-    usersQuery = usersQuery.where("notificationAudience", "==", audience);
+  const tokens = [];
+  let cursor = null;
+  let scannedUsers = 0;
+  const maxUsers = 50000;
+
+  while (scannedUsers < maxUsers) {
+    let usersQuery = db.collection("users")
+      .where("notificationsEnabled", "==", true)
+      .orderBy("__name__")
+      .limit(500);
+    if (audience !== "all") {
+      usersQuery = usersQuery.where("notificationAudience", "==", audience);
+    }
+    if (cursor) usersQuery = usersQuery.startAfter(cursor);
+    const page = await usersQuery.get();
+    if (page.empty) break;
+
+    for (const user of page.docs) {
+      const userTokens = user.data().fcmTokens;
+      if (Array.isArray(userTokens)) {
+        tokens.push(...userTokens.filter((token) => typeof token === "string" && token.length > 0));
+      }
+    }
+    scannedUsers += page.size;
+    cursor = page.docs[page.docs.length - 1];
+    if (page.size < 500) break;
   }
-  const users = await usersQuery.get();
-  return users.docs.flatMap((user) => user.data().fcmTokens || []);
+
+  return uniqueTokens(tokens);
 }
 
 async function enforceRateLimit(uid, { perMinute = 3, perDay = 30 } = {}) {
@@ -168,7 +191,11 @@ exports.deleteAccount = onCall(
     const uid = req.auth.uid;
     const db = getFirestore();
 
-    // 1) Feedback (+ timeline subcollections) before Auth delete
+    // Delete Storage first. If this fails, preserve Firestore data and the Auth account.
+    // Every step can be retried while the Auth account still exists.
+    await getStorage().bucket().deleteFiles({ prefix: `feedback/${uid}/` });
+
+    // 1) Feedback and its timeline subcollections
     const fb = await db.collection("feedback").where("userId", "==", uid).get();
     for (const d of fb.docs) {
       await db.recursiveDelete(d.ref);
@@ -177,17 +204,11 @@ exports.deleteAccount = onCall(
     // 2) User tree
     await db.recursiveDelete(db.collection("users").doc(uid));
 
-    // 3) Ancillary docs
-    await db.collection("rateLimits").doc(uid).delete().catch(() => {});
-    await db.collection("admins").doc(uid).delete().catch(() => {});
+    // 3) Ancillary server-managed documents; deleting missing docs is safe.
+    await db.collection("rateLimits").doc(uid).delete();
+    await db.collection("admins").doc(uid).delete();
 
-    // 4) Storage attachments
-    await getStorage()
-      .bucket()
-      .deleteFiles({ prefix: `feedback/${uid}/` })
-      .catch(() => {});
-
-    // 5) Auth last so retries remain possible if earlier steps fail
+    // 4) Auth last. Any earlier failure leaves the account available for retry.
     await getAuth().deleteUser(uid);
     return { ok: true };
   },
@@ -268,7 +289,7 @@ exports.processAdminJob = onDocumentCreated(
         completedAt: FieldValue.serverTimestamp(),
       });
     } catch (error) {
-      console.error("admin_jobs processing failed", event.params.jobId);
+      console.error("admin_jobs processing failed", event.params.jobId, error);
       await snapshot.ref.update({
         status: "failed",
         error: error.message || "Unknown error",

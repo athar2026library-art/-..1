@@ -22,7 +22,6 @@ import com.google.firebase.functions.FirebaseFunctions
 import com.google.firebase.functions.FirebaseFunctionsException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -173,49 +172,27 @@ class AppViewModel(
         .map { list -> list.count { it.replyUnread } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
-    private var pendingTasbeeh = 0
-    private var flushJob: Job? = null
-
     init {
         viewModelScope.launch {
             progressRepository.initTodayProgress()
         }
     }
 
+    // Persist each tap to Room immediately; this avoids losing a debounced batch
+    // when the ViewModel is cleared or the process dies.
     fun addTasbeeh(count: Int = 1) {
-        pendingTasbeeh += count
-        flushJob?.cancel()
-        flushJob = viewModelScope.launch {
-            delay(800)
-            flushTasbeeh()
-        }
+        if (count <= 0) return
+        viewModelScope.launch { progressRepository.addTasbeeh(count) }
     }
 
-    private suspend fun flushTasbeeh() {
-        val toWrite = pendingTasbeeh
-        pendingTasbeeh = 0
-        if (toWrite > 0) {
-            progressRepository.addTasbeeh(toWrite)
-        }
-        flushJob = null
-    }
-
-    fun flushPendingTasbeeh() {
-        viewModelScope.launch { flushTasbeeh() }
-    }
-
-    override fun onCleared() {
-        flushPendingTasbeeh()
-        super.onCleared()
-    }
+    // Kept for existing screen callers; writes are already persisted by addTasbeeh.
+    fun flushPendingTasbeeh() = Unit
 
     fun completeSabah() {
-        flushPendingTasbeeh()
         viewModelScope.launch { progressRepository.completeSabah() }
     }
 
     fun completeMasaa() {
-        flushPendingTasbeeh()
         viewModelScope.launch { progressRepository.completeMasaa() }
     }
 
@@ -401,7 +378,7 @@ class AppViewModel(
                     .call()
                     .await()
                 progressRepository.clearLocalProgress()
-                progressRepository.initTodayProgress()
+                settingsRepository.clearAll()
                 authRepository.signOut()
                 _userSignedIn.value = false
                 _statusMessage.value = "تم حذف الحساب نهائياً."
