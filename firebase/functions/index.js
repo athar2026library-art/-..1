@@ -191,7 +191,11 @@ exports.deleteAccount = onCall(
     const uid = req.auth.uid;
     const db = getFirestore();
 
-    // 1) Feedback (+ timeline subcollections) before Auth delete
+    // Delete Storage first. If this fails, preserve Firestore data and the Auth account.
+    // Every step can be retried while the Auth account still exists.
+    await getStorage().bucket().deleteFiles({ prefix: `feedback/${uid}/` });
+
+    // 1) Feedback and its timeline subcollections
     const fb = await db.collection("feedback").where("userId", "==", uid).get();
     for (const d of fb.docs) {
       await db.recursiveDelete(d.ref);
@@ -200,17 +204,11 @@ exports.deleteAccount = onCall(
     // 2) User tree
     await db.recursiveDelete(db.collection("users").doc(uid));
 
-    // 3) Ancillary docs
-    await db.collection("rateLimits").doc(uid).delete().catch(() => {});
-    await db.collection("admins").doc(uid).delete().catch(() => {});
+    // 3) Ancillary server-managed documents; deleting missing docs is safe.
+    await db.collection("rateLimits").doc(uid).delete();
+    await db.collection("admins").doc(uid).delete();
 
-    // 4) Storage attachments
-    await getStorage()
-      .bucket()
-      .deleteFiles({ prefix: `feedback/${uid}/` })
-      .catch(() => {});
-
-    // 5) Auth last so retries remain possible if earlier steps fail
+    // 4) Auth last. Any earlier failure leaves the account available for retry.
     await getAuth().deleteUser(uid);
     return { ok: true };
   },
