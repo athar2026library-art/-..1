@@ -36,12 +36,35 @@ async function sendToTokens(tokens, message) {
 
 async function getBroadcastTokens(audience = "all") {
   const db = getFirestore();
-  let usersQuery = db.collection("users").where("notificationsEnabled", "==", true);
-  if (audience !== "all") {
-    usersQuery = usersQuery.where("notificationAudience", "==", audience);
+  const tokens = [];
+  let cursor = null;
+  let scannedUsers = 0;
+  const maxUsers = 50000;
+
+  while (scannedUsers < maxUsers) {
+    let usersQuery = db.collection("users")
+      .where("notificationsEnabled", "==", true)
+      .orderBy("__name__")
+      .limit(500);
+    if (audience !== "all") {
+      usersQuery = usersQuery.where("notificationAudience", "==", audience);
+    }
+    if (cursor) usersQuery = usersQuery.startAfter(cursor);
+    const page = await usersQuery.get();
+    if (page.empty) break;
+
+    for (const user of page.docs) {
+      const userTokens = user.data().fcmTokens;
+      if (Array.isArray(userTokens)) {
+        tokens.push(...userTokens.filter((token) => typeof token === "string" && token.length > 0));
+      }
+    }
+    scannedUsers += page.size;
+    cursor = page.docs[page.docs.length - 1];
+    if (page.size < 500) break;
   }
-  const users = await usersQuery.get();
-  return users.docs.flatMap((user) => user.data().fcmTokens || []);
+
+  return uniqueTokens(tokens);
 }
 
 async function enforceRateLimit(uid, { perMinute = 3, perDay = 30 } = {}) {
@@ -268,7 +291,7 @@ exports.processAdminJob = onDocumentCreated(
         completedAt: FieldValue.serverTimestamp(),
       });
     } catch (error) {
-      console.error("admin_jobs processing failed", event.params.jobId);
+      console.error("admin_jobs processing failed", event.params.jobId, error);
       await snapshot.ref.update({
         status: "failed",
         error: error.message || "Unknown error",
