@@ -71,6 +71,9 @@ jobs:
           }
           JSON
 
+      - name: Check Android secret boundaries
+        run: bash scripts/check-android-secrets.sh
+
       - name: Check patch whitespace
         run: git diff --check
 

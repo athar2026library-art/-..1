@@ -78,6 +78,8 @@ async function seed() {
     await db.doc('content/azkar/items/draft1').set(ZEK_DRAFT);
     await db.doc('admins/staff1').set({ role: 'admin', email: 'staff@mail.test' });
     await db.doc('admins/super1').set({ role: 'super_admin' });
+    // Malformed/legacy roles must never grant admin privileges.
+    await db.doc('admins/bad-role').set({ role: 'viewer' });
     await db.doc('users/user-a').set({ fcmTokens: ['tok-a'], updatedAt: new Date() });
     await db.doc('users/user-a/progress/2026-09-26').set({
       date: '2026-09-26',
@@ -356,5 +358,10 @@ describe('admins RBAC', () => {
 
   it('زائر لا يقرأ مجموعة المشرفين', async () => {
     await assertFails(getDocs(collection(unauth(), 'admins')));
+  });
+
+  it('مستند admins بدور غير معروف لا يمنح صلاحيات المشرف', async () => {
+    await assertFails(setDoc(doc(user('bad-role'), 'content', 'azkar', 'items', 'forbidden'), ZEK_PUB));
+    await assertFails(setDoc(doc(user('bad-role'), 'admins', 'new-admin'), { role: 'admin' }));
   });
 });
