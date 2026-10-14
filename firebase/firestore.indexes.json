@@ -9,6 +9,14 @@
       ]
     },
     {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "notificationsEnabled", "order": "ASCENDING" },
+        { "fieldPath": "notificationAudience", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "feedback",
       "queryScope": "COLLECTION",
       "fields": [
