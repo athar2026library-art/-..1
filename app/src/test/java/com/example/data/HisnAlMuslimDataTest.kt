@@ -15,14 +15,17 @@ class HisnAlMuslimDataTest {
 
     @Test
     fun everyChapterHasItemsAndEveryDhikrKeepsItsReferenceField() {
+        val allIds = HisnAlMuslimData.items.map { it.id }
+        assertEquals(allIds.size, allIds.toSet().size)
         HisnAlMuslimData.chapters.forEach { chapter ->
             assertTrue(chapter.title.isNotBlank())
             assertTrue(chapter.items.isNotEmpty())
+            assertTrue(chapter.audioUrl?.startsWith("https://") == true)
             chapter.items.forEach { zekr ->
                 assertEquals(chapter.id, zekr.category)
                 assertTrue(zekr.repeatCount >= 1)
                 assertFalse(zekr.text.isBlank())
-                // Some source records omit a citation, so the source may be blank in those cases.
+                assertFalse("Missing reference for dhikr ${zekr.id}", zekr.source.isBlank())
             }
         }
     }
