@@ -1,6 +1,6 @@
 package com.example.data
 
-/** تصنيف أذكار. الأربعة الأساسية مضمّنة، والباقي يأتي من Firestore (content/categories/items). */
+/** تصنيف أذكار. التصنيفات الأساسية ومناسبات الذكر اليومية مضمّنة، والإضافات الإدارية تأتي من Firestore. */
 data class AzkarCategory(
     val id: String,
     val title: String,
