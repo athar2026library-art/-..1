@@ -148,7 +148,7 @@ private fun BaqiyatSplash() {
     LaunchedEffect(Unit) { revealed = true }
     val scale = animateFloatAsState(if (revealed) 1f else .82f, animationSpec = tween(800), label = "splashScale")
     Box(Modifier.fillMaxSize().background(Color(0xFFFBFAF3)), contentAlignment = Alignment.Center) {
-        Image(painterResource(com.example.R.drawable.logo_baqiyat), contentDescription = "شعار الباقيات", modifier = Modifier.size(148.dp).scale(scale.value))
+        Image(painterResource(com.baqiyat.azkar.R.drawable.logo_baqiyat), contentDescription = "شعار الباقيات", modifier = Modifier.size(148.dp).scale(scale.value))
     }
 }
 
@@ -156,9 +156,9 @@ private fun BaqiyatSplash() {
 private fun BaqiyatOnboarding(onDone: () -> Unit) {
     var page by remember { mutableStateOf(0) }
     val pages = listOf(
-        Triple("وردك اليومي بين يديك", "ابدأ بأذكار الصباح والمساء بواجهة هادئة تساعدك على الاستمرار.", com.example.R.drawable.logo_baqiyat),
-        Triple("اقرأ بتركيز وراحة", "خصّص حجم الخط، فعّل الوضع الليلي، وتابع آخر موضع وصلت إليه.", com.example.R.drawable.logo_baqiyat),
-        Triple("ابقَ على تواصل", "أرسل اقتراحاتك وشكاواك، وتابع ردود فريق الباقيات وإشعارات التحديثات.", com.example.R.drawable.logo_baqiyat)
+        Triple("وردك اليومي بين يديك", "ابدأ بأذكار الصباح والمساء بواجهة هادئة تساعدك على الاستمرار.", com.baqiyat.azkar.R.drawable.logo_baqiyat),
+        Triple("اقرأ بتركيز وراحة", "خصّص حجم الخط، فعّل الوضع الليلي، وتابع آخر موضع وصلت إليه.", com.baqiyat.azkar.R.drawable.logo_baqiyat),
+        Triple("ابقَ على تواصل", "أرسل اقتراحاتك وشكاواك، وتابع ردود فريق الباقيات وإشعارات التحديثات.", com.baqiyat.azkar.R.drawable.logo_baqiyat)
     )
     val current = pages[page]
     Column(Modifier.fillMaxSize().padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally) {

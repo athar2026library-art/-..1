@@ -1,0 +1,33 @@
+name: Fix R imports on branch
+on:
+  workflow_dispatch:
+  push:
+    branches: [fix/namespace-fcm-delete]
+    paths:
+      - 'scripts/fix-r-imports.sh'
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/namespace-fcm-delete
+          fetch-depth: 0
+      - name: Apply R import fix
+        run: |
+          git fetch origin main
+          chmod +x scripts/fix-r-imports.sh
+          bash scripts/fix-r-imports.sh
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --staged --quiet; then
+            echo "No changes"
+          else
+            git commit -m "fix: restore sources and align R with namespace com.baqiyat.azkar"
+            git push origin HEAD:fix/namespace-fcm-delete
+          fi

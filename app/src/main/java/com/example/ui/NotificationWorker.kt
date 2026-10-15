@@ -11,7 +11,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.example.MainActivity
-import com.example.R
+import com.baqiyat.azkar.R
 import com.example.data.SettingsRepository
 import com.example.data.dataStore
 import kotlinx.coroutines.flow.first
