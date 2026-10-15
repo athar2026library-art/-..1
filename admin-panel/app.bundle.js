@@ -1,50 +1,7 @@
-/* لوحة الباقيات — Google Auth + Firestore RBAC. لا كلمة مرور ثابتة. */
+/* Minimal core + Firebase init. UI buttons and category save handled by app.overrides.js */
 (function () {
   const $ = (s) => document.querySelector(s);
   const $$ = (s) => document.querySelectorAll(s);
-
-  const CATEGORY_LABEL = {
-    sabah: "الصباح",
-    masaa: "المساء",
-    sleep: "النوم",
-    travel: "السفر",
-    worry: "الهم والقلق",
-    rizq: "الرزق",
-    illness: "المرض والشفاء",
-    waking: "الاستيقاظ",
-  };
-
-  const BUILTIN_CATEGORIES = [
-    { id: "sabah", icon: "sun", name: "أذكار الصباح", title: "أذكار الصباح", desc: "ورد الصباح", subtitle: "ورد الصباح", builtin: true },
-    { id: "masaa", icon: "moon", name: "أذكار المساء", title: "أذكار المساء", desc: "ورد المساء", subtitle: "ورد المساء", builtin: true },
-    { id: "sleep", icon: "bed", name: "أذكار النوم", title: "أذكار النوم", desc: "طمأنينة قبل النوم", subtitle: "طمأنينة قبل النوم", builtin: true },
-    { id: "travel", icon: "car", name: "أذكار السفر", title: "أذكار السفر", desc: "حفظ وأمان", subtitle: "حفظ وأمان", builtin: true },
-  ];
-
-  let db = null;
-  let auth = null;
-  let currentUser = null;
-  let adminRole = "";
-  let azkar = [];
-  let categories = [...BUILTIN_CATEGORIES];
-  let feedbackItems = [];
-  let selectedFeedbackId = null;
-  let editingId = null;
-  let editingCategoryId = null;
-  let lastNotifyAt = 0;
-  let unsubAzkar = null;
-  let unsubFeedback = null;
-  let unsubCategories = null;
-
-  function escapeHtml(value) {
-    return String(value ?? "")
-      .replace(/&/g, "&")
-      .replace(/</g, "<")
-      .replace(/>/g, ">")
-      .replace(/"/g, """)
-      .replace(/'/g, "&#39;");
-  }
-
   function toast(msg) {
     const el = $("#toast");
     if (!el) return;
@@ -52,30 +9,73 @@
     el.classList.add("show");
     setTimeout(() => el.classList.remove("show"), 2400);
   }
+  window.__adminToast = toast;
 
-  function go(view) {
-    $$(".view").forEach((x) => x.classList.remove("active-view"));
-    $("#" + view)?.classList.add("active-view");
-    $$(".nav-item").forEach((x) => x.classList.toggle("active", x.dataset.view === view));
-    const titles = {
-      overview: "نظرة عامة",
-      azkar: "مكتبة الأذكار",
-      feedback: "صندوق الرسائل",
-      notify: "إشعار عام",
-      categories: "التصنيفات",
-      settings: "إعدادات وأمان",
-    };
-    if ($("#page-title")) $("#page-title").textContent = titles[view] || "لوحة التحكم";
+  const initializeAdminPanel = async () => {
+    if (window.firebaseHostingConfigPromise) {
+      await window.firebaseHostingConfigPromise.catch(() => null);
+    }
+    const cfg = window.firebaseConfig || window.AZKAR_FIREBASE_CONFIG;
+    if (!window.firebase || !cfg) {
+      console.error("Firebase not loaded");
+      const msg = document.querySelector("#auth-message");
+      if (msg) msg.textContent = "تعذر تحميل إعداد Firebase.";
+      return;
+    }
+    if (!firebase.apps.length) {
+      firebase.initializeApp(cfg);
+    }
+    const db = firebase.firestore();
+    const auth = firebase.auth();
+    window.__adminDb = db;
+    window.__adminAuth = auth;
+
+    auth.onAuthStateChanged(async (user) => {
+      const gate = $("#auth-gate");
+      const shell = $("#shell");
+      if (!user) {
+        gate?.classList.remove("hidden");
+        if (gate) gate.style.display = "grid";
+        shell?.classList.remove("ready");
+        return;
+      }
+      try {
+        const token = await user.getIdTokenResult(true);
+        let ok = token.claims.super_admin === true || token.claims.admin === true;
+        if (!ok) {
+          const snap = await db.collection("admins").doc(user.uid).get();
+          ok = snap.exists;
+        }
+        if (!ok) {
+          toast("ليس لديك صلاحية مشرف");
+          await auth.signOut();
+          return;
+        }
+        gate?.classList.add("hidden");
+        if (gate) gate.style.display = "none";
+        shell?.classList.add("ready");
+        if ($("#admin-email")) $("#admin-email").textContent = user.email || user.uid;
+      } catch (e) {
+        toast(e.message || "خطأ في التحقق");
+      }
+    });
+
+    $("#google-login-btn")?.addEventListener("click", async () => {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      try {
+        await auth.signInWithPopup(provider);
+      } catch (e) {
+        if ((e.code || "").includes("popup")) {
+          try { await auth.signInWithRedirect(provider); } catch (re) { toast(re.message); }
+        } else toast(e.message || "فشل الدخول");
+      }
+    });
+    $("#logout-btn")?.addEventListener("click", () => auth.signOut());
+  };
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initializeAdminPanel, { once: true });
+  } else {
+    initializeAdminPanel();
   }
-
-  function itemsCol() {
-    return db.collection("content").doc("azkar").collection("items");
-  }
-
-  function categoriesCol() {
-    return db.collection("content").doc("categories").collection("items");
-  }
-
-  // ... REST OF FILE IS IN LOCAL - use push_files for full
-  console.error("BUNDLE INCOMPLETE - re-push required");
 })();
