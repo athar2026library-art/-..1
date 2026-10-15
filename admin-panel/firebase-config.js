@@ -1,5 +1,4 @@
-// Static fallback for the Manus-hosted admin panel.
-// Firebase Hosting auto-config below can override this when available.
+// Static Firebase config for GitHub Pages / any non-Hosting domain.
 window.AZKAR_FIREBASE_CONFIG = {
   apiKey: "AIzaSyBQPLa_e9xWL3-MABjtUPR5xGk75Ig_sF0",
   authDomain: "svrpmtt.firebaseapp.com",
@@ -21,19 +20,15 @@ window.AZKAR_FIREBASE_CONFIG = {
   apply(window.AZKAR_FIREBASE_CONFIG);
   apply(window.firebaseConfig);
 
-  // Firebase Hosting provides /__/firebase/init.json on its project domain.
-  // The static config remains available when this Manus-hosted panel is used.
-  window.firebaseHostingConfigPromise = fetch("/__/firebase/init.json", {
-    cache: "no-store",
-  })
-    .then(function (r) {
-      return r.ok ? r.json() : null;
-    })
-    .then(function (cfg) {
-      apply(cfg);
-      return cfg;
-    })
-    .catch(function () {
-      return null;
-    });
+  var host = location.hostname || "";
+  var onFirebaseHosting = /(^|\.)firebaseapp\.com$|(^|\.)web\.app$/.test(host);
+  if (!onFirebaseHosting) {
+    window.firebaseHostingConfigPromise = Promise.resolve(null);
+    return;
+  }
+
+  window.firebaseHostingConfigPromise = fetch("/__/firebase/init.json", { cache: "no-store" })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (cfg) { apply(cfg); return cfg; })
+    .catch(function () { return null; });
 })();
