@@ -6,12 +6,30 @@
 
   const ALLOWED_ICONS = ["sun","moon","bed","car","heart","book","star","home","food","rain","shield","mosque"];
   const ICON_EMOJI = {sun:"☀",moon:"☾",bed:"🛏",car:"🚗",heart:"❤",book:"📖",star:"⭐",home:"🏠",food:"🍽",rain:"🌧",shield:"🛡",mosque:"🕌"};
-  const RESERVED = ["sabah","masaa","sleep","travel","worry","rizq","illness","waking","favorites"];
+  const RESERVED = ["sabah","masaa","sleep","travel","worry","rizq","illness","waking","clothing","toilet","wudu","home","mosque","prayer","food","distress","weather","anger","fasting","gathering","children","pain","favorites"];
   const BUILTIN = [
-    {id:"sabah",icon:"sun",title:"أذكار الصباح",subtitle:"ورد الصباح",builtin:true},
-    {id:"masaa",icon:"moon",title:"أذكار المساء",subtitle:"ورد المساء",builtin:true},
-    {id:"sleep",icon:"bed",title:"أذكار النوم",subtitle:"طمأنينة قبل النوم",builtin:true},
-    {id:"travel",icon:"car",title:"أذكار السفر",subtitle:"حفظ وأمان",builtin:true}
+    {id:"sabah",icon:"sun",title:"أذكار الصباح",subtitle:"ورد الصباح",order:0,builtin:true},
+    {id:"masaa",icon:"moon",title:"أذكار المساء",subtitle:"ورد المساء",order:1,builtin:true},
+    {id:"sleep",icon:"bed",title:"أذكار النوم",subtitle:"طمأنينة قبل النوم",order:2,builtin:true},
+    {id:"travel",icon:"car",title:"أذكار السفر",subtitle:"حفظ وأمان",order:3,builtin:true},
+    {id:"worry",icon:"heart",title:"الهم والقلق",subtitle:"أذكار عند الضيق والخوف",order:4,builtin:true},
+    {id:"rizq",icon:"food",title:"الرزق",subtitle:"دعاء بسعة الخير",order:5,builtin:true},
+    {id:"illness",icon:"heart",title:"المرض والشفاء",subtitle:"دعاء للمريض",order:6,builtin:true},
+    {id:"waking",icon:"sun",title:"الاستيقاظ",subtitle:"ذكر بداية اليوم",order:7,builtin:true},
+    {id:"clothing",icon:"book",title:"الملابس",subtitle:"أذكار اللباس",order:8,builtin:true},
+    {id:"toilet",icon:"home",title:"دخول الخلاء والخروج منه",subtitle:"أذكار قضاء الحاجة",order:9,builtin:true},
+    {id:"wudu",icon:"shield",title:"الوضوء",subtitle:"الذكر بعد الوضوء",order:10,builtin:true},
+    {id:"home",icon:"home",title:"المنزل",subtitle:"الذكر عند الدخول والخروج",order:11,builtin:true},
+    {id:"mosque",icon:"mosque",title:"المسجد",subtitle:"أذكار الدخول والخروج",order:12,builtin:true},
+    {id:"prayer",icon:"book",title:"بعد الصلاة",subtitle:"أذكار ما بعد السلام",order:13,builtin:true},
+    {id:"food",icon:"food",title:"الطعام والشراب",subtitle:"الذكر قبل الطعام وبعده",order:14,builtin:true},
+    {id:"distress",icon:"heart",title:"الكرب والشدة",subtitle:"أدعية عند الكرب",order:15,builtin:true},
+    {id:"weather",icon:"rain",title:"المطر",subtitle:"أدعية المطر",order:16,builtin:true},
+    {id:"anger",icon:"heart",title:"الغضب",subtitle:"ما يقال عند الغضب",order:17,builtin:true},
+    {id:"fasting",icon:"moon",title:"الصيام والإفطار",subtitle:"ذكر الإفطار",order:18,builtin:true},
+    {id:"gathering",icon:"star",title:"المجالس والآداب",subtitle:"كفارة المجلس",order:19,builtin:true},
+    {id:"children",icon:"shield",title:"تحصين الأولاد",subtitle:"دعاء التعويذ",order:20,builtin:true},
+    {id:"pain",icon:"heart",title:"الألم والوجع",subtitle:"دعاء عند ألم الجسد",order:21,builtin:true}
   ];
 
   let db=null, auth=null, azkar=[], categories=[...BUILTIN], feedbackItems=[];
@@ -81,6 +99,8 @@
     BUILTIN.forEach(c=>map.set(c.id,{...c,name:c.title,desc:c.subtitle}));
     (remote||[]).forEach(c=>{
       if(!c||!c.id) return;
+      // التصنيفات المدمجة مصدرها نسخة التطبيق؛ لا تستبدلها وثائق Firestore.
+      if(BUILTIN.some(b=>b.id===c.id)) return;
       const title=c.title||c.name||c.id;
       const subtitle=c.subtitle||c.desc||"";
       map.set(c.id,{
@@ -98,21 +118,31 @@
     if(!categories.length){ grid.innerHTML='<p class="empty-hint">لا تصنيفات بعد.</p>'; return; }
     grid.innerHTML=categories.map(c=>{
       const count=azkar.filter(z=>z.category===c.id).length;
-      const badge=c.builtin?'<span class="pill">مدمج</span>':'<span class="pill status-published">ديناميكي</span>';
+      const badge=c.builtin?'<span class="pill">مدمج في التطبيق</span>':'<span class="pill status-published">ديناميكي</span>';
       const ic=ICON_EMOJI[c.icon]||c.icon||"⭐";
       return `<article class="category-card" data-cat-id="${escapeHtml(c.id)}" tabindex="0">
         <div class="symbol" aria-hidden="true">${escapeHtml(ic)}</div>
         <h3>${escapeHtml(c.title||c.name)}</h3>
         <p>${escapeHtml(c.subtitle||c.desc||"")}</p>
-        <p style="margin-top:12px;color:var(--green)">${count} أذكار · ${badge}</p>
+        <p style="margin-top:12px;color:var(--green)">${count} سجلات في Firestore · ${badge}</p>
         <div class="modal-actions" style="margin-top:12px">
-          <button type="button" class="icon-btn" data-edit-cat="${escapeHtml(c.id)}">تعديل</button>
-          ${c.builtin?"":`<button type="button" class="icon-btn" data-del-cat="${escapeHtml(c.id)}">حذف</button>`}
+          ${c.builtin
+            ? `<button type="button" class="icon-btn" data-open-category="${escapeHtml(c.id)}">عرض القسم في المكتبة</button>`
+            : `<button type="button" class="icon-btn" data-edit-cat="${escapeHtml(c.id)}">تعديل</button>
+               <button type="button" class="icon-btn" data-del-cat="${escapeHtml(c.id)}">حذف</button>`}
         </div>
       </article>`;
     }).join("");
-    $$("[data-edit-cat]",grid).forEach(b=>b.addEventListener("click",()=>openCategoryEditor(b.dataset.editCat)));
-    $$("[data-del-cat]",grid).forEach(b=>b.addEventListener("click",()=>deleteCategory(b.dataset.delCat)));
+    $("[data-edit-cat]",grid).forEach(b=>b.addEventListener("click",()=>openCategoryEditor(b.dataset.editCat)));
+    $("[data-del-cat]",grid).forEach(b=>b.addEventListener("click",()=>deleteCategory(b.dataset.delCat)));
+    $("[data-open-category]",grid).forEach(b=>b.addEventListener("click",()=>{
+      const category=b.dataset.openCategory;
+      go("azkar");
+      const filter=$("#filter");
+      if(filter){ filter.value=category; renderTable(); }
+      const field=$("#field-category");
+      if(field) field.value=category;
+    }));
     const sel=$("#field-category");
     if(sel){
       const cur=sel.value;
@@ -221,7 +251,9 @@
     const z=id?azkar.find(x=>x.id===id):null;
     if($("#modal-title")) $("#modal-title").textContent=z?"تعديل ذكر":"إضافة ذكر";
     if($("#field-text")) $("#field-text").value=z?.text||"";
-    if($("#field-category")) $("#field-category").value=z?.category||"sabah";
+    const selectedFilter=$("#filter")?.value;
+    const defaultCategory=selectedFilter&&selectedFilter!=="all"&&categories.some(item=>item.id===selectedFilter)?selectedFilter:"sabah";
+    if($("#field-category")) $("#field-category").value=z?.category||defaultCategory;
     if($("#field-repeat")) $("#field-repeat").value=z?.repeat||1;
     if($("#field-fadl")) $("#field-fadl").value=z?.fadl||"";
     if($("#field-source")) $("#field-source").value=z?.source||"";

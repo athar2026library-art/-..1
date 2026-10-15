@@ -87,21 +87,14 @@
             <p class="eyebrow">المحتوى</p>
             <h2>مكتبة الأذكار</h2>
             <p>اسحب الصفوف لإعادة الترتيب. التعديلات تُحفظ في Firestore.</p>
+            <p class="empty-hint">تنبيه: الأذكار المضمنة داخل التطبيق لا تُدار من هذه اللوحة. إذا نشرت ذكرًا عبر Firestore في قسم مدمج، فسيعرض التطبيق الأذكار المنشورة لذلك القسم بدل قائمته المضمنة؛ للحفاظ على القائمة كاملة، انشر جميع عناصر القسم معًا.</p>
           </div>
           <button class="primary" id="add-zekr" data-action="add-zekr">＋ ذكر جديد</button>
         </div>
         <div class="toolbar">
           <input id="search" type="search" placeholder="ابحث في الأذكار..." />
           <select id="filter">
-            <option value="all">كل التصنيفات</option>
-            <option value="sabah">الصباح</option>
-            <option value="masaa">المساء</option>
-            <option value="sleep">النوم</option>
-            <option value="travel">السفر</option>
-            <option value="worry">الهم والقلق</option>
-            <option value="rizq">الرزق</option>
-            <option value="illness">المرض والشفاء</option>
-            <option value="waking">الاستيقاظ</option>
+            <option value="all">كل التصنيفات</option><option value="sabah">الصباح</option><option value="masaa">المساء</option><option value="sleep">النوم</option><option value="travel">السفر</option><option value="worry">الهم والقلق</option><option value="rizq">الرزق</option><option value="illness">المرض والشفاء</option><option value="waking">الاستيقاظ</option><option value="clothing">الملابس</option><option value="toilet">دخول الخلاء والخروج منه</option><option value="wudu">الوضوء</option><option value="home">المنزل</option><option value="mosque">المسجد</option><option value="prayer">بعد الصلاة</option><option value="food">الطعام والشراب</option><option value="distress">الكرب والشدة</option><option value="weather">المطر</option><option value="anger">الغضب</option><option value="fasting">الصيام والإفطار</option><option value="gathering">المجالس والآداب</option><option value="children">تحصين الأولاد</option><option value="pain">الألم والوجع</option>
           </select>
           <select id="status-filter">
             <option value="all">كل الحالات</option>
@@ -166,7 +159,7 @@
           <div>
             <p class="eyebrow">تنظيم المحتوى</p>
             <h2>التصنيفات</h2>
-            <p>الأربعة الأساسية ثابتة، وما تضيفه هنا يظهر في التطبيق مباشرة دون إصدار جديد.</p>
+            <p>الأقسام المدمجة معرفة داخل التطبيق، والتصنيفات الإضافية التي تضيفها هنا تظهر للمستخدمين بعد نشرها في Firestore.</p>
           </div>
           <button class="primary" id="add-category">＋ تصنيف جديد</button>
         </div>
@@ -208,14 +201,7 @@
       <div class="form-grid">
         <label>التصنيف
           <select id="field-category">
-            <option value="sabah">الصباح</option>
-            <option value="masaa">المساء</option>
-            <option value="sleep">النوم</option>
-            <option value="travel">السفر</option>
-            <option value="worry">الهم والقلق</option>
-            <option value="rizq">الرزق</option>
-            <option value="illness">المرض والشفاء</option>
-            <option value="waking">الاستيقاظ</option>
+            <option value="sabah">الصباح</option><option value="masaa">المساء</option><option value="sleep">النوم</option><option value="travel">السفر</option><option value="worry">الهم والقلق</option><option value="rizq">الرزق</option><option value="illness">المرض والشفاء</option><option value="waking">الاستيقاظ</option><option value="clothing">الملابس</option><option value="toilet">دخول الخلاء والخروج منه</option><option value="wudu">الوضوء</option><option value="home">المنزل</option><option value="mosque">المسجد</option><option value="prayer">بعد الصلاة</option><option value="food">الطعام والشراب</option><option value="distress">الكرب والشدة</option><option value="weather">المطر</option><option value="anger">الغضب</option><option value="fasting">الصيام والإفطار</option><option value="gathering">المجالس والآداب</option><option value="children">تحصين الأولاد</option><option value="pain">الألم والوجع</option>
           </select>
         </label>
         <label>عدد التكرار<input id="field-repeat" type="number" min="1" value="1" /></label>
