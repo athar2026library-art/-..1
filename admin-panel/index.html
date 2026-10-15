@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex,nofollow" />
   <title>لوحة تحكم الباقيات — المشرف</title>
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.gstatic.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://www.gstatic.com https://www.gstatic.com https://*.googleapis.com https://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; img-src 'self' data: https:; frame-src https://*.firebaseapp.com https://accounts.google.com; object-src 'none'; base-uri 'self';" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.gstatic.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://*.googleapis.com https://*.gstatic.com https://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://firebaseinstallations.googleapis.com https://*.cloudfunctions.net wss://*.firebaseio.com; frame-src https://accounts.google.com https://*.google.com https://*.firebaseapp.com https://*.web.app; object-src 'none'; base-uri 'self';" />
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
@@ -248,16 +248,23 @@
         <div><p class="eyebrow">تنظيم المحتوى</p><h2 id="cat-modal-title">تصنيف جديد</h2></div>
         <button class="close" id="close-cat-modal" type="button">×</button>
       </div>
-      <label>المعرّف
-        <input id="cat-field-id" placeholder="مثال: home" pattern="[a-z0-9_\-]{2,30}" dir="ltr" />
+      <label>المعرّف (إنجليزي صغير، لا يتغير لاحقاً)
+        <input id="cat-id" placeholder="مثال: home" pattern="[-a-z0-9_]{2,30}" maxlength="30" dir="ltr" required />
       </label>
-      <label>اسم التصنيف<input id="cat-field-name" maxlength="40" placeholder="أذكار المنزل" /></label>
-      <label>الأيقونة<input id="cat-field-icon" maxlength="10" value="📖" placeholder="📖" /></label>
-      <label>الوصف<input id="cat-field-desc" maxlength="80" placeholder="عند الدخول والخروج" /></label>
-      <label>الترتيب<input id="cat-field-order" type="number" value="100" /></label>
+      <label>العنوان الظاهر في التطبيق<input id="cat-title" maxlength="40" placeholder="أذكار المنزل" /></label>
+      <label>وصف قصير<input id="cat-subtitle" maxlength="80" placeholder="عند الدخول والخروج" /></label>
+      <label>الترتيب<input id="cat-order" type="number" min="0" max="9999" value="100" /></label>
+      <label>الأيقونة
+        <select id="cat-icon">
+          <option value="star">نجمة</option><option value="sun">شمس</option><option value="moon">قمر</option>
+          <option value="bed">سرير</option><option value="car">سيارة</option><option value="heart">قلب</option>
+          <option value="book">كتاب</option><option value="home">بيت</option><option value="food">طعام</option>
+          <option value="rain">مطر</option><option value="shield">حماية</option><option value="mosque">مسجد</option>
+        </select>
+      </label>
       <label class="publish-toggle">
         <span><strong>ظاهر في التطبيق</strong></span>
-        <input id="cat-field-published" type="checkbox" checked />
+        <input id="cat-published" type="checkbox" checked />
       </label>
       <div class="modal-actions">
         <button class="ghost" id="cancel-cat-modal" type="button">إلغاء</button>
@@ -286,5 +293,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
   <script src="./firebase-config.js"></script>
   <script src="./app.bundle.js"></script>
+  <script src="./app.overrides.js"></script>
 </body>
 </html>
