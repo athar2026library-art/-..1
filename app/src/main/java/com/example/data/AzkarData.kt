@@ -52,7 +52,7 @@ object AzkarData {
     )
 
     fun all(): List<Zekr> =
-        morningAzkar + eveningAzkar + sleepAzkar + travelAzkar + TopicAzkarData.items
+        morningAzkar + eveningAzkar + sleepAzkar + travelAzkar + TopicAzkarData.items + EverydayAzkarData.items
 
     fun byIds(ids: Set<Int>): List<Zekr> = all().filter { it.id in ids }
 
@@ -61,7 +61,7 @@ object AzkarData {
         "masaa" -> eveningAzkar
         "sleep" -> sleepAzkar
         "travel" -> travelAzkar
-        else -> TopicAzkarData.items.filter { it.category == category }
+        else -> (TopicAzkarData.items + EverydayAzkarData.items).filter { it.category == category }
     }
 
     /** الأذكار المضمّنة لتصنيف، أو فارغة لتصنيف ديناميكي (يأتي من الشبكة). */
@@ -77,6 +77,20 @@ object AzkarData {
         "rizq" -> "أذكار الرزق"
         "illness" -> "أذكار المرض والشفاء"
         "waking" -> "أذكار الاستيقاظ"
+        "clothing" -> "أذكار الملابس"
+        "toilet" -> "دخول الخلاء والخروج منه"
+        "wudu" -> "أذكار الوضوء"
+        "home" -> "أذكار المنزل"
+        "mosque" -> "أذكار المسجد"
+        "prayer" -> "أذكار ما بعد الصلاة"
+        "food" -> "أذكار الطعام والشراب"
+        "distress" -> "أدعية الكرب والشدة"
+        "weather" -> "أدعية المطر"
+        "anger" -> "ما يقال عند الغضب"
+        "fasting" -> "أذكار الصيام والإفطار"
+        "gathering" -> "أذكار المجالس والآداب"
+        "children" -> "دعاء تحصين الأولاد"
+        "pain" -> "دعاء الألم والوجع"
         "favorites" -> "المفضلة"
         else -> "الأذكار"
     }
@@ -107,6 +121,20 @@ object AzkarData {
             if (hasAnyTopic(q, "رزق", "الرزق", "معيشة", "عمل", "مال", "بركة", "rizq", "provision")) add("rizq")
             if (hasAnyTopic(q, "مرض", "مريض", "شفاء", "وجع", "صحة", "illness", "sick", "healing")) add("illness")
             if (hasAnyTopic(q, "استيقاظ", "استيقظ", "يقظة", "صحوت", "waking", "wake up")) add("waking")
+            if (hasAnyTopic(q, "لباس", "الملابس", "ثوب", "لبس", "clothing", "dress")) add("clothing")
+            if (hasAnyTopic(q, "الخلاء", "الحمام", "قضاء الحاجة", "toilet", "bathroom")) add("toilet")
+            if (hasAnyTopic(q, "الوضوء", "وضوء", "wudu")) add("wudu")
+            if (hasAnyTopic(q, "المنزل", "البيت", "دخول البيت", "خروج البيت", "home")) add("home")
+            if (hasAnyTopic(q, "المسجد", "دخول المسجد", "mosque")) add("mosque")
+            if (hasAnyTopic(q, "بعد الصلاة", "ما بعد الصلاة", "التسليم", "salah", "prayer")) add("prayer")
+            if (hasAnyTopic(q, "الطعام", "الأكل", "الشراب", "food", "eating")) add("food")
+            if (hasAnyTopic(q, "الكرب", "الشدة", "ضيق", "كرب", "distress")) add("distress")
+            if (hasAnyTopic(q, "المطر", "نزول المطر", "الاستسقاء", "rain", "weather")) add("weather")
+            if (hasAnyTopic(q, "الغضب", "غضبان", "anger", "angry")) add("anger")
+            if (hasAnyTopic(q, "الصيام", "الإفطار", "صائم", "fasting", "iftar")) add("fasting")
+            if (hasAnyTopic(q, "المجلس", "المجالس", "كفارة المجلس", "gathering")) add("gathering")
+            if (hasAnyTopic(q, "الأولاد", "الأطفال", "تحصين الطفل", "children")) add("children")
+            if (hasAnyTopic(q, "الألم", "وجع", "يؤلم", "pain")) add("pain")
         }
 
         return all().filter { zekr ->
