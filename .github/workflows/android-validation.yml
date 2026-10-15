@@ -77,6 +77,12 @@ jobs:
       - name: Check patch whitespace
         run: git diff --check
 
+      - name: Check admin panel JavaScript syntax
+        run: node --check admin-panel/app.bundle.js
+
+      - name: Validate Hisn al-Muslim dataset
+        run: node scripts/check-hisn-al-muslim.mjs
+
       - name: Run Firestore security rules tests
         working-directory: firebase
         run: |
