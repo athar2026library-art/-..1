@@ -19,19 +19,74 @@ const SYSTEM_INSTRUCTION =
   "قدم إجاباتك بأسلوب ميسر، مختصر جداً، وهادئ. لا تفتِ ولا تصدر أحكاماً شرعية من عندك. " +
   "في نهاية كل إجابة أضف سطراً: (إجابة آلية، ليست فتوى).";
 
+/** Codes that mean the device token is permanently unusable. */
+const INVALID_FCM_CODES = new Set([
+  "messaging/invalid-registration-token",
+  "messaging/registration-token-not-registered",
+  "messaging/invalid-argument",
+]);
+
+/**
+ * Send FCM multicast and prune permanently invalid tokens from user docs.
+ * Returns { successCount, failureCount, pruned }.
+ */
 async function sendToTokens(tokens, message) {
   const unique = uniqueTokens(tokens);
   let successCount = 0;
   let failureCount = 0;
+  const invalidTokens = new Set();
+
   for (let index = 0; index < unique.length; index += 500) {
+    const batch = unique.slice(index, index + 500);
     const result = await getMessaging().sendEachForMulticast({
-      tokens: unique.slice(index, index + 500),
+      tokens: batch,
       ...message,
     });
     successCount += result.successCount;
     failureCount += result.failureCount;
+    result.responses.forEach((resp, i) => {
+      if (!resp.success && resp.error && INVALID_FCM_CODES.has(resp.error.code)) {
+        invalidTokens.add(batch[i]);
+      }
+    });
   }
-  return { successCount, failureCount };
+
+  let pruned = 0;
+  if (invalidTokens.size > 0) {
+    pruned = await pruneInvalidTokens([...invalidTokens]);
+  }
+  return { successCount, failureCount, pruned };
+}
+
+/** Remove invalid FCM tokens from users who still list them. */
+async function pruneInvalidTokens(invalidList) {
+  if (!invalidList.length) return 0;
+  const db = getFirestore();
+  const invalid = new Set(invalidList);
+  let removed = 0;
+  let cursor = null;
+  for (let pageNum = 0; pageNum < 100; pageNum++) {
+    let q = db.collection("users").where("notificationsEnabled", "==", true).orderBy("__name__").limit(300);
+    if (cursor) q = q.startAfter(cursor);
+    const page = await q.get();
+    if (page.empty) break;
+    const batch = db.batch();
+    let ops = 0;
+    for (const doc of page.docs) {
+      const data = doc.data() || {};
+      const tokens = Array.isArray(data.fcmTokens) ? data.fcmTokens : [];
+      const next = tokens.filter((t) => typeof t === "string" && !invalid.has(t));
+      if (next.length !== tokens.length) {
+        batch.update(doc.ref, { fcmTokens: next, fcmTokensUpdatedAt: FieldValue.serverTimestamp() });
+        removed += tokens.length - next.length;
+        ops += 1;
+      }
+    }
+    if (ops > 0) await batch.commit();
+    cursor = page.docs[page.docs.length - 1];
+    if (page.size < 300) break;
+  }
+  return removed;
 }
 
 async function getBroadcastTokens(audience = "all") {
@@ -79,106 +134,54 @@ async function enforceRateLimit(uid, { perMinute = 3, perDay = 30 } = {}) {
     const data = snap.exists ? snap.data() : {};
     let minuteCount = data.minuteKey === minuteKey ? data.minuteCount || 0 : 0;
     let dayCount = data.dayKey === dayKey ? data.dayCount || 0 : 0;
-    if (minuteCount >= perMinute || dayCount >= perDay) {
-      throw new HttpsError("resource-exhausted", "وصلت لحد الاستخدام. حاول بعد قليل.");
+    if (minuteCount >= perMinute) {
+      throw new HttpsError("resource-exhausted", "تم تجاوز حد الاستخدام لهذه الدقيقة. حاول بعد قليل.");
     }
-    tx.set(
-      ref,
-      {
-        minuteKey,
-        minuteCount: minuteCount + 1,
-        dayKey,
-        dayCount: dayCount + 1,
-        updatedAt: FieldValue.serverTimestamp(),
-      },
-      { merge: true },
-    );
-  });
-}
-
-/** Refund one unit if Gemini call failed after consuming quota. */
-async function refundRateLimit(uid) {
-  const db = getFirestore();
-  const ref = db.collection("rateLimits").doc(uid);
-  const now = Date.now();
-  const minuteKey = Math.floor(now / 60000);
-  const dayKey = Math.floor(now / 86400000);
-  await db.runTransaction(async (tx) => {
-    const snap = await tx.get(ref);
-    if (!snap.exists) return;
-    const data = snap.data() || {};
-    const minuteCount =
-      data.minuteKey === minuteKey ? Math.max(0, (data.minuteCount || 0) - 1) : data.minuteCount || 0;
-    const dayCount =
-      data.dayKey === dayKey ? Math.max(0, (data.dayCount || 0) - 1) : data.dayCount || 0;
-    tx.set(ref, { minuteCount, dayCount, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+    if (dayCount >= perDay) {
+      throw new HttpsError("resource-exhausted", "تم تجاوز الحد اليومي للمساعد.");
+    }
+    tx.set(ref, {
+      minuteKey,
+      minuteCount: minuteCount + 1,
+      dayKey,
+      dayCount: dayCount + 1,
+      updatedAt: FieldValue.serverTimestamp(),
+    }, { merge: true });
   });
 }
 
 exports.generateGemini = onCall(
-  {
-    region: REGION,
-    enforceAppCheck: true,
-    secrets: [GEMINI_API_KEY],
-    timeoutSeconds: 30,
-    maxInstances: 10,
-  },
+  { region: REGION, secrets: [GEMINI_API_KEY], enforceAppCheck: true, timeoutSeconds: 60 },
   async (req) => {
-    if (!req.auth?.uid) {
-      throw new HttpsError("unauthenticated", "سجّل الدخول أولاً");
-    }
-
-    const { mode, text } = req.data || {};
-    if (!["explain", "suggest"].includes(mode)) {
-      throw new HttpsError("invalid-argument", "mode");
-    }
-    if (typeof text !== "string" || text.trim().length < 2 || text.length > 500) {
+    if (!req.auth?.uid) throw new HttpsError("unauthenticated", "سجّل الدخول أولاً");
+    const mode = String(req.data?.mode || "");
+    const text = String(req.data?.text || "").trim();
+    if (!mode || !text) throw new HttpsError("invalid-argument", "mode");
+    if (text.length < 2 || text.length > 2000) {
       throw new HttpsError("invalid-argument", "طول النص غير مقبول");
     }
-
-    await enforceRateLimit(req.auth.uid, { perMinute: 3, perDay: 30 });
-
-    const userPrompt = buildUserPrompt(mode, text.trim());
-
-    let response;
-    try {
-      response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
-        {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-            "x-goog-api-key": GEMINI_API_KEY.value(),
-          },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: userPrompt }] }],
-            systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
-            generationConfig: { temperature: 0.4 },
-          }),
-          signal: AbortSignal.timeout(20000),
-        },
-      );
-    } catch (_e) {
-      await refundRateLimit(req.auth.uid).catch(() => {});
-      throw new HttpsError("unavailable", "لا اتصال");
+    await enforceRateLimit(req.auth.uid);
+    const userPrompt = buildUserPrompt(mode, text);
+    const apiKey = GEMINI_API_KEY.value();
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
+    const body = {
+      systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
+      contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+      generationConfig: { temperature: 0.4, maxOutputTokens: 1024 },
+    };
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error("gemini error", res.status, errText);
+      throw new HttpsError("internal", "تعذر توليد الرد من المساعد.");
     }
-
-    if (response.status === 429) {
-      await refundRateLimit(req.auth.uid).catch(() => {});
-      throw new HttpsError("resource-exhausted", "وصلت لحد الاستخدام. حاول بعد قليل.");
-    }
-    if (!response.ok) {
-      await refundRateLimit(req.auth.uid).catch(() => {});
-      throw new HttpsError("internal", "تعذر الحصول على إجابة من المساعد.");
-    }
-
-    const payload = await response.json();
-    const out = payload.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!out) {
-      await refundRateLimit(req.auth.uid).catch(() => {});
-      throw new HttpsError("internal", "لم يتم العثور على إجابة صالحة.");
-    }
-    return { text: out, disclaimer: true };
+    const json = await res.json();
+    const reply = json?.candidates?.[0]?.content?.parts?.map((p) => p.text).join("") || "";
+    return { reply: reply.trim() };
   },
 );
 
@@ -190,27 +193,57 @@ exports.deleteAccount = onCall(
     }
     const uid = req.auth.uid;
     const db = getFirestore();
+    const steps = [];
 
-    // Delete Storage first. If this fails, preserve Firestore data and the Auth account.
-    // Every step can be retried while the Auth account still exists.
-    await getStorage().bucket().deleteFiles({ prefix: `feedback/${uid}/` });
+    try {
+      try {
+        await getStorage().bucket().deleteFiles({ prefix: `feedback/${uid}/` });
+        steps.push("storage");
+      } catch (storageErr) {
+        const code = storageErr?.code || storageErr?.errorCode || "";
+        if (code !== 404 && !String(storageErr?.message || "").includes("No such object")) {
+          console.warn("deleteAccount storage", uid, storageErr);
+        }
+        steps.push("storage_skipped");
+      }
 
-    // 1) Feedback and its timeline subcollections
-    const fb = await db.collection("feedback").where("userId", "==", uid).get();
-    for (const d of fb.docs) {
-      await db.recursiveDelete(d.ref);
+      const fb = await db.collection("feedback").where("userId", "==", uid).get();
+      for (const d of fb.docs) {
+        await db.recursiveDelete(d.ref);
+      }
+      steps.push(`feedback:${fb.size}`);
+
+      const userRef = db.collection("users").doc(uid);
+      if ((await userRef.get()).exists) {
+        await db.recursiveDelete(userRef);
+      }
+      steps.push("user");
+
+      await Promise.all([
+        db.collection("rateLimits").doc(uid).delete().catch(() => null),
+        db.collection("admins").doc(uid).delete().catch(() => null),
+      ]);
+      steps.push("ancillary");
+
+      await getAuth().deleteUser(uid);
+      steps.push("auth");
+
+      await db.collection("audit_logs").add({
+        type: "delete_account",
+        uid,
+        steps,
+        at: FieldValue.serverTimestamp(),
+      }).catch(() => null);
+
+      return { ok: true, steps };
+    } catch (err) {
+      console.error("deleteAccount failed", uid, steps, err);
+      throw new HttpsError(
+        "internal",
+        "تعذر إكمال حذف الحساب. أعد المحاولة لاحقاً.",
+        { steps, message: err?.message || String(err) },
+      );
     }
-
-    // 2) User tree
-    await db.recursiveDelete(db.collection("users").doc(uid));
-
-    // 3) Ancillary server-managed documents; deleting missing docs is safe.
-    await db.collection("rateLimits").doc(uid).delete();
-    await db.collection("admins").doc(uid).delete();
-
-    // 4) Auth last. Any earlier failure leaves the account available for retry.
-    await getAuth().deleteUser(uid);
-    return { ok: true };
   },
 );
 
@@ -236,6 +269,7 @@ exports.dispatchOwnerNotification = onDocumentCreated(
       status: "sent",
       deliveryCount: result.successCount,
       failedCount: result.failureCount,
+      prunedTokens: result.pruned || 0,
       sentAt: FieldValue.serverTimestamp(),
     });
     await getFirestore().collection("audit_logs").add({
@@ -243,6 +277,7 @@ exports.dispatchOwnerNotification = onDocumentCreated(
       notificationId: event.params.notificationId,
       recipients: result.successCount,
       failed: result.failureCount,
+      pruned: result.pruned || 0,
       at: FieldValue.serverTimestamp(),
     });
   },
@@ -256,15 +291,16 @@ exports.processAdminJob = onDocumentCreated(
     const job = snapshot.data();
     if (job.status && job.status !== "pending") return;
 
-    await snapshot.ref.update({ status: "processing", processingStartedAt: FieldValue.serverTimestamp() });
     try {
-      const payload = job.payload || {};
+      await snapshot.ref.update({ status: "processing", startedAt: FieldValue.serverTimestamp() });
+      const payload = job.payload || job;
       let tokens = [];
-      let message;
-      if (job.type === "broadcast" || job.type === "fcm_broadcast") {
+      let message = {};
+
+      if (job.type === "broadcast") {
         tokens = await getBroadcastTokens(payload.audience || "all");
         message = {
-          notification: { title: payload.title || "الباقيات", body: payload.body || "لديك تحديث جديد" },
+          notification: { title: payload.title || "تحديث من الباقيات", body: payload.body || "لديك تحديث جديد" },
           data: { type: "broadcast", jobId: event.params.jobId },
           android: { priority: "high", notification: { channelId: "owner_updates" } },
         };
@@ -286,6 +322,7 @@ exports.processAdminJob = onDocumentCreated(
         status: "completed",
         deliveryCount: result.successCount,
         failedCount: result.failureCount,
+        prunedTokens: result.pruned || 0,
         completedAt: FieldValue.serverTimestamp(),
       });
     } catch (error) {
