@@ -6,7 +6,7 @@
 
   const ALLOWED_ICONS = ["sun","moon","bed","car","heart","book","star","home","food","rain","shield","mosque"];
   const ICON_EMOJI = {sun:"☀",moon:"☾",bed:"🛏",car:"🚗",heart:"❤",book:"📖",star:"⭐",home:"🏠",food:"🍽",rain:"🌧",shield:"🛡",mosque:"🕌"};
-  const RESERVED = ["sabah","masaa","sleep","travel","worry","rizq","illness","waking","clothing","toilet","wudu","home","mosque","prayer","food","distress","weather","anger","fasting","gathering","children","pain","favorites"];
+  const RESERVED = ["sabah","masaa","sleep","travel","worry","rizq","illness","waking","clothing","toilet","wudu","home","mosque","prayer","food","distress","weather","anger","fasting","gathering","children","pain","hisn","favorites"];
   const BUILTIN = [
     {id:"sabah",icon:"sun",title:"أذكار الصباح",subtitle:"ورد الصباح",order:0,builtin:true},
     {id:"masaa",icon:"moon",title:"أذكار المساء",subtitle:"ورد المساء",order:1,builtin:true},
@@ -29,10 +29,12 @@
     {id:"fasting",icon:"moon",title:"الصيام والإفطار",subtitle:"ذكر الإفطار",order:18,builtin:true},
     {id:"gathering",icon:"star",title:"المجالس والآداب",subtitle:"كفارة المجلس",order:19,builtin:true},
     {id:"children",icon:"shield",title:"تحصين الأولاد",subtitle:"دعاء التعويذ",order:20,builtin:true},
-    {id:"pain",icon:"heart",title:"الألم والوجع",subtitle:"دعاء عند ألم الجسد",order:21,builtin:true}
+    {id:"pain",icon:"heart",title:"الألم والوجع",subtitle:"دعاء عند ألم الجسد",order:21,builtin:true},
+    {id:"hisn",icon:"book",title:"حصن المسلم",subtitle:"133 فصلًا · 302 ذكر من الكتاب والسنة",order:22,builtin:true}
   ];
 
   let db=null, auth=null, azkar=[], categories=[...BUILTIN], feedbackItems=[];
+  let hisnBook=null;
   let selectedFeedbackId=null, editingZekrId=null, editingCategoryId=null;
   let lastNotifyAt=0, unsubAzkar=null, unsubFeedback=null, unsubCategories=null, busy=false;
 
@@ -69,7 +71,7 @@
       x.classList.toggle("active",a);
       x.setAttribute("aria-current", a?"page":"false");
     });
-    const titles={overview:"نظرة عامة",azkar:"مكتبة الأذكار",feedback:"صندوق الرسائل",notify:"إشعار عام",categories:"التصنيفات",settings:"إعدادات وأمان"};
+    const titles={overview:"نظرة عامة",azkar:"مكتبة الأذكار",hisn:"حصن المسلم",feedback:"صندوق الرسائل",notify:"إشعار عام",categories:"التصنيفات",settings:"إعدادات وأمان"};
     if($("#page-title")) $("#page-title").textContent=titles[view]||"لوحة التحكم";
   }
   function openModal(sel){
@@ -113,6 +115,23 @@
     categories=Array.from(map.values()).sort((a,b)=>(a.order??0)-(b.order??0));
   }
 
+  function isBookChapterId(id){
+    return !!hisnBook?.chapters?.some(ch=>ch.id===id);
+  }
+  function categoryTitleFor(id){
+    const ordinary=categories.find(c=>c.id===id);
+    if(ordinary) return ordinary.title||ordinary.name||id;
+    const chapter=hisnBook?.chapters?.find(ch=>ch.id===id);
+    return chapter ? chapter.title : id;
+  }
+  function optionChapterMarkup(){
+    return (hisnBook?.chapters||[]).map(ch=>
+      `<option value="${escapeHtml(ch.id)}">${ch.order}. ${escapeHtml(ch.title)}</option>`
+    ).join("");
+  }
+  function hasKnownCategory(id){
+    return categories.some(c=>c.id===id)||isBookChapterId(id);
+  }
   function renderCategories(){
     const grid=$("#category-grid"); if(!grid) return;
     if(!categories.length){ grid.innerHTML='<p class="empty-hint">لا تصنيفات بعد.</p>'; return; }
@@ -137,6 +156,7 @@
     $("[data-del-cat]",grid).forEach(b=>b.addEventListener("click",()=>deleteCategory(b.dataset.delCat)));
     $("[data-open-category]",grid).forEach(b=>b.addEventListener("click",()=>{
       const category=b.dataset.openCategory;
+      if(category==="hisn"){ go("hisn"); renderHisnChapters(); return; }
       go("azkar");
       const filter=$("#filter");
       if(filter){ filter.value=category; renderTable(); }
@@ -146,14 +166,16 @@
     const sel=$("#field-category");
     if(sel){
       const cur=sel.value;
-      sel.innerHTML=categories.map(c=>`<option value="${escapeHtml(c.id)}">${escapeHtml(c.title||c.name)}</option>`).join("");
-      if(categories.some(c=>c.id===cur)) sel.value=cur;
+      sel.innerHTML=categories.map(c=>`<option value="${escapeHtml(c.id)}">${escapeHtml(c.title||c.name)}</option>`).join("")+
+        ((hisnBook?.chapters?.length)?`<optgroup label="فصول حصن المسلم">${optionChapterMarkup()}</optgroup>`:"");
+      if(hasKnownCategory(cur)) sel.value=cur;
     }
     const filter=$("#filter");
     if(filter){
       const cur=filter.value;
-      filter.innerHTML='<option value="all">كل التصنيفات</option>'+categories.map(c=>`<option value="${escapeHtml(c.id)}">${escapeHtml(c.title||c.name)}</option>`).join("");
-      if(cur==="all"||categories.some(c=>c.id===cur)) filter.value=cur;
+      filter.innerHTML='<option value="all">كل التصنيفات</option>'+categories.map(c=>`<option value="${escapeHtml(c.id)}">${escapeHtml(c.title||c.name)}</option>`).join("")+
+        ((hisnBook?.chapters?.length)?`<optgroup label="فصول حصن المسلم">${optionChapterMarkup()}</optgroup>`:"");
+      if(cur==="all"||hasKnownCategory(cur)) filter.value=cur;
     }
   }
 
@@ -176,7 +198,7 @@
     const idRaw=($("#cat-id")?.value||"").trim().toLowerCase();
     const title=($("#cat-title")?.value||"").trim();
     if(!idRaw||!title){ toast("أدخل المعرّف والعنوان","err"); return; }
-    if(!/^[a-z0-9_-]{2,30}$/.test(idRaw)||idRaw.startsWith("wird_")){ toast("المعرّف: 2–30 حرفاً إنجليزياً صغيراً","err"); return; }
+    if(!/^[a-z0-9_-]{2,30}$/.test(idRaw)||idRaw.startsWith("wird_")||idRaw.startsWith("hisn_")){ toast("المعرّف: 2–30 حرفاً إنجليزياً صغيراً؛ hisn_ محجوز لفصول الكتاب","err"); return; }
     if(RESERVED.includes(idRaw)&&!editingCategoryId){ toast("معرّف محجوز","err"); return; }
     const iconRaw=($("#cat-icon")?.value||"star").trim();
     const icon=ALLOWED_ICONS.includes(iconRaw)?iconRaw:"star";
@@ -212,6 +234,129 @@
     catch(e){ toast(e.message||"تعذر الحذف","err"); }
   }
 
+  function renderHisnBookStats(){
+    const chapters=hisnBook?.chapters||[];
+    const total=Number(hisnBook?.book?.dhikrCount)||chapters.reduce((sum,ch)=>sum+(ch.adhkar||[]).length,0);
+    const stored=azkar.filter(z=>String(z.category||"").startsWith("hisn_")).length;
+    if($("#hisn-stat-chapters")) $("#hisn-stat-chapters").textContent=String(chapters.length||"—");
+    if($("#hisn-stat-adhkar")) $("#hisn-stat-adhkar").textContent=String(total||"—");
+    if($("#hisn-stat-imported")) $("#hisn-stat-imported").textContent=chapters.length?`${stored} / ${total}`:"—";
+    const status=$("#hisn-import-status");
+    if(status&&hisnBook){
+      status.textContent=stored===total
+        ?`تم رصد ${stored} ذكرًا في Firestore. يمكنك إعادة الاستيراد لتحديث النصوص والمراجع دون إنشاء نسخ إضافية.`
+        :`البيانات جاهزة: ${chapters.length} فصلًا و${total} ذكرًا. الموجود حاليًا في Firestore: ${stored}. اضغط زر الاستيراد لنشر/تحديث الكتاب.`;
+    }
+  }
+
+  function renderHisnChapters(){
+    const list=$("#hisn-chapters-list");
+    if(!list) return;
+    if(!hisnBook?.chapters){
+      list.innerHTML='<p class="empty-hint">فهرس الكتاب غير محمّل. حدّث الصفحة أو راجع ملف hisn_al_muslim.json.</p>';
+      renderHisnBookStats();
+      return;
+    }
+    const q=($("#hisn-chapter-search")?.value||"").trim().toLocaleLowerCase();
+    const chapters=hisnBook.chapters.filter(ch=>!q||String(ch.title||"").toLocaleLowerCase().includes(q));
+    if(!chapters.length){ list.innerHTML='<p class="empty-hint">لا توجد فصول مطابقة.</p>'; return; }
+    list.innerHTML=chapters.map(ch=>{
+      const count=(ch.adhkar||[]).length;
+      const stored=azkar.filter(z=>z.category===ch.id).length;
+      const badge=stored===count?'<span class="pill status-published">موجود في Firestore</span>':'<span class="pill">غير مستورد بالكامل</span>';
+      const audio=ch.audioUrl?'<span class="pill">يتوفر تسجيل للفصل</span>':"";
+      return `<article class="category-card">
+        <div class="symbol" aria-hidden="true">📖</div>
+        <h3>${ch.order}. ${escapeHtml(ch.title)}</h3>
+        <p>${count} ذكرًا · ${stored} في Firestore</p>
+        <p>${badge} ${audio}</p>
+        <div class="modal-actions" style="margin-top:12px">
+          <button type="button" class="icon-btn" data-hisn-open="${escapeHtml(ch.id)}">عرض في المكتبة</button>
+        </div>
+      </article>`;
+    }).join("");
+    $("[data-hisn-open]",list).forEach(btn=>btn.addEventListener("click",()=>{
+      const category=btn.dataset.hisnOpen;
+      go("azkar");
+      const filter=$("#filter");
+      if(filter){ filter.value=category; renderTable(); }
+      const field=$("#field-category");
+      if(field) field.value=category;
+    }));
+    renderHisnBookStats();
+  }
+
+  async function loadHisnBook(){
+    if(hisnBook) return hisnBook;
+    const response=await fetch("./hisn_al_muslim.json",{cache:"no-store"});
+    if(!response.ok) throw new Error("تعذر تحميل ملف حصن المسلم: HTTP "+response.status);
+    const data=await response.json();
+    if(!data?.book||!Array.isArray(data.chapters)) throw new Error("بنية ملف حصن المسلم غير صحيحة");
+    const count=data.chapters.reduce((sum,ch)=>sum+(Array.isArray(ch.adhkar)?ch.adhkar.length:0),0);
+    if(data.chapters.length!==133||count!==302) throw new Error(`فشل فحص فهرس الكتاب: ${data.chapters.length} فصلًا و${count} ذكرًا`);
+    hisnBook=data;
+    renderHisnBookStats();
+    renderHisnChapters();
+    renderCategories();
+    renderTable();
+    return hisnBook;
+  }
+
+  async function importHisnBook(){
+    if(busy) return;
+    const btn=$("#import-hisn-book");
+    setBusy(true,btn);
+    try{
+      await loadHisnBook();
+      const chapters=hisnBook.chapters;
+      const total=chapters.reduce((sum,ch)=>sum+(ch.adhkar||[]).length,0);
+      const already=azkar.filter(z=>String(z.category||"").startsWith("hisn_")).length;
+      if(!confirm(`سيُنشر ${total} ذكرًا في ${chapters.length} فصلًا داخل مكتبة التطبيق، بما في ذلك كل الأذكار والمراجع والتكرارات. الموجود حاليًا: ${already}. ستُحدّث السجلات ذات المعرفات الثابتة بدل تكرارها. هل تتابع؟`)) return;
+      const records=[];
+      chapters.forEach(ch=>{
+        (ch.adhkar||[]).forEach(item=>{
+          const id=Number(item.id);
+          if(!Number.isSafeInteger(id)||id<=0||!String(item.text||"").trim()) throw new Error("عنصر غير صالح في الفصل: "+ch.title);
+          records.push({
+            docId:`hisn_${id}`,
+            data:{
+              id,
+              text:item.text,
+              category:ch.id,
+              repeat:Math.max(1,Number(item.repeatCount)||1),
+              fadl:item.fadl||"",
+              source:item.source||"",
+              published:true,
+              order:Number(ch.order)*1000+Number(item.order||1),
+              bookId:"hisn_al_muslim",
+              bookTitle:hisnBook.book.title||"حصن المسلم",
+              bookChapterTitle:ch.title,
+              bookChapterOrder:Number(ch.order),
+              bookItemOrder:Number(item.order||1),
+              updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+            }
+          });
+        });
+      });
+      if(records.length!==total) throw new Error("عدد عناصر الاستيراد لا يطابق العدد المتوقع");
+      for(let offset=0;offset<records.length;offset+=400){
+        const batch=db.batch();
+        records.slice(offset,offset+400).forEach(record=>{
+          batch.set(itemsCol().doc(record.docId),record.data,{merge:true});
+        });
+        await batch.commit();
+      }
+      toast(`تم نشر حصن المسلم: ${total} ذكرًا في ${chapters.length} فصلًا`,"ok");
+      renderHisnChapters();
+      renderHisnBookStats();
+    }catch(e){
+      toast(e.message||"تعذر استيراد حصن المسلم","err");
+      if($("#hisn-import-status")) $("#hisn-import-status").textContent=e.message||"تعذر استيراد حصن المسلم.";
+    }finally{
+      setBusy(false,btn);
+    }
+  }
+
   function renderTable(){
     const q=($("#search")?.value||"").trim();
     const filter=$("#filter")?.value||"all";
@@ -229,7 +374,7 @@
     tbody.innerHTML=rows.map(z=>`<tr data-id="${escapeHtml(z.id)}">
       <td>${z.order??0}</td>
       <td title="${escapeHtml(z.text||"")}">${escapeHtml((z.text||"").slice(0,90))}${(z.text||"").length>90?"…":""}</td>
-      <td><span class="pill">${escapeHtml(categories.find(c=>c.id===z.category)?.title||z.category)}</span></td>
+      <td><span class="pill">${escapeHtml(categoryTitleFor(z.category))}</span></td>
       <td>${Number(z.repeat)||1}×</td>
       <td><span class="pill ${z.published?"status-published":"status-draft"}">${z.published?"منشور":"مسودة"}</span></td>
       <td>${escapeHtml(z.source||"—")}</td>
@@ -252,7 +397,7 @@
     if($("#modal-title")) $("#modal-title").textContent=z?"تعديل ذكر":"إضافة ذكر";
     if($("#field-text")) $("#field-text").value=z?.text||"";
     const selectedFilter=$("#filter")?.value;
-    const defaultCategory=selectedFilter&&selectedFilter!=="all"&&categories.some(item=>item.id===selectedFilter)?selectedFilter:"sabah";
+    const defaultCategory=selectedFilter&&selectedFilter!=="all"&&hasKnownCategory(selectedFilter)?selectedFilter:"sabah";
     if($("#field-category")) $("#field-category").value=z?.category||defaultCategory;
     if($("#field-repeat")) $("#field-repeat").value=z?.repeat||1;
     if($("#field-fadl")) $("#field-fadl").value=z?.fadl||"";
@@ -409,7 +554,7 @@
         return {id:doc.id,text:d.text||"",category:d.category||"sabah",repeat:d.repeat||1,fadl:d.fadl||"",source:d.source||"",
           audioUrl:d.audioUrl||"",audioUrlsByReciter:d.audioUrlsByReciter||{},published:d.published!==false,order:d.order??0};
       });
-      renderTable(); renderStats(); renderCategories();
+      renderTable(); renderStats(); renderCategories(); renderHisnBookStats(); renderHisnChapters();
     }, e=>toast("تعذر تحميل الأذكار: "+e.message,"err"));
 
     if(unsubCategories) unsubCategories();
@@ -431,6 +576,8 @@
     $$(".nav-item").forEach(btn=>btn.addEventListener("click",()=>go(btn.dataset.view)));
     $$("button[data-view]").forEach(btn=>{ if(!btn.classList.contains("nav-item")) btn.addEventListener("click",()=>go(btn.dataset.view)); });
     $("#add-zekr")?.addEventListener("click",()=>openEditor(null));
+    $("#import-hisn-book")?.addEventListener("click",importHisnBook);
+    $("#hisn-chapter-search")?.addEventListener("input",renderHisnChapters);
     $("#save-zekr")?.addEventListener("click",()=>saveEditor());
     $("#close-modal")?.addEventListener("click",()=>closeModal("#editor-modal"));
     $("#cancel-modal")?.addEventListener("click",()=>closeModal("#editor-modal"));
@@ -496,6 +643,7 @@
     if(!window.firebase||!cfg){ const msg=$("#auth-message"); if(msg) msg.textContent="تعذر تحميل إعداد Firebase."; return; }
     if(!firebase.apps.length) firebase.initializeApp(cfg);
     db=firebase.firestore(); auth=firebase.auth();
+    try{ await loadHisnBook(); }catch(e){ console.warn("Hisn al-Muslim data could not load",e); if($("#hisn-import-status")) $("#hisn-import-status").textContent=e.message||"تعذر تحميل فهرس الكتاب."; }
     bindUi();
     $$(".view").forEach(v=>{ if(!v.classList.contains("active-view")) v.setAttribute("hidden",""); });
     auth.onAuthStateChanged(user=>{ if(user) startSession(user).catch(e=>toast(e.message,"err")); else stopSession(); });
