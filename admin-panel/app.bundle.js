@@ -251,7 +251,9 @@
     const z=id?azkar.find(x=>x.id===id):null;
     if($("#modal-title")) $("#modal-title").textContent=z?"تعديل ذكر":"إضافة ذكر";
     if($("#field-text")) $("#field-text").value=z?.text||"";
-    if($("#field-category")) $("#field-category").value=z?.category||"sabah";
+    const selectedFilter=$("#filter")?.value;
+    const defaultCategory=selectedFilter&&selectedFilter!=="all"&&categories.some(item=>item.id===selectedFilter)?selectedFilter:"sabah";
+    if($("#field-category")) $("#field-category").value=z?.category||defaultCategory;
     if($("#field-repeat")) $("#field-repeat").value=z?.repeat||1;
     if($("#field-fadl")) $("#field-fadl").value=z?.fadl||"";
     if($("#field-source")) $("#field-source").value=z?.source||"";
