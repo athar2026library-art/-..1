@@ -152,9 +152,9 @@
         </div>
       </article>`;
     }).join("");
-    $("#[data-edit-cat]",grid).forEach(b=>b.addEventListener("click",()=>openCategoryEditor(b.dataset.editCat)));
-    $("#[data-del-cat]",grid).forEach(b=>b.addEventListener("click",()=>deleteCategory(b.dataset.delCat)));
-    $("#[data-open-category]",grid).forEach(b=>b.addEventListener("click",()=>{
+    $("[data-edit-cat]",grid).forEach(b=>b.addEventListener("click",()=>openCategoryEditor(b.dataset.editCat)));
+    $("[data-del-cat]",grid).forEach(b=>b.addEventListener("click",()=>deleteCategory(b.dataset.delCat)));
+    $("[data-open-category]",grid).forEach(b=>b.addEventListener("click",()=>{
       const category=b.dataset.openCategory;
       if(category==="hisn"){ go("hisn"); renderHisnChapters(); return; }
       go("azkar");
