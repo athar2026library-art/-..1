@@ -101,6 +101,8 @@
     BUILTIN.forEach(c=>map.set(c.id,{...c,name:c.title,desc:c.subtitle}));
     (remote||[]).forEach(c=>{
       if(!c||!c.id) return;
+      // فصول الكتاب مراجع داخلية وليست تصنيفات عامة في الصفحة الرئيسية للوحة.
+      if(String(c.id).startsWith("hisn_")) return;
       // التصنيفات المدمجة مصدرها نسخة التطبيق؛ لا تستبدلها وثائق Firestore.
       if(BUILTIN.some(b=>b.id===c.id)) return;
       const title=c.title||c.name||c.id;
@@ -320,6 +322,21 @@
       const total=chapters.reduce((sum,ch)=>sum+(ch.adhkar||[]).length,0);
       const already=azkar.filter(z=>String(z.category||"").startsWith("hisn_")).length;
       if(!confirm(`سيُنشر ${total} ذكرًا في ${chapters.length} فصلًا داخل مكتبة التطبيق، بما في ذلك كل الأذكار والمراجع والتكرارات. الموجود حاليًا: ${already}. ستُحدّث السجلات ذات المعرفات الثابتة بدل تكرارها. هل تتابع؟`)) return;
+      // قواعد Firestore تشترط وجود وثيقة تصنيف لكل فئة ليست من الفئات الثماني القديمة.
+      // أنشئ مراجع الفصول أولًا؛ لا تضفها إلى قائمة التصنيفات العامة في اللوحة/التطبيق.
+      const categoryBatch=db.batch();
+      chapters.forEach(ch=>{
+        categoryBatch.set(catsCol().doc(ch.id),{
+          title:String(ch.title||("فصل "+ch.order)).slice(0,40),
+          subtitle:("فصل "+ch.order+" من حصن المسلم").slice(0,80),
+          icon:"book",
+          order:Number(ch.order)||0,
+          published:true,
+          updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+        },{merge:true});
+      });
+      await categoryBatch.commit();
+
       const records=[];
       chapters.forEach(ch=>{
         (ch.adhkar||[]).forEach(item=>{
