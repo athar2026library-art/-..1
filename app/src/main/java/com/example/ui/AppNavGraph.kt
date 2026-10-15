@@ -34,6 +34,7 @@ import com.example.ui.screens.AzkarScreen
 import com.example.ui.screens.FavoritesScreen
 import com.example.ui.screens.FeedbackScreen
 import com.example.ui.screens.HomeScreen
+import com.example.ui.screens.HisnBookScreen
 import com.example.ui.screens.MoreScreen
 import com.example.ui.screens.SearchScreen
 import com.example.ui.screens.SettingsScreen
@@ -168,11 +169,18 @@ fun AppNavGraph(
 
             composable("azkar/{category}") { backStackEntry ->
                 val category = backStackEntry.arguments?.getString("category") ?: "sabah"
-                AzkarScreen(
-                    category = category,
-                    viewModel = viewModel,
-                    onNavigateBack = { navController.popBackStack() }
-                )
+                if (category == "hisn") {
+                    HisnBookScreen(
+                        onNavigateBack = { navController.popBackStack() },
+                        onOpenChapter = { chapterId -> navController.navigate("azkar/$chapterId") }
+                    )
+                } else {
+                    AzkarScreen(
+                        category = category,
+                        viewModel = viewModel,
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
             }
 
             composable("feedback") {
