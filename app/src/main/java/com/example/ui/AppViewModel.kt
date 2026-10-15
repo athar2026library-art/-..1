@@ -386,7 +386,7 @@ class AppViewModel(
                 _statusMessage.value = when (e.code) {
                     FirebaseFunctionsException.Code.UNAUTHENTICATED ->
                         "سجّل الدخول مجدداً ثم أعد المحاولة."
-                    else -> "تعذر حذف الحساب. حاول لاحقاً."
+                    else -> "تعذر حذف الحساب. حاول لاحقاً (يمكنك إعادة المحاولة بأمان)."
                 }
             } catch (_: Exception) {
                 _statusMessage.value = "تعذر حذف الحساب. تحقق من الاتصال."

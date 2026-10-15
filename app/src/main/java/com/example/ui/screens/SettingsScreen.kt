@@ -375,7 +375,7 @@ fun SettingsScreen(
             ) {
                 Column(modifier = Modifier.padding(22.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Image(
-                        painter = painterResource(com.example.R.drawable.logo_baqiyat),
+                        painter = painterResource(com.baqiyat.azkar.R.drawable.logo_baqiyat),
                         contentDescription = "شعار الباقيات",
                         modifier = Modifier.size(112.dp).clip(RoundedCornerShape(20.dp))
                     )
