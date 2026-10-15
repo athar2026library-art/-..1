@@ -1,6 +1,6 @@
 package com.example.data
 
-/** تصنيف أذكار. الأربعة الأساسية مضمّنة، والباقي يأتي من Firestore (content/categories/items). */
+/** تصنيف أذكار. التصنيفات الأساسية ومناسبات الذكر اليومية مضمّنة، والإضافات الإدارية تأتي من Firestore. */
 data class AzkarCategory(
     val id: String,
     val title: String,
@@ -19,7 +19,21 @@ object CategoryDefaults {
         AzkarCategory("worry", "الهم والقلق", "أذكار عند الضيق والخوف", "heart", order = 4, builtIn = true),
         AzkarCategory("rizq", "الرزق", "دعاء بسعة الخير", "food", order = 5, builtIn = true),
         AzkarCategory("illness", "المرض والشفاء", "دعاء للمريض", "heart", order = 6, builtIn = true),
-        AzkarCategory("waking", "الاستيقاظ", "ذكر بداية اليوم", "sun", order = 7, builtIn = true)
+        AzkarCategory("waking", "الاستيقاظ", "ذكر بداية اليوم", "sun", order = 7, builtIn = true),
+        AzkarCategory("clothing", "الملابس", "أذكار اللباس", "book", order = 8, builtIn = true),
+        AzkarCategory("toilet", "دخول الخلاء والخروج منه", "أذكار قضاء الحاجة", "home", order = 9, builtIn = true),
+        AzkarCategory("wudu", "الوضوء", "الذكر بعد الوضوء", "shield", order = 10, builtIn = true),
+        AzkarCategory("home", "المنزل", "الذكر عند الدخول والخروج", "home", order = 11, builtIn = true),
+        AzkarCategory("mosque", "المسجد", "أذكار الدخول والخروج", "mosque", order = 12, builtIn = true),
+        AzkarCategory("prayer", "بعد الصلاة", "أذكار ما بعد السلام", "book", order = 13, builtIn = true),
+        AzkarCategory("food", "الطعام والشراب", "الذكر قبل الطعام وبعده", "food", order = 14, builtIn = true),
+        AzkarCategory("distress", "الكرب والشدة", "أدعية عند الكرب", "heart", order = 15, builtIn = true),
+        AzkarCategory("weather", "المطر", "أدعية المطر", "rain", order = 16, builtIn = true),
+        AzkarCategory("anger", "الغضب", "ما يقال عند الغضب", "heart", order = 17, builtIn = true),
+        AzkarCategory("fasting", "الصيام والإفطار", "ذكر الإفطار", "moon", order = 18, builtIn = true),
+        AzkarCategory("gathering", "المجالس والآداب", "كفارة المجلس", "star", order = 19, builtIn = true),
+        AzkarCategory("children", "تحصين الأولاد", "دعاء التعويذ", "shield", order = 20, builtIn = true),
+        AzkarCategory("pain", "الألم والوجع", "دعاء عند ألم الجسد", "heart", order = 21, builtIn = true)
     )
 
     private val builtInIds = builtIn.map { it.id }.toSet()
