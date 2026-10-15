@@ -283,7 +283,7 @@
         </div>
       </article>`;
     }).join("");
-    $("[data-hisn-open]",list).forEach(btn=>btn.addEventListener("click",()=>{
+    $$("[data-hisn-open]",list).forEach(btn=>btn.addEventListener("click",()=>{
       const category=btn.dataset.hisnOpen;
       go("azkar");
       const filter=$("#filter");
