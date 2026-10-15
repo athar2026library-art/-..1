@@ -30,6 +30,7 @@
       <nav aria-label="التنقل الرئيسي">
         <button class="nav-item active" data-view="overview">نظرة عامة <span>⌂</span></button>
         <button class="nav-item" data-view="azkar">مكتبة الأذكار <span>☷</span></button>
+        <button class="nav-item" data-view="hisn">حصن المسلم <span>📚</span></button>
         <button class="nav-item" data-view="feedback">صندوق الرسائل <span class="nav-badge hidden" id="feedback-badge">0</span></button>
         <button class="nav-item" data-view="notify">إشعار عام <span>◎</span></button>
         <button class="nav-item" data-view="categories">التصنيفات <span>◈</span></button>
@@ -117,6 +118,34 @@
             </thead>
             <tbody id="azkar-table"></tbody>
           </table>
+        </div>
+      </section>
+
+      <section id="hisn" class="view" hidden>
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">المكتبة الكاملة</p>
+            <h2>حصن المسلم</h2>
+            <p>فهرس الكتاب بحسب ترتيب الفصول في مصدر البيانات، مع نص كل ذكر وعدد تكراره ومصدره.</p>
+          </div>
+          <button class="primary" id="import-hisn-book" type="button">استيراد الكتاب إلى مكتبة التطبيق</button>
+        </div>
+        <div class="stats-grid">
+          <article class="stat"><span>فصول الكتاب</span><strong id="hisn-stat-chapters">—</strong><small>مرتبة كما في المصدر</small></article>
+          <article class="stat"><span>الأذكار</span><strong id="hisn-stat-adhkar">—</strong><small>نص، تكرار، مصدر</small></article>
+          <article class="stat"><span>مستوردة إلى Firestore</span><strong id="hisn-stat-imported">—</strong><small>من أصل الأذكار</small></article>
+          <article class="stat"><span>المصدر</span><strong style="font-size:16px">حصن المسلم</strong><small>التفريغ والترخيص موضحان في مستند المصدر</small></article>
+        </div>
+        <article class="panel" style="margin:16px 0">
+          <p id="hisn-import-status" class="empty-hint" role="status">جاري تحميل فهرس الكتاب…</p>
+          <p class="empty-hint">الاستيراد ينشر عناصر الكتاب في التطبيق عبر Firestore. تُحفظ الفصول في الحقل category، لكن لا تُضاف كـ133 بطاقة إلى الصفحة الرئيسية. تستخدم معرّفات وثائق ثابتة، ولذلك يمكن إعادة الاستيراد لتحديث النصوص بدل تكرارها.</p>
+          <p class="empty-hint">ملاحظة توثيقية: ملف PDF المرفوع ممسوح ضوئيًا؛ بيانات الكتاب منظمة من تفريغ مرخّص مشار إليه في <code>docs/NOTICE-HISN-AL-MUSLIM.md</code>، ولم تتم مطابقة كل سطر يدويًا مع الصورة.</p>
+        </article>
+        <div class="toolbar">
+          <input id="hisn-chapter-search" type="search" placeholder="ابحث باسم الفصل…" aria-label="ابحث في فصول حصن المسلم" />
+        </div>
+        <div class="category-grid" id="hisn-chapters-list">
+          <p class="empty-hint">سيظهر فهرس الفصول بعد تحميل ملف البيانات.</p>
         </div>
       </section>
 
