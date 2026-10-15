@@ -136,7 +136,7 @@
     const grid=$("#category-grid"); if(!grid) return;
     if(!categories.length){ grid.innerHTML='<p class="empty-hint">لا تصنيفات بعد.</p>'; return; }
     grid.innerHTML=categories.map(c=>{
-      const count=azkar.filter(z=>z.category===c.id).length;
+      const count=c.id==="hisn"?azkar.filter(z=>String(z.category||"").startsWith("hisn_")).length:azkar.filter(z=>z.category===c.id).length;
       const badge=c.builtin?'<span class="pill">مدمج في التطبيق</span>':'<span class="pill status-published">ديناميكي</span>';
       const ic=ICON_EMOJI[c.icon]||c.icon||"⭐";
       return `<article class="category-card" data-cat-id="${escapeHtml(c.id)}" tabindex="0">
@@ -152,9 +152,9 @@
         </div>
       </article>`;
     }).join("");
-    $("[data-edit-cat]",grid).forEach(b=>b.addEventListener("click",()=>openCategoryEditor(b.dataset.editCat)));
-    $("[data-del-cat]",grid).forEach(b=>b.addEventListener("click",()=>deleteCategory(b.dataset.delCat)));
-    $("[data-open-category]",grid).forEach(b=>b.addEventListener("click",()=>{
+    $("#[data-edit-cat]",grid).forEach(b=>b.addEventListener("click",()=>openCategoryEditor(b.dataset.editCat)));
+    $("#[data-del-cat]",grid).forEach(b=>b.addEventListener("click",()=>deleteCategory(b.dataset.delCat)));
+    $("#[data-open-category]",grid).forEach(b=>b.addEventListener("click",()=>{
       const category=b.dataset.openCategory;
       if(category==="hisn"){ go("hisn"); renderHisnChapters(); return; }
       go("azkar");
