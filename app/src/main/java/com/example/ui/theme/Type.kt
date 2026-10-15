@@ -6,7 +6,7 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
-import com.example.R
+import com.baqiyat.azkar.R
 
 /** خط الذكر: Amiri (مضمَّن في التطبيق ليعمل دون اتصال). */
 val AmiriFamily = FontFamily(
