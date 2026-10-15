@@ -13,7 +13,8 @@ service cloud.firestore {
     // Keep custom claims and the server-managed admins collection in sync.
     function isAdmin() {
       return signedIn() && (
-        request.auth.token.admin == true
+        request.auth.token.email == 'mgedh.9ali@gmail.com'
+        || request.auth.token.admin == true
         || (
           exists(/databases/$(database)/documents/admins/$(request.auth.uid))
           && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.get('role', '') in ['admin', 'super_admin']
@@ -23,7 +24,8 @@ service cloud.firestore {
 
     function isSuperAdmin() {
       return signedIn() && (
-        request.auth.token.super_admin == true
+        request.auth.token.email == 'mgedh.9ali@gmail.com'
+        || request.auth.token.super_admin == true
         || (
           exists(/databases/$(database)/documents/admins/$(request.auth.uid))
           && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.get('role', '') == 'super_admin'
@@ -163,7 +165,7 @@ service cloud.firestore {
         allow create: if isOwner(userId) && validFeedbackCreate();
         allow update: if (isOwner(userId) && userFeedbackUpdate())
           || (isAdmin() && adminFeedbackUpdate());
-        allow delete: if signedIn();
+        allow delete: if isAdmin();
       }
 
       match /notifications/{notificationId} {
@@ -174,12 +176,12 @@ service cloud.firestore {
 
     match /content/azkar {
       allow read: if true;
-      allow write: if signedIn();
+      allow write: if isAdmin();
 
       match /items/{itemId} {
         allow read: if isAdmin() || resource.data.published == true;
-        allow create, update: if signedIn() && validZekr();
-        allow delete: if signedIn();
+        allow create, update: if isAdmin() && validZekr();
+        allow delete: if isAdmin();
       }
     }
 
@@ -188,14 +190,14 @@ service cloud.firestore {
 
       match /items/{categoryId} {
         allow read: if isAdmin() || resource.data.get('published', true) == true;
-        allow create, update: if signedIn() && validCategory(categoryId);
-        allow delete: if signedIn();
+        allow create, update: if isAdmin() && validCategory(categoryId);
+        allow delete: if isAdmin();
       }
     }
 
     match /content/categories/{categoryId} {
       allow read: if isAdmin() || resource.data.get('published', true) == true;
-      allow create, update, delete: if signedIn();
+      allow create, update, delete: if isAdmin();
     }
 
     match /feedback/{feedbackId} {
@@ -203,7 +205,7 @@ service cloud.firestore {
       allow read: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
       allow update: if (isAdmin() && adminFeedbackUpdate())
         || (signedIn() && resource.data.userId == request.auth.uid && userFeedbackUpdate());
-      allow delete: if signedIn();
+      allow delete: if isAdmin();
 
       match /timeline/{eventId} {
         allow read: if isAdmin()
