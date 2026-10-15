@@ -136,7 +136,7 @@
     const grid=$("#category-grid"); if(!grid) return;
     if(!categories.length){ grid.innerHTML='<p class="empty-hint">لا تصنيفات بعد.</p>'; return; }
     grid.innerHTML=categories.map(c=>{
-      const count=c.id==="hisn"?azkar.filter(z=>String(z.category||"").startsWith("hisn_")).length:azkar.filter(z=>z.category===c.id).length;
+      const count=c.id==="hisn"?importedHisnCount():azkar.filter(z=>z.category===c.id).length;
       const badge=c.builtin?'<span class="pill">مدمج في التطبيق</span>':'<span class="pill status-published">ديناميكي</span>';
       const ic=ICON_EMOJI[c.icon]||c.icon||"⭐";
       return `<article class="category-card" data-cat-id="${escapeHtml(c.id)}" tabindex="0">
@@ -234,10 +234,17 @@
     catch(e){ toast(e.message||"تعذر الحذف","err"); }
   }
 
+  function importedHisnCount(chapterId){
+    if(!hisnBook?.chapters) return 0;
+    const existingIds=new Set(azkar.map(z=>String(z.id)));
+    const chapters=chapterId?hisnBook.chapters.filter(ch=>ch.id===chapterId):hisnBook.chapters;
+    return chapters.reduce((sum,ch)=>sum+(ch.adhkar||[]).filter(item=>existingIds.has(`hisn_${item.id}`)).length,0);
+  }
+
   function renderHisnBookStats(){
     const chapters=hisnBook?.chapters||[];
     const total=Number(hisnBook?.book?.dhikrCount)||chapters.reduce((sum,ch)=>sum+(ch.adhkar||[]).length,0);
-    const stored=azkar.filter(z=>String(z.category||"").startsWith("hisn_")).length;
+    const stored=importedHisnCount();
     if($("#hisn-stat-chapters")) $("#hisn-stat-chapters").textContent=String(chapters.length||"—");
     if($("#hisn-stat-adhkar")) $("#hisn-stat-adhkar").textContent=String(total||"—");
     if($("#hisn-stat-imported")) $("#hisn-stat-imported").textContent=chapters.length?`${stored} / ${total}`:"—";
@@ -262,7 +269,7 @@
     if(!chapters.length){ list.innerHTML='<p class="empty-hint">لا توجد فصول مطابقة.</p>'; return; }
     list.innerHTML=chapters.map(ch=>{
       const count=(ch.adhkar||[]).length;
-      const stored=azkar.filter(z=>z.category===ch.id).length;
+      const stored=importedHisnCount(ch.id);
       const badge=stored===count?'<span class="pill status-published">موجود في Firestore</span>':'<span class="pill">غير مستورد بالكامل</span>';
       const audio=ch.audioUrl?'<span class="pill">يتوفر تسجيل للفصل</span>':"";
       return `<article class="category-card">
@@ -272,6 +279,7 @@
         <p>${badge} ${audio}</p>
         <div class="modal-actions" style="margin-top:12px">
           <button type="button" class="icon-btn" data-hisn-open="${escapeHtml(ch.id)}">عرض في المكتبة</button>
+          ${ch.audioUrl?`<a class="icon-btn" href="${escapeHtml(ch.audioUrl)}" target="_blank" rel="noopener noreferrer">استماع لتسجيل الفصل</a>`:""}
         </div>
       </article>`;
     }).join("");
