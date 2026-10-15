@@ -39,7 +39,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.BuildConfig
+import com.baqiyat.azkar.BuildConfig
 import com.example.ui.AppViewModel
 import com.example.ui.components.GlassCard
 import com.example.ui.theme.Baqiyat
