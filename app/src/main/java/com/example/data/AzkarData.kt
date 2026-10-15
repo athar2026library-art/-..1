@@ -52,7 +52,7 @@ object AzkarData {
     )
 
     fun all(): List<Zekr> =
-        morningAzkar + eveningAzkar + sleepAzkar + travelAzkar + TopicAzkarData.items + EverydayAzkarData.items
+        morningAzkar + eveningAzkar + sleepAzkar + travelAzkar + TopicAzkarData.items + EverydayAzkarData.items + HisnAlMuslimData.items
 
     fun byIds(ids: Set<Int>): List<Zekr> = all().filter { it.id in ids }
 
@@ -61,7 +61,11 @@ object AzkarData {
         "masaa" -> eveningAzkar
         "sleep" -> sleepAzkar
         "travel" -> travelAzkar
-        else -> (TopicAzkarData.items + EverydayAzkarData.items).filter { it.category == category }
+        "hisn" -> emptyList() // افتح فهرس الكتاب أولًا، ثم اختر الفصل.
+        else -> when {
+            HisnAlMuslimData.isChapterId(category) -> HisnAlMuslimData.itemsFor(category)
+            else -> (TopicAzkarData.items + EverydayAzkarData.items).filter { it.category == category }
+        }
     }
 
     /** الأذكار المضمّنة لتصنيف، أو فارغة لتصنيف ديناميكي (يأتي من الشبكة). */
@@ -91,8 +95,9 @@ object AzkarData {
         "gathering" -> "أذكار المجالس والآداب"
         "children" -> "دعاء تحصين الأولاد"
         "pain" -> "دعاء الألم والوجع"
+        "hisn" -> HisnAlMuslimData.bookTitle
         "favorites" -> "المفضلة"
-        else -> "الأذكار"
+        else -> if (HisnAlMuslimData.isChapterId(category)) HisnAlMuslimData.chapterTitleFor(category) else "الأذكار"
     }
 
     private fun hasAnyTopic(query: String, vararg aliases: String): Boolean {
