@@ -83,17 +83,7 @@ fun HomeScreen(
     val p = Baqiyat.colors
 
     Scaffold(
-        containerColor = Color.Transparent,
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = onNavigateToSearch,
-                icon = { Icon(Icons.Default.Search, contentDescription = null) },
-                text = { Text("بحث") },
-                shape = CircleShape,
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            )
-        }
+        containerColor = Color.Transparent
     ) { padding ->
         Column(
             modifier = Modifier
