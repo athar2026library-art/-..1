@@ -56,16 +56,62 @@ object AzkarData {
 
     fun byIds(ids: Set<Int>): List<Zekr> = all().filter { it.id in ids }
 
-    fun forCategory(category: String): List<Zekr> = when (category) {
-        "sabah" -> morningAzkar
-        "masaa" -> eveningAzkar
-        "sleep" -> sleepAzkar
-        "travel" -> travelAzkar
-        "hisn" -> emptyList() // افتح فهرس الكتاب أولًا، ثم اختر الفصل.
-        else -> when {
-            HisnAlMuslimData.isChapterId(category) -> HisnAlMuslimData.itemsFor(category)
+    /**
+     * Returns book material inside the app's existing topic categories. The book's
+     * original source text is preferred when the same dhikr already exists locally.
+     * The old "hisn" route remains reserved for backward compatibility, but is no
+     * longer shown as a separate category.
+     */
+    fun forCategory(category: String): List<Zekr> {
+        if (category == "hisn") return emptyList()
+        if (HisnAlMuslimData.isChapterId(category)) return HisnAlMuslimData.itemsFor(category)
+
+        val existing = when (category) {
+            "sabah" -> morningAzkar
+            "masaa" -> eveningAzkar
+            "sleep" -> sleepAzkar
+            "travel" -> travelAzkar
             else -> (TopicAzkarData.items + EverydayAzkarData.items).filter { it.category == category }
         }
+        val bookItems = HisnAlMuslimData.chapters
+            .asSequence()
+            .filter { chapter -> categoryForHisnChapter(chapter.order) == category }
+            .flatMap { it.items.asSequence() }
+            .toList()
+
+        // Normalize only for duplicate detection; preserve the original Arabic text,
+        // source, repetition count and book order in the displayed data.
+        return (bookItems + existing).distinctBy { ArabicText.normalize(it.text) }
+    }
+
+    private fun categoryForHisnChapter(order: Int): String = when {
+        order == 1 -> "waking"
+        order in 2..5 -> "clothing"
+        order in 6..7 -> "toilet"
+        order in 8..9 -> "wudu"
+        order in 10..11 -> "home"
+        order in 12..14 -> "mosque"
+        order in 15..26 || order in 33..34 || order == 108 -> "prayer"
+        order == 27 -> "sabah"
+        order == 28 -> "masaa"
+        order in 29..32 -> "sleep"
+        order == 35 || order == 41 || order == 43 || order == 46 ||
+            order == 89 || order == 93 || order == 95 || order == 127 || order == 129 -> "worry"
+        order == 36 || order in 37..40 || order in 44..45 ||
+            order == 47 || order == 54 || order == 130 -> "distress"
+        order == 42 || order == 91 || order == 92 -> "rizq"
+        order in 48..49 || order == 126 -> "children"
+        order in 50..61 || order == 84 -> "illness"
+        order in 62..68 || order in 111..112 -> "weather"
+        order == 69 || order in 74..76 -> "fasting"
+        order in 70..73 || order == 77 || order == 128 -> "food"
+        order in 78..82 || order in 85..88 || order == 90 || order == 94 ||
+            order == 107 || order in 109..110 || order in 113..115 ||
+            order in 123..124 || order in 131..132 || order == 133 -> "gathering"
+        order == 83 -> "anger"
+        order in 96..106 || order in 116..122 -> "travel"
+        order == 125 -> "pain"
+        else -> "gathering"
     }
 
     /** الأذكار المضمّنة لتصنيف، أو فارغة لتصنيف ديناميكي (يأتي من الشبكة). */

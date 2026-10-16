@@ -34,13 +34,12 @@ object CategoryDefaults {
         AzkarCategory("gathering", "المجالس والآداب", "كفارة المجلس", "star", order = 19, builtIn = true),
         AzkarCategory("children", "تحصين الأولاد", "دعاء التعويذ", "shield", order = 20, builtIn = true),
         AzkarCategory("pain", "الألم والوجع", "دعاء عند ألم الجسد", "heart", order = 21, builtIn = true),
-        AzkarCategory("hisn", "حصن المسلم", "133 فصلًا · 302 ذكر من الكتاب والسنة", "book", order = 22, builtIn = true)
     )
 
     private val builtInIds = builtIn.map { it.id }.toSet()
-    private val reserved = builtInIds + "favorites"
+    private val reserved = builtInIds + setOf("favorites", "hisn")
 
-    fun isBuiltIn(id: String) = id in builtInIds || HisnAlMuslimData.isChapterId(id)
+    fun isBuiltIn(id: String) = id in builtInIds || id == "hisn" || HisnAlMuslimData.isChapterId(id)
 
     /** تصنيف ديناميكي يمكن فتحه من «أقسام الأذكار» (لا المحجوزة ولا المخفية). */
     fun isDynamicId(id: String) = id !in reserved && !id.startsWith("wird_") && !id.startsWith("hisn_") && id.isNotBlank()

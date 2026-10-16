@@ -1,11 +1,16 @@
 package com.example.ui.screens
 
-import android.app.Activity
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.provider.Settings
 import androidx.compose.foundation.layout.*
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -25,6 +30,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.AppViewModel
+import com.example.ui.findActivity
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,8 +59,18 @@ fun SettingsScreen(
 
     val userSignedIn by viewModel.userSignedIn.collectAsStateWithLifecycle()
     val statusMessage by viewModel.statusMessage.collectAsStateWithLifecycle()
+    val isSigningIn by viewModel.isSigningIn.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val activity = context as? Activity
+    val activity = context.findActivity()
+    val notificationPermissionGranted =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
+            PackageManager.PERMISSION_GRANTED
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        viewModel.setNotificationsEnabled(granted)
+    }
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
     if (showDeleteConfirm) {
@@ -163,8 +179,21 @@ fun SettingsScreen(
                             )
                         }
                         Switch(
-                            checked = notificationsEnabled,
-                            onCheckedChange = { viewModel.setNotificationsEnabled(it) }
+                            checked = notificationsEnabled && notificationPermissionGranted,
+                            onCheckedChange = { enabled ->
+                                if (
+                                    enabled &&
+                                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                                    ContextCompat.checkSelfPermission(
+                                        context,
+                                        Manifest.permission.POST_NOTIFICATIONS
+                                    ) != PackageManager.PERMISSION_GRANTED
+                                ) {
+                                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                } else {
+                                    viewModel.setNotificationsEnabled(enabled)
+                                }
+                            }
                         )
                     }
 
@@ -357,9 +386,9 @@ fun SettingsScreen(
                             },
                             modifier = Modifier.fillMaxWidth().testTag("google-sign-in-button"),
                             shape = RoundedCornerShape(12.dp),
-                            enabled = activity != null
+                            enabled = activity != null && !isSigningIn
                         ) {
-                            Text("تسجيل الدخول باستخدام Google")
+                            Text(if (isSigningIn) "جارٍ تسجيل الدخول..." else "تسجيل الدخول باستخدام Google")
                         }
                     }
                 }

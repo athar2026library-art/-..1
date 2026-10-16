@@ -35,7 +35,10 @@ class AiRepository {
                 .await()
 
             val data = result.data as? Map<*, *>
-            val answer = data?.get("text") as? String
+            // The deployed callable returns { reply }, while older deployments may
+            // still return { text }. Accept both response shapes.
+            val answer = (data?.get("reply") as? String)
+                ?: (data?.get("text") as? String)
             answer?.trim()?.takeIf { it.isNotEmpty() }
                 ?: "وصل رد فارغ من المساعد. حاول مرة أخرى."
         } catch (error: CancellationException) {

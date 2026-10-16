@@ -36,7 +36,20 @@ class HisnAlMuslimDataTest {
         assertTrue(CategoryDefaults.isBuiltIn(first.id))
         assertEquals(first.items, AzkarData.builtInOrEmpty(first.id))
         assertEquals(first.title, AzkarData.titleFor(first.id))
-        assertTrue(CategoryDefaults.builtIn.any { it.id == "hisn" })
+        assertFalse(CategoryDefaults.builtIn.any { it.id == "hisn" })
+        assertTrue(CategoryDefaults.isBuiltIn("hisn")) // legacy route remains reserved
         assertTrue(CategoryDefaults.merge(listOf(AzkarCategory(first.id, first.title, "", "book"))).none { it.id == first.id })
     }
+    @Test
+    fun bookMorningEveningAndSleepDhikrAreMergedIntoExistingCategories() {
+        val morning = AzkarData.forCategory("sabah")
+        val evening = AzkarData.forCategory("masaa")
+        val sleep = AzkarData.forCategory("sleep")
+
+        assertTrue(morning.any { it.id >= 300000 && it.category == "hisn_027" })
+        assertTrue(evening.any { it.id >= 300000 && it.category == "hisn_028" })
+        assertTrue(sleep.any { it.id >= 300000 && it.category in setOf("hisn_029", "hisn_030", "hisn_031", "hisn_032") })
+        assertTrue(CategoryDefaults.builtIn.none { it.id == "hisn" })
+    }
+
 }

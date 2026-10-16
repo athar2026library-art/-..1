@@ -1,9 +1,7 @@
 package com.example
 
-import android.Manifest
-import android.content.pm.PackageManager
-import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -21,12 +19,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.material3.MaterialTheme
@@ -67,8 +60,7 @@ import com.example.ui.SyncWorker
 import java.util.concurrent.TimeUnit
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
+import kotlinx.coroutines.Dispatchers
 
 class MainActivity : ComponentActivity() {
     @androidx.compose.material3.ExperimentalMaterial3Api
@@ -76,20 +68,16 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
-            }
+        // Schedule background work off the UI thread so first composition can start promptly.
+        lifecycleScope.launch(Dispatchers.IO) {
+            val workRequest = PeriodicWorkRequestBuilder<NotificationWorker>(15, TimeUnit.MINUTES).build()
+            WorkManager.getInstance(applicationContext).enqueueUniquePeriodicWork(
+                "AzkarNotifications",
+                ExistingPeriodicWorkPolicy.KEEP,
+                workRequest
+            )
+            SyncWorker.enqueue(applicationContext)
         }
-
-        // Check every 15 minutes so user-selected reminder times are not sampled only every 2 hours.
-        val workRequest = PeriodicWorkRequestBuilder<NotificationWorker>(15, TimeUnit.MINUTES).build()
-        WorkManager.getInstance(applicationContext).enqueueUniquePeriodicWork(
-            "AzkarNotifications",
-            ExistingPeriodicWorkPolicy.REPLACE,
-            workRequest
-        )
-        SyncWorker.enqueue(applicationContext)
 
         val progressRepository = ProgressRepository.getInstance(applicationContext)
         val settingsRepository = SettingsRepository(applicationContext.dataStore)
@@ -97,58 +85,56 @@ class MainActivity : ComponentActivity() {
         val authRepository = AuthRepository(this)
         val firestoreRepository = FirestoreRepository()
 
-        FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
-            val user = FirebaseAuth.getInstance().currentUser ?: return@addOnSuccessListener
-            FirebaseFirestore.getInstance().collection("users").document(user.uid).set(
-                mapOf(
-                    "fcmTokens" to listOf(token),
-                    "updatedAt" to FieldValue.serverTimestamp()
-                ),
-                com.google.firebase.firestore.SetOptions.merge()
-            )
+        // Token registration must never block app launch. A missing/invalid Firebase
+        // configuration should degrade cloud notifications, not crash MainActivity.
+        runCatching {
+            val user = FirebaseAuth.getInstance().currentUser
+            if (user != null) {
+                FirebaseMessaging.getInstance().token
+                    .addOnSuccessListener { token ->
+                        FirebaseFirestore.getInstance().collection("users").document(user.uid).set(
+                            mapOf(
+                                "fcmTokens" to listOf(token),
+                                "updatedAt" to FieldValue.serverTimestamp()
+                            ),
+                            com.google.firebase.firestore.SetOptions.merge()
+                        )
+                    }
+                    .addOnFailureListener { error ->
+                        Log.w("BaqiyatStartup", "FCM token registration skipped", error)
+                    }
+            }
+        }.onFailure { error ->
+            Log.w("BaqiyatStartup", "Firebase messaging unavailable during startup", error)
         }
 
         setContent {
-            var showSplash by remember { mutableStateOf(true) }
-            LaunchedEffect(Unit) { kotlinx.coroutines.delay(1400); showSplash = false }
-            if (showSplash) {
-                BaqiyatSplash()
-            } else {
-                val viewModel: AppViewModel = viewModel(
-                    factory = AppViewModelFactory(
-                        progressRepository,
-                        settingsRepository,
-                        aiRepository,
-                        authRepository,
-                        firestoreRepository
-                    )
+            // Do not hold the user behind an artificial 1.4-second splash. Render the
+            // first useful screen immediately; Android already provides the launch screen.
+            val viewModel: AppViewModel = viewModel(
+                factory = AppViewModelFactory(
+                    progressRepository,
+                    settingsRepository,
+                    aiRepository,
+                    authRepository,
+                    firestoreRepository
                 )
+            )
 
-                val isDarkMode by viewModel.isDarkMode.collectAsState()
-                val onboardingComplete by settingsRepository.onboardingCompleteFlow.collectAsState(initial = false)
+            val isDarkMode by viewModel.isDarkMode.collectAsState()
+            val onboardingComplete by settingsRepository.onboardingCompleteFlow.collectAsState(initial = false)
 
-                val timeMode = rememberTimeMode(isDarkMode)
-                BaqiyatTheme(mode = timeMode) {
-                    BaqiyatBackground {
-                        if (onboardingComplete) {
-                            AppNavGraph(viewModel = viewModel)
-                        } else {
-                            BaqiyatOnboarding(onDone = { lifecycleScope.launch { settingsRepository.setOnboardingComplete() } })
-                        }
+            val timeMode = rememberTimeMode(isDarkMode)
+            BaqiyatTheme(mode = timeMode) {
+                BaqiyatBackground {
+                    if (onboardingComplete) {
+                        AppNavGraph(viewModel = viewModel)
+                    } else {
+                        BaqiyatOnboarding(onDone = { lifecycleScope.launch { settingsRepository.setOnboardingComplete() } })
                     }
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun BaqiyatSplash() {
-    var revealed by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { revealed = true }
-    val scale = animateFloatAsState(if (revealed) 1f else .82f, animationSpec = tween(800), label = "splashScale")
-    Box(Modifier.fillMaxSize().background(Color(0xFFFBFAF3)), contentAlignment = Alignment.Center) {
-        Image(painterResource(com.baqiyat.azkar.R.drawable.logo_baqiyat), contentDescription = "شعار الباقيات", modifier = Modifier.size(148.dp).scale(scale.value))
     }
 }
 

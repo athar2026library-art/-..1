@@ -166,6 +166,9 @@ class AppViewModel(
     private val _userSignedIn = MutableStateFlow(authRepository.getCurrentUser() != null)
     val userSignedIn: StateFlow<Boolean> = _userSignedIn.asStateFlow()
 
+    private val _isSigningIn = MutableStateFlow(false)
+    val isSigningIn: StateFlow<Boolean> = _isSigningIn.asStateFlow()
+
     val myFeedback: StateFlow<List<FeedbackItem>> = firestoreRepository.observeMyFeedback()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -345,15 +348,31 @@ class AppViewModel(
     fun clearStatusMessage() { _statusMessage.value = "" }
 
     fun signIn(context: Context) {
+        if (_isSigningIn.value) return
         viewModelScope.launch {
-            val success = authRepository.signInWithGoogle(context)
-            if (success) {
-                _userSignedIn.value = true
-                _statusMessage.value = "تم تسجيل الدخول بنجاح!"
-                val enabled = settingsRepository.notificationsEnabledFlow.first()
-                firestoreRepository.saveFcmToken(notificationsEnabled = enabled)
-            } else {
-                _statusMessage.value = "فشل تسجيل الدخول أو تم إلغاؤه."
+            _isSigningIn.value = true
+            _statusMessage.value = "جارٍ تسجيل الدخول باستخدام Google..."
+            try {
+                val success = authRepository.signInWithGoogle(context)
+                if (success) {
+                    _userSignedIn.value = true
+                    _statusMessage.value = "تم تسجيل الدخول بنجاح!"
+                    runCatching {
+                        val enabled = settingsRepository.notificationsEnabledFlow.first()
+                        firestoreRepository.saveFcmToken(notificationsEnabled = enabled)
+                    }.onFailure {
+                        // Authentication succeeded; notification token setup is a separate concern.
+                        _statusMessage.value = "تم تسجيل الدخول، لكن تعذر تحديث رمز الإشعارات."
+                    }
+                } else {
+                    _statusMessage.value = "لم يكتمل تسجيل الدخول. تحقق من إعداد Google في Firebase ثم أعد المحاولة."
+                }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                _statusMessage.value = "تعذر تسجيل الدخول. تحقق من اتصال الإنترنت وإعدادات Google ثم أعد المحاولة."
+            } finally {
+                _isSigningIn.value = false
             }
         }
     }

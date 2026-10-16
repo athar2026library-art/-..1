@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.horizontalScroll
 import com.example.ui.AppViewModel
+import com.example.ui.findActivity
 import com.example.ui.ChatMessage
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -44,10 +45,12 @@ fun AiServicesScreen(
     val messages by viewModel.chatMessages.collectAsState()
     val isLoadingAi by viewModel.isLoadingAi.collectAsState()
     val userSignedIn by viewModel.userSignedIn.collectAsState()
+    val isSigningIn by viewModel.isSigningIn.collectAsStateWithLifecycle()
+    val statusMessage by viewModel.statusMessage.collectAsStateWithLifecycle()
     val savedAiAzkar by viewModel.savedAiAzkar.collectAsStateWithLifecycle()
     val audioSpeed by viewModel.audioSpeed.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val activity = context as? Activity
+    val activity = context.findActivity()
     val audioPlayer = remember(context.applicationContext) { AudioPlayer(context.applicationContext) }
     val isAudioPlaying by audioPlayer.isPlaying.collectAsStateWithLifecycle()
 
@@ -93,10 +96,17 @@ fun AiServicesScreen(
                         )
                         Button(
                             onClick = { activity?.let(viewModel::signIn) },
-                            enabled = activity != null,
+                            enabled = activity != null && !isSigningIn,
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text("تسجيل الدخول باستخدام Google")
+                            Text(if (isSigningIn) "جارٍ تسجيل الدخول..." else "تسجيل الدخول باستخدام Google")
+                        }
+                        if (statusMessage.isNotBlank()) {
+                            Text(
+                                statusMessage,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodySmall
+                            )
                         }
                     }
                 } else {
