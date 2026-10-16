@@ -1,8 +1,5 @@
 package com.example
 
-import android.Manifest
-import android.content.pm.PackageManager
-import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -68,20 +65,12 @@ import com.example.ui.SyncWorker
 import java.util.concurrent.TimeUnit
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 
 class MainActivity : ComponentActivity() {
     @androidx.compose.material3.ExperimentalMaterial3Api
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
-            }
-        }
 
         // Check every 15 minutes so user-selected reminder times are not sampled only every 2 hours.
         val workRequest = PeriodicWorkRequestBuilder<NotificationWorker>(15, TimeUnit.MINUTES).build()
