@@ -101,10 +101,10 @@ fun AppNavGraph(
             navController = navController,
             startDestination = startDestination,
             modifier = modifier.padding(innerPadding),
-            enterTransition = { fadeIn(tween(280)) + slideInHorizontally(tween(280, easing = EaseOutCubic)) { it / 10 } },
-            exitTransition = { fadeOut(tween(200)) + slideOutHorizontally(tween(280, easing = EaseOutCubic)) { -it / 10 } },
-            popEnterTransition = { fadeIn(tween(280)) },
-            popExitTransition = { fadeOut(tween(200)) }
+            enterTransition = { fadeIn(tween(160)) + slideInHorizontally(tween(160, easing = EaseOutCubic)) { it / 14 } },
+            exitTransition = { fadeOut(tween(110)) + slideOutHorizontally(tween(160, easing = EaseOutCubic)) { -it / 14 } },
+            popEnterTransition = { fadeIn(tween(160)) },
+            popExitTransition = { fadeOut(tween(110)) }
         ) {
             composable("home") {
                 HomeScreen(
