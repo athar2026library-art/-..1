@@ -1,11 +1,16 @@
 package com.example.ui.screens
 
-import android.app.Activity
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.provider.Settings
 import androidx.compose.foundation.layout.*
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -57,6 +62,11 @@ fun SettingsScreen(
     val isSigningIn by viewModel.isSigningIn.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val activity = context.findActivity()
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        viewModel.setNotificationsEnabled(granted)
+    }
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
     if (showDeleteConfirm) {
@@ -166,7 +176,20 @@ fun SettingsScreen(
                         }
                         Switch(
                             checked = notificationsEnabled,
-                            onCheckedChange = { viewModel.setNotificationsEnabled(it) }
+                            onCheckedChange = { enabled ->
+                                if (
+                                    enabled &&
+                                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                                    ContextCompat.checkSelfPermission(
+                                        context,
+                                        Manifest.permission.POST_NOTIFICATIONS
+                                    ) != PackageManager.PERMISSION_GRANTED
+                                ) {
+                                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                } else {
+                                    viewModel.setNotificationsEnabled(enabled)
+                                }
+                            }
                         )
                     }
 
