@@ -62,6 +62,10 @@ fun SettingsScreen(
     val isSigningIn by viewModel.isSigningIn.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val activity = context.findActivity()
+    val notificationPermissionGranted =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
+            PackageManager.PERMISSION_GRANTED
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
@@ -175,7 +179,7 @@ fun SettingsScreen(
                             )
                         }
                         Switch(
-                            checked = notificationsEnabled,
+                            checked = notificationsEnabled && notificationPermissionGranted,
                             onCheckedChange = { enabled ->
                                 if (
                                     enabled &&
