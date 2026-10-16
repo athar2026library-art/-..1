@@ -19,12 +19,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.material3.MaterialTheme
@@ -137,16 +132,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun BaqiyatSplash() {
-    var revealed by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { revealed = true }
-    val scale = animateFloatAsState(if (revealed) 1f else .82f, animationSpec = tween(800), label = "splashScale")
-    Box(Modifier.fillMaxSize().background(Color(0xFFFBFAF3)), contentAlignment = Alignment.Center) {
-        Image(painterResource(com.baqiyat.azkar.R.drawable.logo_baqiyat), contentDescription = "شعار الباقيات", modifier = Modifier.size(148.dp).scale(scale.value))
     }
 }
 
