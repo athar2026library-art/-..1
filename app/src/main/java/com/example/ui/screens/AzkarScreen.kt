@@ -386,6 +386,16 @@ fun AzkarScreen(
                             Icon(Icons.Default.RepeatOne, contentDescription = "تكرار 5 مرات")
                         }
                     }
+                    if (selectedAudioUrl.isNullOrBlank()) {
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            "لا يتوفر تسجيل قارئ موثّق لهذا الذكر بعد؛ زر الاستماع يستخدم القراءة الآلية في الجهاز.",
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     if (!selectedAudioUrl.isNullOrBlank() && selectedAudioUrl.startsWith("https://")) {
                         Spacer(Modifier.height(8.dp))
                         OutlinedButton(
