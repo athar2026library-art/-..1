@@ -48,6 +48,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.AzkarData
 import com.example.data.CategoryDefaults
 import com.example.data.CustomWirds
+import com.example.data.HisnAlMuslimData
 import com.example.data.Zekr
 import com.example.ui.AppViewModel
 import com.example.ui.AudioPlayer
@@ -253,6 +254,9 @@ fun AzkarScreen(
 
     val currentZekr = azkarList[currentIndex]
     val selectedAudioUrl = currentZekr.audioUrlsByReciter[reciterId] ?: currentZekr.audioUrl
+    val chapterAudioUrl = remember(currentZekr.category) {
+        HisnAlMuslimData.chapterFor(currentZekr.category)?.audioUrl
+    }
     val playCurrentZekr: (Int, Boolean) -> Unit = { repetitions, autoAdvance ->
         val itemIndex = currentIndex
         val onComplete: (() -> Unit)? = if (autoAdvance) {
@@ -389,12 +393,66 @@ fun AzkarScreen(
                     if (selectedAudioUrl.isNullOrBlank()) {
                         Spacer(Modifier.height(6.dp))
                         Text(
-                            "لا يتوفر تسجيل قارئ موثّق لهذا الذكر بعد؛ زر الاستماع يستخدم القراءة الآلية في الجهاز.",
+                            "لا يتوفر تسجيل منفصل لهذا الذكر؛ يمكنك استخدام تسجيل الفصل الكامل أو القراءة الآلية.",
                             modifier = Modifier.fillMaxWidth(),
                             textAlign = TextAlign.Center,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        if (!chapterAudioUrl.isNullOrBlank()) {
+                            Spacer(Modifier.height(8.dp))
+                            OutlinedButton(
+                                onClick = {
+                                    if (isPlaying) audioPlayer.stop()
+                                    else audioPlayer.playRecording(chapterAudioUrl, speed = audioSpeed)
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(
+                                    if (isPlaying) Icons.Default.Stop else Icons.Default.VolumeUp,
+                                    contentDescription = null
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(if (isPlaying) "إيقاف الصوت" else "استماع لتسجيل الفصل كاملًا")
+                            }
+                            OutlinedButton(
+                                onClick = {
+                                    if (!isDownloadingAudio) {
+                                        coroutineScope.launch {
+                                            isDownloadingAudio = true
+                                            val downloaded = audioPlayer.downloadRecording(chapterAudioUrl)
+                                            isDownloadingAudio = false
+                                            audioStatus = if (downloaded) {
+                                                "تم حفظ تسجيل الفصل للاستماع دون إنترنت."
+                                            } else {
+                                                "تعذر تنزيل تسجيل الفصل؛ تحقق من الرابط والاتصال."
+                                            }
+                                        }
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = !isDownloadingAudio
+                            ) {
+                                Text(
+                                    if (audioPlayer.hasCachedRecording(chapterAudioUrl)) {
+                                        "تسجيل الفصل محفوظ دون إنترنت"
+                                    } else if (isDownloadingAudio) {
+                                        "جارٍ تنزيل تسجيل الفصل..."
+                                    } else {
+                                        "تنزيل تسجيل الفصل"
+                                    }
+                                )
+                            }
+                            if (audioStatus.isNotBlank()) {
+                                Text(
+                                    audioStatus,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    textAlign = TextAlign.Center,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
                     }
                     if (!selectedAudioUrl.isNullOrBlank() && selectedAudioUrl.startsWith("https://")) {
                         Spacer(Modifier.height(8.dp))
