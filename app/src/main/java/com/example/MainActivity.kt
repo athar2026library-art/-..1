@@ -60,6 +60,7 @@ import com.example.ui.SyncWorker
 import java.util.concurrent.TimeUnit
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
 
 class MainActivity : ComponentActivity() {
     @androidx.compose.material3.ExperimentalMaterial3Api
@@ -67,14 +68,16 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // Check every 15 minutes so user-selected reminder times are not sampled only every 2 hours.
-        val workRequest = PeriodicWorkRequestBuilder<NotificationWorker>(15, TimeUnit.MINUTES).build()
-        WorkManager.getInstance(applicationContext).enqueueUniquePeriodicWork(
-            "AzkarNotifications",
-            ExistingPeriodicWorkPolicy.KEEP,
-            workRequest
-        )
-        SyncWorker.enqueue(applicationContext)
+        // Schedule background work off the UI thread so first composition can start promptly.
+        lifecycleScope.launch(Dispatchers.IO) {
+            val workRequest = PeriodicWorkRequestBuilder<NotificationWorker>(15, TimeUnit.MINUTES).build()
+            WorkManager.getInstance(applicationContext).enqueueUniquePeriodicWork(
+                "AzkarNotifications",
+                ExistingPeriodicWorkPolicy.KEEP,
+                workRequest
+            )
+            SyncWorker.enqueue(applicationContext)
+        }
 
         val progressRepository = ProgressRepository.getInstance(applicationContext)
         val settingsRepository = SettingsRepository(applicationContext.dataStore)
