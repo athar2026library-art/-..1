@@ -54,6 +54,7 @@ fun SettingsScreen(
 
     val userSignedIn by viewModel.userSignedIn.collectAsStateWithLifecycle()
     val statusMessage by viewModel.statusMessage.collectAsStateWithLifecycle()
+    val isSigningIn by viewModel.isSigningIn.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val activity = context.findActivity()
     var showDeleteConfirm by remember { mutableStateOf(false) }
@@ -358,9 +359,9 @@ fun SettingsScreen(
                             },
                             modifier = Modifier.fillMaxWidth().testTag("google-sign-in-button"),
                             shape = RoundedCornerShape(12.dp),
-                            enabled = activity != null
+                            enabled = activity != null && !isSigningIn
                         ) {
-                            Text("تسجيل الدخول باستخدام Google")
+                            Text(if (isSigningIn) "جارٍ تسجيل الدخول..." else "تسجيل الدخول باستخدام Google")
                         }
                     }
                 }
