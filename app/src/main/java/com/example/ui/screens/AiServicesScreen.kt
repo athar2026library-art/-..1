@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.horizontalScroll
 import com.example.ui.AppViewModel
+import com.example.ui.findActivity
 import com.example.ui.ChatMessage
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -47,7 +48,7 @@ fun AiServicesScreen(
     val savedAiAzkar by viewModel.savedAiAzkar.collectAsStateWithLifecycle()
     val audioSpeed by viewModel.audioSpeed.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val activity = context as? Activity
+    val activity = context.findActivity()
     val audioPlayer = remember(context.applicationContext) { AudioPlayer(context.applicationContext) }
     val isAudioPlaying by audioPlayer.isPlaying.collectAsStateWithLifecycle()
 
