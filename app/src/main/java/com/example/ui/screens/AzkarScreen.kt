@@ -82,7 +82,16 @@ fun AzkarScreen(
         if (isSnapshotMode) flowOf<List<Zekr>?>(null)
         else viewModel.observePublishedAzkar(category).map<List<Zekr>, List<Zekr>?> { it }
     }.collectAsStateWithLifecycle(initialValue = null)
-    val azkarList = liveAzkar?.takeIf { it.isNotEmpty() } ?: fallbackAzkar
+    val azkarList = remember(liveAzkar, fallbackAzkar) {
+        val published = liveAzkar.orEmpty()
+        if (published.isEmpty()) {
+            fallbackAzkar
+        } else {
+            // Keep bundled book content visible even when Firestore also publishes
+            // items for the same existing category; remove text duplicates only.
+            (fallbackAzkar + published).distinctBy { com.example.data.ArabicText.normalize(it.text) }
+        }
+    }
     val isLoadingContent = liveAzkar == null && !isSnapshotMode && fallbackAzkar.isEmpty()
     val title = when {
         category == "favorites" -> "المفضلة"
