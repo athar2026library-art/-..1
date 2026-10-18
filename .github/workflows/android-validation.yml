@@ -40,35 +40,44 @@ jobs:
           gradle-version: "9.3.1"
           validate-wrappers: false
 
-      # The Android Firebase client config is kept in GitHub Secrets, not in the public repository.
-      # Accept either documented secret name so older repository settings remain compatible.
+      # Firebase client configuration is public app configuration. Prefer a valid secret
+      # when provided; otherwise keep the valid checked-in config. Never overwrite it with malformed secret data.
       - name: Configure Firebase for Android
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
           FIREBASE_ANDROID_CONFIG_JSON: ${{ secrets.FIREBASE_ANDROID_CONFIG_JSON }}
         run: |
           set -euo pipefail
+          validate_config() {
+            CONFIG_PATH="$1" node -e '
+              const fs = require("fs");
+              const c = JSON.parse(fs.readFileSync(process.env.CONFIG_PATH, "utf8"));
+              if (!c.project_info?.project_id || !Array.isArray(c.client) || !c.client.length) {
+                throw new Error("Firebase config is missing project_info.project_id or client entries");
+              }
+              const pkg = c.client.some(x => x.client_info?.android_client_info?.package_name === "com.baqiyat.azkar");
+              if (!pkg) throw new Error("Firebase config has no Android client for package com.baqiyat.azkar");
+              const hasKey = c.client.some(x => typeof x.api_key?.[0]?.current_key === "string" && x.api_key[0].current_key.startsWith("AIza"));
+              if (!hasKey) throw new Error("Firebase config has no valid-looking current_key");
+              console.log("Firebase Android config structure and package ID verified.");
+            '
+          }
           CONFIG="${GOOGLE_SERVICES_JSON:-}"
-          if [ -z "$CONFIG" ]; then
-            CONFIG="${FIREBASE_ANDROID_CONFIG_JSON:-}"
+          if [ -z "$CONFIG" ]; then CONFIG="${FIREBASE_ANDROID_CONFIG_JSON:-}"; fi
+          if [ -n "$CONFIG" ]; then
+            printf '%s' "$CONFIG" > "$RUNNER_TEMP/google-services-secret.json"
+            if validate_config "$RUNNER_TEMP/google-services-secret.json"; then
+              cp "$RUNNER_TEMP/google-services-secret.json" app/google-services.json
+              echo "Using valid Firebase config from GitHub Secrets."
+            else
+              echo "::warning::Firebase config secret is invalid; retaining the repository's checked-in config."
+            fi
           fi
-          if [ -z "$CONFIG" ]; then
-            echo "::error::Missing GOOGLE_SERVICES_JSON (or FIREBASE_ANDROID_CONFIG_JSON) GitHub Actions secret. Add the complete app/google-services.json contents as a repository Actions secret."
+          if [ ! -s app/google-services.json ]; then
+            echo "::error::No Firebase Android config is available. Add a valid app/google-services.json or GOOGLE_SERVICES_JSON secret."
             exit 1
           fi
-          printf '%s' "$CONFIG" > app/google-services.json
-          node -e '
-            const fs = require("fs");
-            const c = JSON.parse(fs.readFileSync("app/google-services.json", "utf8"));
-            if (!c.project_info?.project_id || !Array.isArray(c.client) || !c.client.length) {
-              throw new Error("Firebase Android config is missing project_info.project_id or client entries");
-            }
-            const pkg = c.client.some(x => x.client_info?.android_client_info?.package_name === "com.baqiyat.azkar");
-            if (!pkg) throw new Error("Firebase config has no Android client for package com.baqiyat.azkar");
-            const key = c.client[0]?.api_key?.[0]?.current_key;
-            if (!key || !key.startsWith("AIza")) throw new Error("Firebase config has no valid-looking current_key");
-            console.log("Firebase Android config structure and package ID verified.");
-          '
+          validate_config app/google-services.json
 
       - name: Check Android secret boundaries
         run: bash scripts/check-android-secrets.sh

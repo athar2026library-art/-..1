@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.Image
@@ -60,6 +61,8 @@ fun SettingsScreen(
     val userSignedIn by viewModel.userSignedIn.collectAsStateWithLifecycle()
     val statusMessage by viewModel.statusMessage.collectAsStateWithLifecycle()
     val isSigningIn by viewModel.isSigningIn.collectAsStateWithLifecycle()
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
     val context = LocalContext.current
     val activity = context.findActivity()
     val notificationPermissionGranted =
@@ -377,18 +380,61 @@ fun SettingsScreen(
                             Text("حذف الحساب نهائياً", color = MaterialTheme.colorScheme.error)
                         }
                     } else {
-                        Text("سجل الدخول لحفظ تقدمك", fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("سجّل الدخول أو أنشئ حساباً بالبريد الإلكتروني لحفظ تقدمك وتشغيل المساعد الذكي.", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 21.sp)
                         Spacer(modifier = Modifier.height(16.dp))
+                        OutlinedTextField(
+                            value = email,
+                            onValueChange = { email = it },
+                            modifier = Modifier.fillMaxWidth().testTag("email-auth-email"),
+                            label = { Text("البريد الإلكتروني") },
+                            placeholder = { Text("name@example.com") },
+                            singleLine = true,
+                            enabled = !isSigningIn
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+                        OutlinedTextField(
+                            value = password,
+                            onValueChange = { password = it },
+                            modifier = Modifier.fillMaxWidth().testTag("email-auth-password"),
+                            label = { Text("كلمة المرور") },
+                            visualTransformation = PasswordVisualTransformation(),
+                            singleLine = true,
+                            enabled = !isSigningIn
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
                         Button(
-                            onClick = {
-                                activity?.let { viewModel.signIn(it) }
-                                    ?: run { /* no activity */ }
-                            },
+                            onClick = { viewModel.signInWithEmail(email.trim(), password) },
+                            modifier = Modifier.fillMaxWidth().testTag("email-sign-in-button"),
+                            shape = RoundedCornerShape(12.dp),
+                            enabled = !isSigningIn && email.isNotBlank() && password.isNotBlank()
+                        ) {
+                            Text(if (isSigningIn) "جارٍ التحقق..." else "تسجيل الدخول بالبريد")
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedButton(
+                            onClick = { viewModel.createAccountWithEmail(email.trim(), password) },
+                            modifier = Modifier.fillMaxWidth().testTag("email-create-account-button"),
+                            shape = RoundedCornerShape(12.dp),
+                            enabled = !isSigningIn && email.isNotBlank() && password.length >= 6
+                        ) {
+                            Text("إنشاء حساب جديد")
+                        }
+                        TextButton(
+                            onClick = { viewModel.sendPasswordReset(email.trim()) },
+                            modifier = Modifier.fillMaxWidth().testTag("email-password-reset-button"),
+                            enabled = !isSigningIn && email.isNotBlank()
+                        ) {
+                            Text("نسيت كلمة المرور؟ أرسل رابط الاستعادة")
+                        }
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedButton(
+                            onClick = { activity?.let { viewModel.signIn(it) } },
                             modifier = Modifier.fillMaxWidth().testTag("google-sign-in-button"),
                             shape = RoundedCornerShape(12.dp),
                             enabled = activity != null && !isSigningIn
                         ) {
-                            Text(if (isSigningIn) "جارٍ تسجيل الدخول..." else "تسجيل الدخول باستخدام Google")
+                            Text("أو المتابعة باستخدام Google")
                         }
                     }
                 }
