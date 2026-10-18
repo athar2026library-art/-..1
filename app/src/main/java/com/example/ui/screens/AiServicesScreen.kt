@@ -24,11 +24,15 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.runtime.DisposableEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.AudioPlayer
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.horizontalScroll
@@ -59,6 +63,8 @@ fun AiServicesScreen(
     }
 
     var inputText by remember { mutableStateOf("") }
+    var authEmail by remember { mutableStateOf("") }
+    var authPassword by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
 
     LaunchedEffect(messages.size) {
@@ -86,20 +92,67 @@ fun AiServicesScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp)
+                            .imePadding()
+                            .padding(horizontal = 16.dp, vertical = 10.dp)
                             .navigationBarsPadding(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Text(
-                            "يحتاج المساعد إلى تسجيل الدخول لحماية الاستخدام وتحديد الحصة اليومية.",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            "سجّل الدخول أو أنشئ حساباً لاستخدام المساعد مع الحفاظ على حماية الحساب والحصة اليومية.",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        OutlinedTextField(
+                            value = authEmail,
+                            onValueChange = { authEmail = it },
+                            modifier = Modifier.fillMaxWidth().testTag("ai-email-auth-email"),
+                            label = { Text("البريد الإلكتروني") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                            singleLine = true,
+                            enabled = !isSigningIn
+                        )
+                        OutlinedTextField(
+                            value = authPassword,
+                            onValueChange = { authPassword = it },
+                            modifier = Modifier.fillMaxWidth().testTag("ai-email-auth-password"),
+                            label = { Text("كلمة المرور") },
+                            visualTransformation = PasswordVisualTransformation(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                            singleLine = true,
+                            enabled = !isSigningIn
                         )
                         Button(
+                            onClick = { viewModel.signInWithEmail(authEmail.trim(), authPassword) },
+                            enabled = !isSigningIn && authEmail.isNotBlank() && authPassword.isNotBlank(),
+                            modifier = Modifier.fillMaxWidth().testTag("ai-email-sign-in-button")
+                        ) {
+                            Text(if (isSigningIn) "جارٍ التحقق..." else "تسجيل الدخول بالبريد")
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = { viewModel.createAccountWithEmail(authEmail.trim(), authPassword) },
+                                enabled = !isSigningIn && authEmail.isNotBlank() && authPassword.length >= 6,
+                                modifier = Modifier.weight(1f).testTag("ai-email-create-account-button")
+                            ) {
+                                Text("إنشاء حساب")
+                            }
+                            TextButton(
+                                onClick = { viewModel.sendPasswordReset(authEmail.trim()) },
+                                enabled = !isSigningIn && authEmail.isNotBlank(),
+                                modifier = Modifier.weight(1f).testTag("ai-email-password-reset-button")
+                            ) {
+                                Text("نسيت كلمة المرور؟")
+                            }
+                        }
+                        OutlinedButton(
                             onClick = { activity?.let(viewModel::signIn) },
                             enabled = activity != null && !isSigningIn,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth().testTag("ai-google-sign-in-button")
                         ) {
-                            Text(if (isSigningIn) "جارٍ تسجيل الدخول..." else "تسجيل الدخول باستخدام Google")
+                            Text("أو المتابعة باستخدام Google")
                         }
                         if (statusMessage.isNotBlank()) {
                             Text(
