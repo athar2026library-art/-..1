@@ -67,6 +67,26 @@ class AuthRepository(context: Context) {
         }
     }
 
+    suspend fun createAccountWithEmail(email: String, password: String) {
+        require(email.isNotBlank()) { "أدخل البريد الإلكتروني." }
+        require(password.length >= 6) { "يجب أن تتكون كلمة المرور من 6 أحرف على الأقل." }
+        val firebaseAuth = auth ?: error("Firebase Authentication غير مهيأ.")
+        firebaseAuth.createUserWithEmailAndPassword(email.trim(), password).await()
+    }
+
+    suspend fun signInWithEmail(email: String, password: String) {
+        require(email.isNotBlank()) { "أدخل البريد الإلكتروني." }
+        require(password.isNotBlank()) { "أدخل كلمة المرور." }
+        val firebaseAuth = auth ?: error("Firebase Authentication غير مهيأ.")
+        firebaseAuth.signInWithEmailAndPassword(email.trim(), password).await()
+    }
+
+    suspend fun sendPasswordReset(email: String) {
+        require(email.isNotBlank()) { "أدخل بريدك الإلكتروني أولاً." }
+        val firebaseAuth = auth ?: error("Firebase Authentication غير مهيأ.")
+        firebaseAuth.sendPasswordResetEmail(email.trim()).await()
+    }
+
     suspend fun signOut() {
         auth?.signOut()
         runCatching { credentialManager.clearCredentialState(ClearCredentialStateRequest()) }
