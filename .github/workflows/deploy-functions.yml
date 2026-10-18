@@ -1,9 +1,10 @@
 name: Deploy Firebase Functions
 
 on:
+  # Cloud Functions deployment requires a linked Cloud Billing account (Blaze).
+  # Keep the existing feature-branch trigger and allow an explicit manual deploy.
   push:
     branches:
-      - main
       - feature/private-admin-panel
   workflow_dispatch:
 
