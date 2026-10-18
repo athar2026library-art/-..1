@@ -3,7 +3,9 @@ name: Deploy Firebase Functions
 on:
   push:
     branches:
+      - main
       - feature/private-admin-panel
+  workflow_dispatch:
 
 permissions:
   contents: read
