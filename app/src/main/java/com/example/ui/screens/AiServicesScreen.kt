@@ -188,14 +188,18 @@ fun AiServicesScreen(
                     }
                 )
             }
-            if (!userSignedIn) {
+            if (!aiAccessReady) {
                 item {
                     Card(
                         shape = RoundedCornerShape(20.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                     ) {
                         Text(
-                            "بعد تسجيل الدخول ستتمكن من طرح أسئلة عن الأذكار والحصول على الإجابات مع المراجع المتاحة.",
+                            if (isPreparingAiAccess) {
+                                "جارٍ تجهيز اتصال آمن بالمساعد… لا تحتاج إلى إنشاء حساب."
+                            } else {
+                                statusMessage.ifBlank { "تعذر تجهيز المساعد. اضغط إعادة المحاولة في الأسفل." }
+                            },
                             modifier = Modifier.padding(18.dp),
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
