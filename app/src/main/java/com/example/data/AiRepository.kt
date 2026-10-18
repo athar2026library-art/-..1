@@ -26,7 +26,7 @@ class AiRepository {
 
         val signedIn = runCatching { FirebaseAuth.getInstance().currentUser != null }
             .getOrDefault(false)
-        if (!signedIn) return "سجّل الدخول بحساب Google لتشغيل المساعد الذكي."
+        if (!signedIn) return "سجّل الدخول بحسابك لتشغيل المساعد الذكي."
 
         return try {
             val result = functions
