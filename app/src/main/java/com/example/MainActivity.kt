@@ -66,6 +66,15 @@ class MainActivity : ComponentActivity() {
     @androidx.compose.material3.ExperimentalMaterial3Api
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // The callable Gemini endpoint enforces Firebase App Check. Install the
+        // build-variant provider before any Firebase Auth/Functions request.
+        runCatching {
+            AppCheckProviderInstaller.install(applicationContext)
+        }.onFailure { error ->
+            Log.e("MainActivity", "Firebase App Check provider installation failed", error)
+        }
+
         enableEdgeToEdge()
 
         // Schedule background work off the UI thread so first composition can start promptly.
