@@ -501,6 +501,7 @@ class AppViewModel(
                 settingsRepository.clearAll()
                 authRepository.signOut()
                 _userSignedIn.value = false
+                _aiAccessReady.value = false
                 _statusMessage.value = "تم حذف الحساب نهائياً."
             } catch (e: FirebaseFunctionsException) {
                 _statusMessage.value = when (e.code) {
@@ -520,19 +521,12 @@ class AppViewModel(
 
     fun submitFeedback(draft: FeedbackDraft, context: Context?) {
         viewModelScope.launch {
-            if (authRepository.getCurrentUser() == null) {
-                if (context == null) {
-                    _statusMessage.value = "يجب تسجيل الدخول لإرسال الطلب."
-                    return@launch
-                }
-                val signedIn = authRepository.signInWithGoogle(context)
-                _userSignedIn.value = signedIn
-                if (!signedIn) {
-                    _statusMessage.value = "يجب تسجيل الدخول لإرسال الطلب."
-                    return@launch
-                }
-                val enabled = settingsRepository.notificationsEnabledFlow.first()
-                firestoreRepository.saveFcmToken(notificationsEnabled = enabled)
+            // Anonymous sessions are only for the AI assistant; do not treat them as
+            // a registered account for personal feedback and support requests.
+            if (!authRepository.hasRegisteredAccount()) {
+                _statusMessage.value =
+                    "لإرسال الطلبات ومتابعة الردود، أنشئ حساباً أو سجّل الدخول من الإعدادات."
+                return@launch
             }
             val result = firestoreRepository.submitFeedback(draft, draft.attachmentUri)
             _statusMessage.value = if (result.isSuccess) {
