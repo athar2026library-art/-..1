@@ -95,6 +95,7 @@ dependencies {
   implementation(libs.androidx.room.ktx)
   implementation(libs.androidx.room.runtime)
   implementation(libs.firebase.firestore)
+  implementation(libs.firebase.ai)
   implementation(libs.firebase.auth)
   implementation(libs.firebase.messaging)
   implementation(libs.okhttp)

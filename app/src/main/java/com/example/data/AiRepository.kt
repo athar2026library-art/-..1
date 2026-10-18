@@ -1,74 +1,62 @@
 package com.example.data
 
 import android.util.Log
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.functions.FirebaseFunctions
-import com.google.firebase.functions.FirebaseFunctionsException
+import com.google.firebase.Firebase
+import com.google.firebase.ai.ai
+import com.google.firebase.ai.type.GenerativeBackend
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.tasks.await
 
 /**
- * Calls the authenticated Firebase callable function. Gemini credentials stay
- * on the server and are never compiled into the Android APK.
+ * Uses Firebase AI Logic with the Gemini Developer API.
+ * This avoids requiring a separately deployed Cloud Function for ordinary AI chat.
+ * Firebase App Check must be configured/enforced for Firebase AI Logic in the console.
  */
 class AiRepository {
-    private val functions by lazy { FirebaseFunctions.getInstance(REGION) }
+    private val model by lazy {
+        Firebase.ai(backend = GenerativeBackend.googleAI())
+            .generativeModel(MODEL_NAME)
+    }
 
-    suspend fun ask(message: String): String = callGemini("suggest", message)
+    suspend fun ask(message: String): String = generate("suggest", message)
 
-    suspend fun explainZekr(zekr: String): String = callGemini("explain", zekr)
+    suspend fun explainZekr(zekr: String): String = generate("explain", zekr)
 
-    suspend fun suggestZekrForFeeling(feeling: String): String = callGemini("suggest", feeling)
+    suspend fun suggestZekrForFeeling(feeling: String): String = generate("suggest", feeling)
 
-    private suspend fun callGemini(mode: String, text: String): String {
-        val clean = text.trim().take(MAX_INPUT_CHARS)
+    private suspend fun generate(mode: String, input: String): String {
+        val clean = input.trim().take(MAX_INPUT_CHARS)
         if (clean.length < 2) return "اكتب سؤالك أو شعورك أولاً."
 
-        val signedIn = runCatching { FirebaseAuth.getInstance().currentUser != null }
-            .getOrDefault(false)
-        if (!signedIn) return "تعذر تهيئة جلسة المساعد دون حساب. افتح صفحة المساعد مجدداً أو أعد المحاولة."
-
+        val prompt = buildPrompt(mode, clean)
         return try {
-            val result = functions
-                .getHttpsCallable(FUNCTION_NAME)
-                .call(mapOf("mode" to mode, "text" to clean))
-                .await()
-
-            val data = result.data as? Map<*, *>
-            // The deployed callable returns { reply }, while older deployments may
-            // still return { text }. Accept both response shapes.
-            val answer = (data?.get("reply") as? String)
-                ?: (data?.get("text") as? String)
-            answer?.trim()?.takeIf { it.isNotEmpty() }
-                ?: "وصل رد فارغ من المساعد. حاول مرة أخرى."
+            val response = model.generateContent(prompt)
+            response.text
+                ?.trim()
+                ?.takeIf { it.isNotEmpty() }
+                ?: "وصل رد فارغ من Gemini. أعد صياغة السؤال وحاول مرة أخرى."
         } catch (error: CancellationException) {
             throw error
-        } catch (error: FirebaseFunctionsException) {
-            Log.w(TAG, "Callable failed with code=${error.code}")
-            when (error.code) {
-                FirebaseFunctionsException.Code.UNAUTHENTICATED ->
-                    "انتهت جلسة الدخول. سجّل الدخول مجدداً ثم حاول."
-                FirebaseFunctionsException.Code.RESOURCE_EXHAUSTED ->
-                    "وصلت إلى حد الاستخدام المؤقت للمساعد. حاول لاحقاً."
-                FirebaseFunctionsException.Code.UNAVAILABLE,
-                FirebaseFunctionsException.Code.DEADLINE_EXCEEDED ->
-                    "المساعد غير متاح حالياً. تحقق من اتصال الإنترنت وحاول لاحقاً."
-                FirebaseFunctionsException.Code.FAILED_PRECONDITION ->
-                    "خدمة المساعد غير مهيأة بالكامل على الخادم."
-                FirebaseFunctionsException.Code.INVALID_ARGUMENT ->
-                    "لم أتمكن من فهم الطلب. جرّب صياغة أقصر."
-                else -> "تعذر الحصول على إجابة من المساعد. حاول مرة أخرى."
-            }
         } catch (error: Exception) {
-            Log.e(TAG, "Callable request failed", error)
-            "حدث خطأ أثناء الاتصال بالمساعد. تحقق من الإنترنت وحاول مرة أخرى."
+            Log.e(TAG, "Firebase AI Logic request failed", error)
+            "تعذر الاتصال بمساعد Gemini. تحقق من تفعيل Firebase AI Logic واختيار Gemini Developer API في مشروع Firebase، ثم أعد المحاولة. إذا استمر الخطأ فتحقق من إعداد App Check واتصال الإنترنت."
         }
+    }
+
+    private fun buildPrompt(mode: String, text: String): String {
+        val task = if (mode == "explain") {
+            "اشرح هذا الذكر بأسلوب إيماني ميسر ومختصر جداً، وبيّن معناه دون اختلاق فضل أو نسبة حديث بغير علم:\n\n«$text»"
+        } else {
+            "أشعر بـ ($text) أو أحتاج إلى دعاء بهذا الخصوص. اقترح ذكراً أو دعاءً مناسباً من الأحاديث الصحيحة وكتاب حصن المسلم. لا تخترع نصاً أو مصدراً. إذا لم تستطع التأكد من المصدر، فصرّح بذلك.\n\nاكتب الإجابة بهذا التنسيق:\nالذكر: [النص]\nفضله: [شرح مبسط]\nالمصدر: [المرجع]"
+        }
+        return "$SYSTEM_INSTRUCTION\n\n$task\n\nفي نهاية الإجابة أضف: (إجابة آلية، ليست فتوى)."
     }
 
     private companion object {
         const val TAG = "AiRepository"
-        const val FUNCTION_NAME = "generateGemini"
-        const val REGION = "europe-west1"
+        const val MODEL_NAME = "gemini-3.5-flash-lite"
         const val MAX_INPUT_CHARS = 500
+        const val SYSTEM_INSTRUCTION =
+            "أنت مساعد إسلامي متخصص في الأذكار والدعاء. اعتمد على الأحاديث الصحيحة وكتاب حصن المسلم فقط. " +
+            "كن موجزاً وهادئاً، ولا تصدر فتاوى أو أحكاماً شرعية. لا تختلق نصوصاً أو مراجع أو فضائل."
     }
 }
