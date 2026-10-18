@@ -11,6 +11,11 @@ class AzkarApplication : Application() {
         super.onCreate()
         try {
             FirebaseApp.initializeApp(this)
+
+            // Install App Check immediately after Firebase initialization and before
+            // touching Firebase products (Firestore, AI Logic, etc.).
+            AppCheckInstaller.install()
+
             // Offline cache so published content from the owner panel survives brief offline periods.
             runCatching {
                 val db = FirebaseFirestore.getInstance()
@@ -19,7 +24,6 @@ class AzkarApplication : Application() {
                     .setCacheSizeBytes(FirebaseFirestoreSettings.CACHE_SIZE_UNLIMITED)
                     .build()
             }.onFailure { Log.w("AzkarApplication", "Firestore persistence setup skipped", it) }
-            AppCheckInstaller.install()
         } catch (e: Exception) {
             Log.e("AzkarApplication", "Firebase / App Check init failed", e)
         }
