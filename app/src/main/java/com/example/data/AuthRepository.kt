@@ -27,6 +27,30 @@ class AuthRepository(context: Context) {
 
     fun getCurrentUser() = auth?.currentUser
 
+    /** True only for a user who signed in with a permanent provider, not an anonymous AI session. */
+    fun hasRegisteredAccount(): Boolean = auth?.currentUser?.isAnonymous == false
+
+    /** Firebase Auth session exists, including a background anonymous session used by the AI assistant. */
+    fun hasAuthenticatedSession(): Boolean = auth?.currentUser != null
+
+    /**
+     * Starts an invisible Firebase anonymous session for the AI assistant.
+     * The server still receives a Firebase UID for per-user rate limits; no email or password is required.
+     * Firebase Console must have the Anonymous provider enabled.
+     */
+    suspend fun ensureAiSession(): Boolean {
+        val firebaseAuth = auth ?: return false
+        if (firebaseAuth.currentUser != null) return true
+        return try {
+            firebaseAuth.signInAnonymously().await().user != null
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            Log.e("AuthRepository", "Anonymous AI session could not be created", error)
+            false
+        }
+    }
+
     suspend fun signInWithGoogle(activityContext: Context): Boolean {
         val firebaseAuth = auth ?: return false
         return try {
