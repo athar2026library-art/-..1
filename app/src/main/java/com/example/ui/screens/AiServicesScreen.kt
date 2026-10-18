@@ -17,27 +17,21 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import android.app.Activity
 import androidx.compose.ui.Alignment
 import androidx.compose.material.icons.filled.BookmarkAdd
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.testTag
 import androidx.compose.runtime.DisposableEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.AudioPlayer
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.horizontalScroll
 import com.example.ui.AppViewModel
-import com.example.ui.findActivity
 import com.example.ui.ChatMessage
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -48,13 +42,12 @@ fun AiServicesScreen(
 ) {
     val messages by viewModel.chatMessages.collectAsState()
     val isLoadingAi by viewModel.isLoadingAi.collectAsState()
-    val userSignedIn by viewModel.userSignedIn.collectAsState()
-    val isSigningIn by viewModel.isSigningIn.collectAsStateWithLifecycle()
+    val aiAccessReady by viewModel.aiAccessReady.collectAsStateWithLifecycle()
+    val isPreparingAiAccess by viewModel.isPreparingAiAccess.collectAsStateWithLifecycle()
     val statusMessage by viewModel.statusMessage.collectAsStateWithLifecycle()
     val savedAiAzkar by viewModel.savedAiAzkar.collectAsStateWithLifecycle()
     val audioSpeed by viewModel.audioSpeed.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val activity = context.findActivity()
     val audioPlayer = remember(context.applicationContext) { AudioPlayer(context.applicationContext) }
     val isAudioPlaying by audioPlayer.isPlaying.collectAsStateWithLifecycle()
 
@@ -63,12 +56,15 @@ fun AiServicesScreen(
     }
 
     var inputText by remember { mutableStateOf("") }
-    var authEmail by remember { mutableStateOf("") }
-    var authPassword by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
 
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) listState.animateScrollToItem(messages.lastIndex)
+    }
+
+    LaunchedEffect(Unit) {
+        // No visible account is needed for ordinary AI questions.
+        viewModel.ensureAiAccess()
     }
 
     Scaffold(
@@ -88,78 +84,37 @@ fun AiServicesScreen(
                 tonalElevation = 2.dp,
                 shadowElevation = 8.dp
             ) {
-                if (!userSignedIn) {
+                if (!aiAccessReady) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .imePadding()
-                            .padding(horizontal = 16.dp, vertical = 10.dp)
+                            .padding(horizontal = 16.dp, vertical = 14.dp)
                             .navigationBarsPadding(),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Text(
-                            "سجّل الدخول أو أنشئ حساباً لاستخدام المساعد مع الحفاظ على حماية الحساب والحصة اليومية.",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                        OutlinedTextField(
-                            value = authEmail,
-                            onValueChange = { authEmail = it },
-                            modifier = Modifier.fillMaxWidth().testTag("ai-email-auth-email"),
-                            label = { Text("البريد الإلكتروني") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                            singleLine = true,
-                            enabled = !isSigningIn
-                        )
-                        OutlinedTextField(
-                            value = authPassword,
-                            onValueChange = { authPassword = it },
-                            modifier = Modifier.fillMaxWidth().testTag("ai-email-auth-password"),
-                            label = { Text("كلمة المرور") },
-                            visualTransformation = PasswordVisualTransformation(),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                            singleLine = true,
-                            enabled = !isSigningIn
-                        )
-                        Button(
-                            onClick = { viewModel.signInWithEmail(authEmail.trim(), authPassword) },
-                            enabled = !isSigningIn && authEmail.isNotBlank() && authPassword.isNotBlank(),
-                            modifier = Modifier.fillMaxWidth().testTag("ai-email-sign-in-button")
-                        ) {
-                            Text(if (isSigningIn) "جارٍ التحقق..." else "تسجيل الدخول بالبريد")
-                        }
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            OutlinedButton(
-                                onClick = { viewModel.createAccountWithEmail(authEmail.trim(), authPassword) },
-                                enabled = !isSigningIn && authEmail.isNotBlank() && authPassword.length >= 6,
-                                modifier = Modifier.weight(1f).testTag("ai-email-create-account-button")
-                            ) {
-                                Text("إنشاء حساب")
-                            }
-                            TextButton(
-                                onClick = { viewModel.sendPasswordReset(authEmail.trim()) },
-                                enabled = !isSigningIn && authEmail.isNotBlank(),
-                                modifier = Modifier.weight(1f).testTag("ai-email-password-reset-button")
-                            ) {
-                                Text("نسيت كلمة المرور؟")
-                            }
-                        }
-                        OutlinedButton(
-                            onClick = { activity?.let(viewModel::signIn) },
-                            enabled = activity != null && !isSigningIn,
-                            modifier = Modifier.fillMaxWidth().testTag("ai-google-sign-in-button")
-                        ) {
-                            Text("أو المتابعة باستخدام Google")
-                        }
-                        if (statusMessage.isNotBlank()) {
+                        if (isPreparingAiAccess) {
+                            CircularProgressIndicator()
                             Text(
-                                statusMessage,
+                                "جارٍ تجهيز المساعد الذكي… لا حاجة لإنشاء حساب.",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        } else {
+                            Text(
+                                statusMessage.ifBlank {
+                                    "تعذر تجهيز المساعد. تحقق من الاتصال ثم أعد المحاولة."
+                                },
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.bodySmall
                             )
+                            Button(
+                                onClick = viewModel::ensureAiAccess,
+                                enabled = !isPreparingAiAccess,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("إعادة المحاولة")
+                            }
                         }
                     }
                 } else {
@@ -233,14 +188,18 @@ fun AiServicesScreen(
                     }
                 )
             }
-            if (!userSignedIn) {
+            if (!aiAccessReady) {
                 item {
                     Card(
                         shape = RoundedCornerShape(20.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                     ) {
                         Text(
-                            "بعد تسجيل الدخول ستتمكن من طرح أسئلة عن الأذكار والحصول على الإجابات مع المراجع المتاحة.",
+                            if (isPreparingAiAccess) {
+                                "جارٍ تجهيز اتصال آمن بالمساعد… لا تحتاج إلى إنشاء حساب."
+                            } else {
+                                statusMessage.ifBlank { "تعذر تجهيز المساعد. اضغط إعادة المحاولة في الأسفل." }
+                            },
                             modifier = Modifier.padding(18.dp),
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

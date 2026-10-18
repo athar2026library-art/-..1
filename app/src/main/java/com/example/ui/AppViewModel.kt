@@ -167,8 +167,15 @@ class AppViewModel(
     )
     val chatMessages: StateFlow<List<ChatMessage>> = _chatMessages.asStateFlow()
 
-    private val _userSignedIn = MutableStateFlow(authRepository.getCurrentUser() != null)
+    // User account status is kept separate from the anonymous session used only for AI access.
+    private val _userSignedIn = MutableStateFlow(authRepository.hasRegisteredAccount())
     val userSignedIn: StateFlow<Boolean> = _userSignedIn.asStateFlow()
+
+    private val _aiAccessReady = MutableStateFlow(authRepository.hasAuthenticatedSession())
+    val aiAccessReady: StateFlow<Boolean> = _aiAccessReady.asStateFlow()
+
+    private val _isPreparingAiAccess = MutableStateFlow(false)
+    val isPreparingAiAccess: StateFlow<Boolean> = _isPreparingAiAccess.asStateFlow()
 
     private val _isSigningIn = MutableStateFlow(false)
     val isSigningIn: StateFlow<Boolean> = _isSigningIn.asStateFlow()
@@ -351,6 +358,35 @@ class AppViewModel(
 
     fun clearStatusMessage() { _statusMessage.value = "" }
 
+    /**
+     * Opens the AI assistant without asking the user to create an account.
+     * Firebase Anonymous Auth provides a server-side UID for rate limiting while
+     * leaving the normal account/sync status unchanged.
+     */
+    fun ensureAiAccess() {
+        if (_aiAccessReady.value || _isPreparingAiAccess.value) return
+        viewModelScope.launch {
+            _isPreparingAiAccess.value = true
+            _statusMessage.value = ""
+            try {
+                val ready = authRepository.ensureAiSession()
+                _aiAccessReady.value = ready
+                _statusMessage.value = if (ready) {
+                    ""
+                } else {
+                    "تعذر تشغيل المساعد حالياً. يلزم تفعيل تسجيل الدخول المجهول في إعدادات Firebase Authentication."
+                }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                _aiAccessReady.value = false
+                _statusMessage.value = "تعذر تهيئة المساعد. تحقق من الاتصال وإعداد Firebase ثم أعد المحاولة."
+            } finally {
+                _isPreparingAiAccess.value = false
+            }
+        }
+    }
+
     fun createAccountWithEmail(email: String, password: String) =
         runEmailAuthentication("إنشاء الحساب") { authRepository.createAccountWithEmail(email, password) }
 
@@ -384,7 +420,8 @@ class AppViewModel(
             _statusMessage.value = "جارٍ $action..."
             try {
                 operation()
-                _userSignedIn.value = true
+                _userSignedIn.value = authRepository.hasRegisteredAccount()
+                _aiAccessReady.value = authRepository.hasAuthenticatedSession()
                 _statusMessage.value = "تم $action بنجاح."
                 runCatching {
                     val enabled = settingsRepository.notificationsEnabledFlow.first()
@@ -420,7 +457,8 @@ class AppViewModel(
             try {
                 val success = authRepository.signInWithGoogle(context)
                 if (success) {
-                    _userSignedIn.value = true
+                    _userSignedIn.value = authRepository.hasRegisteredAccount()
+                    _aiAccessReady.value = authRepository.hasAuthenticatedSession()
                     _statusMessage.value = "تم تسجيل الدخول بنجاح!"
                     runCatching {
                         val enabled = settingsRepository.notificationsEnabledFlow.first()
@@ -446,6 +484,7 @@ class AppViewModel(
         viewModelScope.launch {
             authRepository.signOut()
             _userSignedIn.value = false
+            _aiAccessReady.value = false
             _statusMessage.value = "تم تسجيل الخروج."
         }
     }
@@ -462,6 +501,7 @@ class AppViewModel(
                 settingsRepository.clearAll()
                 authRepository.signOut()
                 _userSignedIn.value = false
+                _aiAccessReady.value = false
                 _statusMessage.value = "تم حذف الحساب نهائياً."
             } catch (e: FirebaseFunctionsException) {
                 _statusMessage.value = when (e.code) {
@@ -481,19 +521,12 @@ class AppViewModel(
 
     fun submitFeedback(draft: FeedbackDraft, context: Context?) {
         viewModelScope.launch {
-            if (authRepository.getCurrentUser() == null) {
-                if (context == null) {
-                    _statusMessage.value = "يجب تسجيل الدخول لإرسال الطلب."
-                    return@launch
-                }
-                val signedIn = authRepository.signInWithGoogle(context)
-                _userSignedIn.value = signedIn
-                if (!signedIn) {
-                    _statusMessage.value = "يجب تسجيل الدخول لإرسال الطلب."
-                    return@launch
-                }
-                val enabled = settingsRepository.notificationsEnabledFlow.first()
-                firestoreRepository.saveFcmToken(notificationsEnabled = enabled)
+            // Anonymous sessions are only for the AI assistant; do not treat them as
+            // a registered account for personal feedback and support requests.
+            if (!authRepository.hasRegisteredAccount()) {
+                _statusMessage.value =
+                    "لإرسال الطلبات ومتابعة الردود، أنشئ حساباً أو سجّل الدخول من الإعدادات."
+                return@launch
             }
             val result = firestoreRepository.submitFeedback(draft, draft.attachmentUri)
             _statusMessage.value = if (result.isSuccess) {

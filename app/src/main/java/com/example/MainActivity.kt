@@ -89,7 +89,7 @@ class MainActivity : ComponentActivity() {
         // configuration should degrade cloud notifications, not crash MainActivity.
         runCatching {
             val user = FirebaseAuth.getInstance().currentUser
-            if (user != null) {
+            if (user != null && !user.isAnonymous) {
                 FirebaseMessaging.getInstance().token
                     .addOnSuccessListener { token ->
                         FirebaseFirestore.getInstance().collection("users").document(user.uid).set(
