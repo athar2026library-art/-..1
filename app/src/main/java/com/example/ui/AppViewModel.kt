@@ -171,7 +171,7 @@ class AppViewModel(
     private val _userSignedIn = MutableStateFlow(authRepository.hasRegisteredAccount())
     val userSignedIn: StateFlow<Boolean> = _userSignedIn.asStateFlow()
 
-    private val _aiAccessReady = MutableStateFlow(authRepository.hasAuthenticatedSession())
+    private val _aiAccessReady = MutableStateFlow(true)
     val aiAccessReady: StateFlow<Boolean> = _aiAccessReady.asStateFlow()
 
     private val _isPreparingAiAccess = MutableStateFlow(false)
@@ -363,28 +363,13 @@ class AppViewModel(
      * Firebase Anonymous Auth provides a server-side UID for rate limiting while
      * leaving the normal account/sync status unchanged.
      */
+    /**
+     * Firebase AI Logic authenticates the app with App Check; chat does not require
+     * a Firebase Auth account or an anonymous-auth provider.
+     */
     fun ensureAiAccess() {
-        if (_aiAccessReady.value || _isPreparingAiAccess.value) return
-        viewModelScope.launch {
-            _isPreparingAiAccess.value = true
-            _statusMessage.value = ""
-            try {
-                val ready = authRepository.ensureAiSession()
-                _aiAccessReady.value = ready
-                _statusMessage.value = if (ready) {
-                    ""
-                } else {
-                    "تعذر تشغيل المساعد حالياً. يلزم تفعيل تسجيل الدخول المجهول في إعدادات Firebase Authentication."
-                }
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Exception) {
-                _aiAccessReady.value = false
-                _statusMessage.value = "تعذر تهيئة المساعد. تحقق من الاتصال وإعداد Firebase ثم أعد المحاولة."
-            } finally {
-                _isPreparingAiAccess.value = false
-            }
-        }
+        _aiAccessReady.value = true
+        _isPreparingAiAccess.value = false
     }
 
     fun createAccountWithEmail(email: String, password: String) =
@@ -421,7 +406,7 @@ class AppViewModel(
             try {
                 operation()
                 _userSignedIn.value = authRepository.hasRegisteredAccount()
-                _aiAccessReady.value = authRepository.hasAuthenticatedSession()
+                _aiAccessReady.value = true
                 _statusMessage.value = "تم $action بنجاح."
                 runCatching {
                     val enabled = settingsRepository.notificationsEnabledFlow.first()
@@ -458,7 +443,7 @@ class AppViewModel(
                 val success = authRepository.signInWithGoogle(context)
                 if (success) {
                     _userSignedIn.value = authRepository.hasRegisteredAccount()
-                    _aiAccessReady.value = authRepository.hasAuthenticatedSession()
+                    _aiAccessReady.value = true
                     _statusMessage.value = "تم تسجيل الدخول بنجاح!"
                     runCatching {
                         val enabled = settingsRepository.notificationsEnabledFlow.first()
@@ -484,7 +469,7 @@ class AppViewModel(
         viewModelScope.launch {
             authRepository.signOut()
             _userSignedIn.value = false
-            _aiAccessReady.value = false
+            _aiAccessReady.value = true
             _statusMessage.value = "تم تسجيل الخروج."
         }
     }
@@ -501,7 +486,7 @@ class AppViewModel(
                 settingsRepository.clearAll()
                 authRepository.signOut()
                 _userSignedIn.value = false
-                _aiAccessReady.value = false
+                _aiAccessReady.value = true
                 _statusMessage.value = "تم حذف الحساب نهائياً."
             } catch (e: FirebaseFunctionsException) {
                 _statusMessage.value = when (e.code) {
