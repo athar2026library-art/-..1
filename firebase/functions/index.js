@@ -11,7 +11,7 @@ const { uniqueTokens, buildUserPrompt } = require("./lib/helpers");
 initializeApp();
 
 const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
-const GEMINI_MODEL = "gemini-2.5-flash";
+const GEMINI_MODEL = "gemini-3.5-flash-lite";
 const REGION = "europe-west1";
 
 const SYSTEM_INSTRUCTION =
