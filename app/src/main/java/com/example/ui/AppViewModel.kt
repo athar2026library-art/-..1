@@ -20,6 +20,10 @@ import com.example.ui.theme.AccentTheme
 import com.example.ui.theme.ReaderFont
 import com.google.firebase.functions.FirebaseFunctions
 import com.google.firebase.functions.FirebaseFunctionsException
+import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
+import com.google.firebase.auth.FirebaseAuthInvalidUserException
+import com.google.firebase.auth.FirebaseAuthUserCollisionException
+import com.google.firebase.auth.FirebaseAuthWeakPasswordException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
@@ -346,6 +350,67 @@ class AppViewModel(
     }
 
     fun clearStatusMessage() { _statusMessage.value = "" }
+
+    fun createAccountWithEmail(email: String, password: String) =
+        runEmailAuthentication("إنشاء الحساب") { authRepository.createAccountWithEmail(email, password) }
+
+    fun signInWithEmail(email: String, password: String) =
+        runEmailAuthentication("تسجيل الدخول") { authRepository.signInWithEmail(email, password) }
+
+    fun sendPasswordReset(email: String) {
+        if (email.isBlank()) {
+            _statusMessage.value = "أدخل بريدك الإلكتروني أولاً لإرسال رابط استعادة كلمة المرور."
+            return
+        }
+        viewModelScope.launch {
+            _isSigningIn.value = true
+            try {
+                authRepository.sendPasswordReset(email)
+                _statusMessage.value = "إذا كان البريد مسجلاً، فسيصلك رابط استعادة كلمة المرور."
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                _statusMessage.value = authErrorMessage(error, creating = false)
+            } finally {
+                _isSigningIn.value = false
+            }
+        }
+    }
+
+    private fun runEmailAuthentication(action: String, operation: suspend () -> Unit) {
+        if (_isSigningIn.value) return
+        viewModelScope.launch {
+            _isSigningIn.value = true
+            _statusMessage.value = "جارٍ $action..."
+            try {
+                operation()
+                _userSignedIn.value = true
+                _statusMessage.value = "تم $action بنجاح."
+                runCatching {
+                    val enabled = settingsRepository.notificationsEnabledFlow.first()
+                    firestoreRepository.saveFcmToken(notificationsEnabled = enabled)
+                }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                _statusMessage.value = authErrorMessage(error, creating = action == "إنشاء الحساب")
+            } finally {
+                _isSigningIn.value = false
+            }
+        }
+    }
+
+    private fun authErrorMessage(error: Exception, creating: Boolean): String = when (error) {
+        is FirebaseAuthWeakPasswordException -> "كلمة المرور ضعيفة. استخدم 6 أحرف على الأقل."
+        is FirebaseAuthUserCollisionException -> "هذا البريد مسجّل مسبقاً. سجّل الدخول بدلاً من إنشاء حساب جديد."
+        is FirebaseAuthInvalidUserException -> "لم يُعثر على حساب بهذا البريد. تحقق من البريد أو أنشئ حساباً."
+        is FirebaseAuthInvalidCredentialsException -> if (creating) {
+            "البريد الإلكتروني غير صالح أو تعذر إنشاء الحساب."
+        } else {
+            "البريد الإلكتروني أو كلمة المرور غير صحيحة."
+        }
+        else -> "تعذر إكمال العملية. تحقق من اتصال الإنترنت ومن تفعيل تسجيل الدخول بالبريد وكلمة المرور في Firebase."
+    }
 
     fun signIn(context: Context) {
         if (_isSigningIn.value) return
