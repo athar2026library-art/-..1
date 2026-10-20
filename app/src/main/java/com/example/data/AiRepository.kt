@@ -124,11 +124,11 @@ class AiRepository(context: Context? = null) {
             قل بوضوح إن قاعدة التطبيق لا تحتوي على جواب كافٍ. اختم بعبارة: (إجابة آلية وليست فتوى).
         """.trimIndent()
 
-        val messages = withContext(Dispatchers.IO) {
+        val chunks = withContext(Dispatchers.IO) {
             activeConversation.sendMessageAsync(prompt).toList()
         }
-        messages.lastOrNull()?.text?.trim()
-            ?.takeIf { it.isNotEmpty() }
+        chunks.joinToString(separator = "").trim()
+            .takeIf { it.isNotEmpty() }
             ?: answerLocally(input)
     }
 
