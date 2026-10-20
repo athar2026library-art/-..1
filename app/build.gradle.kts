@@ -70,6 +70,7 @@ android {
   }
   testOptions { unitTests { isIncludeAndroidResources = true } }
   sourceSets.getByName("main").assets.srcDir(layout.projectDirectory.dir("local-ai-model"))
+  androidResources { noCompress += "litertlm" }
 
   dependenciesInfo {
     includeInApk = false
@@ -112,7 +113,7 @@ val downloadLocalAiModel by tasks.registering {
       logger.lifecycle("Downloading the bundled on-device model (~647 MB); this is only needed when the model is not cached.")
       val connection = URL(localAiModelUrl).openConnection().apply {
         connectTimeout = 30_000
-        readTimeout = 180_000
+        readTimeout = 600_000
         setRequestProperty("User-Agent", "Baqiyat-Android-Build")
       }
       connection.getInputStream().buffered().use { input ->
