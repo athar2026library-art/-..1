@@ -40,6 +40,12 @@ jobs:
           gradle-version: "9.3.1"
           validate-wrappers: false
 
+      - name: Cache bundled on-device model
+        uses: actions/cache@v4
+        with:
+          path: app/local-ai-model/Qwen2_0.5B_Instruct.litertlm
+          key: baqiyat-qwen2-0.5b-0f01cc004b8eb62b
+
       # Firebase client configuration is public app configuration. Prefer a valid secret
       # when provided; otherwise keep the valid checked-in config. Never overwrite it with malformed secret data.
       - name: Configure Firebase for Android

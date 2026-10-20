@@ -82,7 +82,7 @@ class MainActivity : ComponentActivity() {
 
         val progressRepository = ProgressRepository.getInstance(applicationContext)
         val settingsRepository = SettingsRepository(applicationContext.dataStore)
-        val aiRepository = AiRepository()
+        val aiRepository = AiRepository(applicationContext)
         val authRepository = AuthRepository(this)
         val firestoreRepository = FirestoreRepository()
 
