@@ -124,7 +124,9 @@ class AiRepository(context: Context? = null) {
             قل بوضوح إن قاعدة التطبيق لا تحتوي على جواب كافٍ. اختم بعبارة: (إجابة آلية وليست فتوى).
         """.trimIndent()
 
-        val messages = activeConversation.sendMessageAsync(prompt).toList()
+        val messages = withContext(Dispatchers.IO) {
+            activeConversation.sendMessageAsync(prompt).toList()
+        }
         messages.lastOrNull()?.text?.trim()
             ?.takeIf { it.isNotEmpty() }
             ?: answerLocally(input)
@@ -141,13 +143,15 @@ class AiRepository(context: Context? = null) {
                 )
             ).also { it.initialize() }
         }
-        val newConversation = newEngine.createConversation(
-            ConversationConfig(
-                systemInstruction = Contents.of(SYSTEM_INSTRUCTION),
-                samplerConfig = SamplerConfig(topK = 20, topP = 0.9, temperature = 0.25),
-                maxOutputToken = 512
+        val newConversation = withContext(Dispatchers.IO) {
+            newEngine.createConversation(
+                ConversationConfig(
+                    systemInstruction = Contents.of(SYSTEM_INSTRUCTION),
+                    samplerConfig = SamplerConfig(topK = 20, topP = 0.9, temperature = 0.25),
+                    maxOutputToken = 512
+                )
             )
-        )
+        }
         engine = newEngine
         conversation = newConversation
         return newConversation
