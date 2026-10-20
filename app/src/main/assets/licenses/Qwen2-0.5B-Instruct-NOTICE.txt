@@ -1,0 +1,9 @@
+Model attribution
+
+Model: Qwen2-0.5B-Instruct, converted for LiteRT-LM
+Upstream model/runtime package: https://huggingface.co/litert-community/Qwen2-0.5B-Instruct
+Model license: Apache License 2.0
+Model file: Qwen2_0.5B_Instruct.litertlm
+Expected SHA-256: 0f01cc004b8eb62b92ba6be85ed05a248ba0d2f78af94c4949b313eccfb4c157
+
+This model is bundled in the Android APK and is executed locally on the device. User prompts are not sent to the upstream model repository or a remote inference service.
