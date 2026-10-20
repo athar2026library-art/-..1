@@ -323,7 +323,7 @@ class AppViewModel(
         _isLoadingAi.value = true
         _chatMessages.update {
             it + ChatMessage(message, isUser = true) +
-                ChatMessage("جاري البحث...", isUser = false, isLoading = true)
+                ChatMessage("جارٍ تشغيل المساعد المحلي… قد يستغرق الرد الأول وقتًا أطول.", isUser = false, isLoading = true)
         }
         aiJob = viewModelScope.launch {
             val startedAt = android.os.SystemClock.elapsedRealtime()
