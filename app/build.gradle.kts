@@ -132,6 +132,11 @@ val downloadLocalAiModel by tasks.registering {
 }
 
 tasks.named("preBuild").configure { dependsOn(downloadLocalAiModel) }
+tasks.configureEach {
+  if (name.startsWith("merge") && name.endsWith("Assets")) {
+    dependsOn(downloadLocalAiModel)
+  }
+}
 
 dependencies {
   implementation(platform(libs.androidx.compose.bom))
