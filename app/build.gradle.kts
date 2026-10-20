@@ -86,6 +86,7 @@ val localAiModelUrl =
 val localAiModelSha256 = "0f01cc004b8eb62b92ba6be85ed05a248ba0d2f78af94c4949b313eccfb4c157"
 
 val downloadLocalAiModel by tasks.registering {
+  notCompatibleWithConfigurationCache("Downloads and verifies the bundled model using build-script scoped logic")
   outputs.file(localAiModel)
   outputs.upToDateWhen { false }
   doLast {
