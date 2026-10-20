@@ -143,9 +143,9 @@ class AppViewModel(
      * تصنيفات مدمجة: الأساسية + الديناميكية من لوحة المالك (Firestore).
      * Eagerly يُبقي المستمع حياً حتى تظهر التصنيفات المنشورة فوراً دون انتظار فتح الشاشة.
      */
-    val categories: StateFlow<List<AzkarCategory>> = firestoreRepository.observeCategories()
-        .map { CategoryDefaults.merge(it) }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, CategoryDefaults.builtIn)
+    // Core categories ship with the APK. Admin-panel edits do not mutate app content remotely.
+    val categories: StateFlow<List<AzkarCategory>> =
+        MutableStateFlow(CategoryDefaults.builtIn).asStateFlow()
 
     private val _statusMessage = MutableStateFlow("")
     val statusMessage: StateFlow<String> = _statusMessage.asStateFlow()
@@ -160,7 +160,7 @@ class AppViewModel(
     private val _chatMessages = MutableStateFlow(
         listOf(
             ChatMessage(
-                "السلام عليكم، كيف يمكنني مساعدتك اليوم؟ (أذكار، أدعية، فضل ذكر معين...)",
+                "السلام عليكم، أنا المساعد المحلي. أبحث في الأذكار والمصادر المضمّنة على جهازك دون الاتصال بخدمة ذكاء اصطناعي سحابية.",
                 isUser = false
             )
         )
@@ -333,7 +333,7 @@ class AppViewModel(
                 } catch (e: CancellationException) {
                     throw e
                 } catch (_: Exception) {
-                    "تعذر الاتصال. يرجى التأكد من اتصالك بالإنترنت للميزات الذكية 🌐"
+                    "تعذر البحث في البيانات المحلية. أعد صياغة السؤال وحاول مرة أخرى."
                 }
                 _lastAiLatencyMs.value = android.os.SystemClock.elapsedRealtime() - startedAt
                 _chatMessages.update { list ->
