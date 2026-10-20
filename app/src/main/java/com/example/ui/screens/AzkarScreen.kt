@@ -54,8 +54,6 @@ import com.example.ui.AppViewModel
 import com.example.ui.AudioPlayer
 import com.example.ui.ShareHelper
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -79,21 +77,9 @@ fun AzkarScreen(
             else -> AzkarData.builtInOrEmpty(category)
         }
     }
-    val liveAzkar by remember(category) {
-        if (isSnapshotMode) flowOf<List<Zekr>?>(null)
-        else viewModel.observePublishedAzkar(category).map<List<Zekr>, List<Zekr>?> { it }
-    }.collectAsStateWithLifecycle(initialValue = null)
-    val azkarList = remember(liveAzkar, fallbackAzkar) {
-        val published = liveAzkar.orEmpty()
-        if (published.isEmpty()) {
-            fallbackAzkar
-        } else {
-            // Keep bundled book content visible even when Firestore also publishes
-            // items for the same existing category; remove text duplicates only.
-            (fallbackAzkar + published).distinctBy { com.example.data.ArabicText.normalize(it.text) }
-        }
-    }
-    val isLoadingContent = liveAzkar == null && !isSnapshotMode && fallbackAzkar.isEmpty()
+    // The Android app reads only bundled data. Updates arrive with a new APK.
+    val azkarList = remember(fallbackAzkar) { fallbackAzkar }
+    val isLoadingContent = false
     val title = when {
         category == "favorites" -> "المفضلة"
         isCustomWird -> customWird?.name ?: "وردي"
