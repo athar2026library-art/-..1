@@ -432,9 +432,12 @@ class AppViewModel(
             _isSigningIn.value = true
             try {
                 localAccountRepository.deleteAccount()
+                progressRepository.clearLocalProgress()
+                settingsRepository.clearAll()
+                progressRepository.initTodayProgress()
                 _localAccountUsername.value = null
                 _localAccountExists.value = false
-                _statusMessage.value = "تم حذف بيانات الحساب المحلي. لم يُحذف تقدم الأذكار أو الإعدادات."
+                _statusMessage.value = "تم حذف الحساب المحلي وتقدم الأذكار والإعدادات المحفوظة على الجهاز."
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {
