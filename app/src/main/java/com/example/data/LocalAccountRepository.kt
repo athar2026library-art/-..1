@@ -91,13 +91,15 @@ class LocalAccountRepository(context: Context) {
     }
 
     private fun derivePasswordHash(password: String, salt: ByteArray): ByteArray {
-        val spec = PBEKeySpec(password.toCharArray(), salt, PBKDF2_ITERATIONS, HASH_BITS)
+        val passwordChars = password.toCharArray()
+        val spec = PBEKeySpec(passwordChars, salt, PBKDF2_ITERATIONS, HASH_BITS)
         return try {
             SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
                 .generateSecret(spec)
                 .encoded
         } finally {
             spec.clearPassword()
+            passwordChars.fill('\\u0000')
         }
     }
 
