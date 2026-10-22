@@ -31,7 +31,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.AppViewModel
-import com.example.ui.findActivity
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,13 +57,13 @@ fun SettingsScreen(
     val reminderSleepTime by viewModel.reminderSleepTime.collectAsStateWithLifecycle()
     val reminderFridayTime by viewModel.reminderFridayTime.collectAsStateWithLifecycle()
 
-    val userSignedIn by viewModel.userSignedIn.collectAsStateWithLifecycle()
+    val localAccountUsername by viewModel.localAccountUsername.collectAsStateWithLifecycle()
+    val localAccountExists by viewModel.localAccountExists.collectAsStateWithLifecycle()
     val statusMessage by viewModel.statusMessage.collectAsStateWithLifecycle()
     val isSigningIn by viewModel.isSigningIn.collectAsStateWithLifecycle()
-    var email by remember { mutableStateOf("") }
+    var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     val context = LocalContext.current
-    val activity = context.findActivity()
     val notificationPermissionGranted =
         Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
@@ -79,17 +78,17 @@ fun SettingsScreen(
     if (showDeleteConfirm) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("حذف الحساب نهائياً؟") },
+            title = { Text("حذف الحساب المحلي؟") },
             text = {
-                Text("سيُحذف تقدمك السحابي والشكاوى وحساب تسجيل الدخول. لا يمكن التراجع.")
+                Text("سيُحذف اسم المستخدم وكلمة المرور، وكذلك تقدم الأذكار والإعدادات المحفوظة على هذا الجهاز. لا يمكن التراجع.")
             },
             confirmButton = {
                 TextButton(
                     onClick = {
                         showDeleteConfirm = false
-                        viewModel.deleteAccount()
+                        viewModel.deleteLocalAccount()
                     }
-                ) { Text("حذف", color = MaterialTheme.colorScheme.error) }
+                ) { Text("حذف الحساب والبيانات", color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirm = false }) { Text("إلغاء") }
@@ -350,7 +349,7 @@ fun SettingsScreen(
             }
 
             Spacer(modifier = Modifier.height(32.dp))
-            Text("المزامنة السحابية", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            Text("الحساب المحلي", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
             Spacer(modifier = Modifier.height(16.dp))
             Card(
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)),
@@ -359,35 +358,37 @@ fun SettingsScreen(
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
                     Text(
-                        "المزامنة التلقائية تعمل في الخلفية كل 6 ساعات عند تسجيل الدخول.",
+                        "يُحفظ الحساب على هذا الجهاز فقط. لا يحتاج إلى إنترنت، ولا يوفّر مزامنة أو استعادة كلمة المرور عبر البريد. يُسمح بحساب محلي واحد على الجهاز.",
                         fontSize = 13.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         lineHeight = 20.sp
                     )
                     Spacer(modifier = Modifier.height(16.dp))
-                    if (userSignedIn) {
-                        Text("تم تسجيل الدخول", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Button(onClick = { viewModel.syncData() }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
-                            Text("مزامنة الآن")
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        OutlinedButton(onClick = { viewModel.signOut() }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
+                    if (localAccountUsername != null) {
+                        Text("تم تسجيل الدخول باسم $localAccountUsername", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        OutlinedButton(
+                            onClick = { viewModel.signOutLocal() },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
                             Text("تسجيل الخروج")
                         }
                         Spacer(modifier = Modifier.height(8.dp))
-                        TextButton(onClick = { showDeleteConfirm = true }, modifier = Modifier.fillMaxWidth()) {
-                            Text("حذف الحساب نهائياً", color = MaterialTheme.colorScheme.error)
+                        TextButton(
+                            onClick = { showDeleteConfirm = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !isSigningIn
+                        ) {
+                            Text("حذف الحساب المحلي وبياناته", color = MaterialTheme.colorScheme.error)
                         }
                     } else {
-                        Text("سجّل الدخول أو أنشئ حساباً بالبريد الإلكتروني لحفظ تقدمك وتشغيل المساعد الذكي.", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 21.sp)
-                        Spacer(modifier = Modifier.height(16.dp))
                         OutlinedTextField(
-                            value = email,
-                            onValueChange = { email = it },
-                            modifier = Modifier.fillMaxWidth().testTag("email-auth-email"),
-                            label = { Text("البريد الإلكتروني") },
-                            placeholder = { Text("name@example.com") },
+                            value = username,
+                            onValueChange = { username = it },
+                            modifier = Modifier.fillMaxWidth().testTag("local-account-username"),
+                            label = { Text("اسم المستخدم") },
+                            placeholder = { Text("3 إلى 32 حرفاً أو رقماً") },
                             singleLine = true,
                             enabled = !isSigningIn
                         )
@@ -395,46 +396,31 @@ fun SettingsScreen(
                         OutlinedTextField(
                             value = password,
                             onValueChange = { password = it },
-                            modifier = Modifier.fillMaxWidth().testTag("email-auth-password"),
+                            modifier = Modifier.fillMaxWidth().testTag("local-account-password"),
                             label = { Text("كلمة المرور") },
                             visualTransformation = PasswordVisualTransformation(),
                             singleLine = true,
                             enabled = !isSigningIn
                         )
                         Spacer(modifier = Modifier.height(12.dp))
-                        Button(
-                            onClick = { viewModel.signInWithEmail(email.trim(), password) },
-                            modifier = Modifier.fillMaxWidth().testTag("email-sign-in-button"),
-                            shape = RoundedCornerShape(12.dp),
-                            enabled = !isSigningIn && email.isNotBlank() && password.isNotBlank()
-                        ) {
-                            Text(if (isSigningIn) "جارٍ التحقق..." else "تسجيل الدخول بالبريد")
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        OutlinedButton(
-                            onClick = { viewModel.createAccountWithEmail(email.trim(), password) },
-                            modifier = Modifier.fillMaxWidth().testTag("email-create-account-button"),
-                            shape = RoundedCornerShape(12.dp),
-                            enabled = !isSigningIn && email.isNotBlank() && password.length >= 6
-                        ) {
-                            Text("إنشاء حساب جديد")
-                        }
-                        TextButton(
-                            onClick = { viewModel.sendPasswordReset(email.trim()) },
-                            modifier = Modifier.fillMaxWidth().testTag("email-password-reset-button"),
-                            enabled = !isSigningIn && email.isNotBlank()
-                        ) {
-                            Text("نسيت كلمة المرور؟ أرسل رابط الاستعادة")
-                        }
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
-                        Spacer(modifier = Modifier.height(8.dp))
-                        OutlinedButton(
-                            onClick = { activity?.let { viewModel.signIn(it) } },
-                            modifier = Modifier.fillMaxWidth().testTag("google-sign-in-button"),
-                            shape = RoundedCornerShape(12.dp),
-                            enabled = activity != null && !isSigningIn
-                        ) {
-                            Text("أو المتابعة باستخدام Google")
+                        if (localAccountExists) {
+                            Button(
+                                onClick = { viewModel.signInLocal(username.trim(), password) },
+                                modifier = Modifier.fillMaxWidth().testTag("local-account-sign-in"),
+                                shape = RoundedCornerShape(12.dp),
+                                enabled = !isSigningIn && username.isNotBlank() && password.isNotBlank()
+                            ) {
+                                Text(if (isSigningIn) "جارٍ التحقق..." else "تسجيل الدخول")
+                            }
+                        } else {
+                            Button(
+                                onClick = { viewModel.createLocalAccount(username.trim(), password) },
+                                modifier = Modifier.fillMaxWidth().testTag("local-account-create"),
+                                shape = RoundedCornerShape(12.dp),
+                                enabled = !isSigningIn && username.trim().length >= 3 && password.length >= 8
+                            ) {
+                                Text(if (isSigningIn) "جارٍ إنشاء الحساب..." else "إنشاء حساب محلي")
+                            }
                         }
                     }
                 }

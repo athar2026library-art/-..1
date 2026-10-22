@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.data.AiRepository
 import com.example.data.AuthRepository
+import com.example.data.LocalAccountRepository
 import com.example.data.AzkarCategory
 import com.example.data.CategoryDefaults
 import com.example.data.CustomWird
@@ -43,7 +44,8 @@ class AppViewModel(
     private val settingsRepository: SettingsRepository,
     private val aiRepository: AiRepository,
     private val authRepository: AuthRepository,
-    private val firestoreRepository: FirestoreRepository
+    private val firestoreRepository: FirestoreRepository,
+    private val localAccountRepository: LocalAccountRepository
 ) : ViewModel() {
 
     val todayProgress: StateFlow<UserProgress?> = progressRepository.getTodayProgress()
@@ -179,6 +181,12 @@ class AppViewModel(
 
     private val _isSigningIn = MutableStateFlow(false)
     val isSigningIn: StateFlow<Boolean> = _isSigningIn.asStateFlow()
+
+    private val _localAccountUsername = MutableStateFlow(localAccountRepository.currentUsername)
+    val localAccountUsername: StateFlow<String?> = _localAccountUsername.asStateFlow()
+
+    private val _localAccountExists = MutableStateFlow(localAccountRepository.accountExists)
+    val localAccountExists: StateFlow<Boolean> = _localAccountExists.asStateFlow()
 
     val myFeedback: StateFlow<List<FeedbackItem>> = firestoreRepository.observeMyFeedback()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -372,6 +380,74 @@ class AppViewModel(
         _isPreparingAiAccess.value = false
     }
 
+    fun createLocalAccount(username: String, password: String) {
+        if (_isSigningIn.value) return
+        viewModelScope.launch {
+            _isSigningIn.value = true
+            _statusMessage.value = "جارٍ إنشاء الحساب المحلي..."
+            try {
+                localAccountRepository.createAccount(username, password)
+                _localAccountUsername.value = localAccountRepository.currentUsername
+                _localAccountExists.value = localAccountRepository.accountExists
+                _statusMessage.value = "تم إنشاء الحساب المحلي وحفظه على هذا الجهاز."
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                _statusMessage.value = error.message ?: "تعذر إنشاء الحساب المحلي."
+            } finally {
+                _isSigningIn.value = false
+            }
+        }
+    }
+
+    fun signInLocal(username: String, password: String) {
+        if (_isSigningIn.value) return
+        viewModelScope.launch {
+            _isSigningIn.value = true
+            _statusMessage.value = "جارٍ تسجيل الدخول محلياً..."
+            try {
+                localAccountRepository.signIn(username, password)
+                _localAccountUsername.value = localAccountRepository.currentUsername
+                _localAccountExists.value = localAccountRepository.accountExists
+                _statusMessage.value = "تم تسجيل الدخول محلياً."
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                _statusMessage.value = error.message ?: "تعذر تسجيل الدخول."
+            } finally {
+                _isSigningIn.value = false
+            }
+        }
+    }
+
+    fun signOutLocal() {
+        localAccountRepository.signOut()
+        _localAccountUsername.value = null
+        _statusMessage.value = "تم تسجيل الخروج من الحساب المحلي."
+    }
+
+    fun deleteLocalAccount() {
+        if (_isSigningIn.value) return
+        viewModelScope.launch {
+            _isSigningIn.value = true
+            try {
+                progressRepository.clearLocalProgress()
+                settingsRepository.clearAll()
+                localAccountRepository.deleteAccount()
+                progressRepository.initTodayProgress()
+                _localAccountUsername.value = null
+                _localAccountExists.value = false
+                _statusMessage.value = "تم حذف الحساب المحلي وتقدم الأذكار والإعدادات المحفوظة على الجهاز."
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                _statusMessage.value = error.message ?: "تعذر حذف الحساب المحلي."
+            } finally {
+                _isSigningIn.value = false
+            }
+        }
+    }
+
     fun createAccountWithEmail(email: String, password: String) =
         runEmailAuthentication("إنشاء الحساب") { authRepository.createAccountWithEmail(email, password) }
 
@@ -561,7 +637,8 @@ class AppViewModelFactory(
     private val settingsRepository: SettingsRepository,
     private val aiRepository: AiRepository,
     private val authRepository: AuthRepository,
-    private val firestoreRepository: FirestoreRepository
+    private val firestoreRepository: FirestoreRepository,
+    private val localAccountRepository: LocalAccountRepository
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -571,7 +648,8 @@ class AppViewModelFactory(
                 settingsRepository,
                 aiRepository,
                 authRepository,
-                firestoreRepository
+                firestoreRepository,
+                localAccountRepository
             ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")

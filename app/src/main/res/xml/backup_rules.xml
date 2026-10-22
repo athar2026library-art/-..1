@@ -2,4 +2,6 @@
 <full-backup-content>
     <!-- استبعد قاعدة Room من Auto Backup لتجنب التعارض مع مزامنة Firebase -->
     <exclude domain="database" path="." />
+    <!-- الحساب المحلي وبيانات التحقق لا تُنقل عبر Android Auto Backup -->
+    <exclude domain="sharedpref" path="local_account.xml" />
 </full-backup-content>
