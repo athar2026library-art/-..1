@@ -38,6 +38,7 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import com.example.data.AiRepository
 import com.example.data.AppDatabase
 import com.example.data.AuthRepository
+import com.example.data.LocalAccountRepository
 import com.example.data.FirestoreRepository
 import com.example.data.ProgressRepository
 import com.example.data.SettingsRepository
@@ -85,6 +86,7 @@ class MainActivity : ComponentActivity() {
         val aiRepository = AiRepository(applicationContext)
         val authRepository = AuthRepository(this)
         val firestoreRepository = FirestoreRepository()
+        val localAccountRepository = LocalAccountRepository(applicationContext)
 
         // Token registration must never block app launch. A missing/invalid Firebase
         // configuration should degrade cloud notifications, not crash MainActivity.
@@ -118,7 +120,8 @@ class MainActivity : ComponentActivity() {
                     settingsRepository,
                     aiRepository,
                     authRepository,
-                    firestoreRepository
+                    firestoreRepository,
+                    localAccountRepository
                 )
             )
 
