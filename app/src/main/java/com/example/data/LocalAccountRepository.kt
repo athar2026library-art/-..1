@@ -99,7 +99,7 @@ class LocalAccountRepository(context: Context) {
                 .encoded
         } finally {
             spec.clearPassword()
-            passwordChars.fill('\\u0000')
+            passwordChars.fill(0.toChar())
         }
     }
 
