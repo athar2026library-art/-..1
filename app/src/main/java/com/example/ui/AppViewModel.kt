@@ -431,9 +431,9 @@ class AppViewModel(
         viewModelScope.launch {
             _isSigningIn.value = true
             try {
-                localAccountRepository.deleteAccount()
                 progressRepository.clearLocalProgress()
                 settingsRepository.clearAll()
+                localAccountRepository.deleteAccount()
                 progressRepository.initTodayProgress()
                 _localAccountUsername.value = null
                 _localAccountExists.value = false
